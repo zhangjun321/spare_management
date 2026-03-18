@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 备件管理系统 (Spare Management System)
 
 专业的备件管理系统，基于 Flask 框架开发，支持多用户权限管理。
@@ -326,3 +327,8 @@ PORT=5001
 - 完成所有核心功能
 - 包含 29 个数据表
 - 支持 6 种角色权限
+=======
+# spare_parts_management
+
+备件管理系统开发
+>>>>>>> 056103ca037440deb20edc3c4d7ade878da4e83d
