@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}{{ spare_part.name }} - 备件详情{% endblock %}
+
+{% block page_title %}备件详情{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">{{ spare_part.name }}</h5>
+        <div>
+            <a href="{{ url_for('spare_parts.edit', id=spare_part.id) }}" class="btn btn-success" {% if not current_user.has_permission('spare_part', 'update') %}disabled{% endif %}>
+                <i class="fas fa-edit"></i> 编辑
+            </a>
+            <a href="{{ url_for('spare_parts.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> 返回
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="border-bottom pb-2 mb-3">基本信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <th width="30%">备件代码:</th>
+                        <td>{{ spare_part.part_code }}</td>
+                    </tr>
+                    <tr>
+                        <th>备件名称:</th>
+                        <td>{{ spare_part.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>规格型号:</th>
+                        <td>{{ spare_part.specification or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>单位:</th>
+                        <td>{{ spare_part.unit or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>状态:</th>
+                        <td>
+                            {% if spare_part.is_active %}
+                            <span class="badge bg-success">启用</span>
+                            {% else %}
+                            <span class="badge bg-secondary">停用</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="col-md-6">
+                <h6 class="border-bottom pb-2 mb-3">库存信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <th width="30%">当前库存:</th>
+                        <td>
+                            <span class="badge {% if spare_part.stock_status == 'low' %}bg-danger{% elif spare_part.stock_status == 'overstocked' %}bg-warning{% else %}bg-success{% endif %}">
+                                {{ spare_part.current_stock }} {{ spare_part.unit or '' }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>库存状态:</th>
+                        <td>
+                            {% if spare_part.stock_status == 'low' %}
+                            <span class="badge bg-danger">不足</span>
+                            {% elif spare_part.stock_status == 'overstocked' %}
+                            <span class="badge bg-warning">过剩</span>
+                            {% else %}
+                            <span class="badge bg-success">正常</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>最低库存:</th>
+                        <td>{{ spare_part.min_stock or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>最高库存:</th>
+                        <td>{{ spare_part.max_stock or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>存放位置:</th>
+                        <td>{{ spare_part.location or '-' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h6 class="border-bottom pb-2 mb-3">分类与供应商</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <th width="30%">分类:</th>
+                        <td>{{ spare_part.category.name if spare_part.category else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>供应商:</th>
+                        <td>{{ spare_part.supplier.name if spare_part.supplier else '-' }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="col-md-6">
+                <h6 class="border-bottom pb-2 mb-3">价格信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <th width="30%">单价:</th>
+                        <td>¥{{ '%.2f'|format(spare_part.unit_price or 0) }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        {% if spare_part.remark %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <h6 class="border-bottom pb-2 mb-3">备注</h6>
+                <p class="text-muted">{{ spare_part.remark }}</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <h6 class="border-bottom pb-2 mb-3">系统信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <th width="15%">创建时间:</th>
+                        <td>{{ spare_part.created_at.strftime('%Y-%m-%d %H:%M:%S') if spare_part.created_at else '-' }}</td>
+                        <th width="15%">更新时间:</th>
+                        <td>{{ spare_part.updated_at.strftime('%Y-%m-%d %H:%M:%S') if spare_part.updated_at else '-' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

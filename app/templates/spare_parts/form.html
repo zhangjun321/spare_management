@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - 备件管理{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">{{ title }}</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="part_code" class="form-label">{{ form.part_code.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.part_code(class="form-control", **{"required": "required"}) }}
+                        {% for error in form.part_code.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">{{ form.name.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.name(class="form-control", **{"required": "required"}) }}
+                        {% for error in form.name.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="specification" class="form-label">{{ form.specification.label.text }}</label>
+                        {{ form.specification(class="form-control") }}
+                        {% for error in form.specification.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="unit" class="form-label">{{ form.unit.label.text }}</label>
+                        {{ form.unit(class="form-control") }}
+                        {% for error in form.unit.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="category_id" class="form-label">{{ form.category_id.label.text }}</label>
+                        {{ form.category_id(class="form-select") }}
+                        {% for error in form.category_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="supplier_id" class="form-label">{{ form.supplier_id.label.text }}</label>
+                        {{ form.supplier_id(class="form-select") }}
+                        {% for error in form.supplier_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="location" class="form-label">{{ form.location.label.text }}</label>
+                        {{ form.location(class="form-control") }}
+                        {% for error in form.location.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="current_stock" class="form-label">{{ form.current_stock.label.text }}</label>
+                        {{ form.current_stock(class="form-control") }}
+                        {% for error in form.current_stock.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="min_stock" class="form-label">{{ form.min_stock.label.text }}</label>
+                        {{ form.min_stock(class="form-control") }}
+                        {% for error in form.min_stock.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="max_stock" class="form-label">{{ form.max_stock.label.text }}</label>
+                        {{ form.max_stock(class="form-control") }}
+                        {% for error in form.max_stock.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="unit_price" class="form-label">{{ form.unit_price.label.text }}</label>
+                        {{ form.unit_price(class="form-control", step="0.01") }}
+                        {% for error in form.unit_price.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="image_url" class="form-label">{{ form.image_url.label.text }}</label>
+                        {{ form.image_url(class="form-control") }}
+                        {% for error in form.image_url.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <div class="form-check mt-4">
+                            {{ form.is_active(class="form-check-input") }}
+                            <label class="form-check-label" for="is_active">{{ form.is_active.label.text }}</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="remark" class="form-label">{{ form.remark.label.text }}</label>
+                {{ form.remark(class="form-control", rows="3") }}
+                {% for error in form.remark.errors %}
+                <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('spare_parts.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回
+                </a>
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

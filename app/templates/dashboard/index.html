@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}仪表盘 - 备件管理系统{% endblock %}
+
+{% block page_title %}仪表盘{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 统计卡片 -->
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">备件总数</h6>
+                <h2 class="mb-0 text-white">{{ stats.spare_parts_count }}</h2>
+                <i class="fas fa-box stat-icon text-white"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('spare_parts.index') }}" class="text-white text-decoration-none">
+                    查看详情 <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #1cc88a 0%, #128f76 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">设备总数</h6>
+                <h2 class="mb-0 text-white">{{ stats.equipment_count }}</h2>
+                <i class="fas fa-cogs stat-icon text-white"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('equipment.index') }}" class="text-white text-decoration-none">
+                    查看详情 <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">待处理维修</h6>
+                <h2 class="mb-0 text-white">{{ stats.pending_maintenance_count }}</h2>
+                <i class="fas fa-wrench stat-icon text-white"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('maintenance.index') }}" class="text-white text-decoration-none">
+                    查看详情 <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #36b9cc 0%, #258391 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">今日交易</h6>
+                <h2 class="mb-0 text-white">{{ stats.today_transactions_count }}</h2>
+                <i class="fas fa-exchange-alt stat-icon text-white"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('transactions.index') }}" class="text-white text-decoration-none">
+                    查看详情 <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表区域 - 单独一行 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1rem var(--spacing-md);">
+                <h5 class="mb-0 fw-600">库存状态分布</h5>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                <div style="width: 100%; max-width: 320px;">
+                    <canvas id="stockStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 数据卡片区 - 3 列布局 -->
+<div class="row">
+    <!-- 库存预警 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1rem var(--spacing-md);">
+                <h5 class="mb-0 fw-600">库存预警 <span class="badge bg-warning ms-2">{{ low_stock_parts|length }}</span></h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                {% if low_stock_parts %}
+                <div class="list-group list-group-flush">
+                    {% for part in low_stock_parts %}
+                    <div class="list-group-item border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="overflow-hidden">
+                                <h6 class="mb-0 text-truncate" style="max-width: 160px;">{{ part.name }}</h6>
+                                <small class="text-muted">{{ part.part_code }}</small>
+                            </div>
+                            <span class="badge bg-warning flex-shrink-0">{{ part.current_stock }} / {{ part.min_stock }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center" style="height: 180px;">
+                    <p class="text-muted mb-0"><i class="fas fa-check-circle text-success me-2"></i>库存充足，无预警</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 最近交易 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0; padding: 1rem var(--spacing-md);">
+                <h5 class="mb-0 fw-600">最近交易</h5>
+                <a href="{{ url_for('transactions.index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">查看全部</a>
+            </div>
+            <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                {% if recent_transactions %}
+                <div class="table-responsive" style="box-shadow: none; padding: 0; margin: 0;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>编号</th>
+                                <th>类型</th>
+                                <th>备件</th>
+                                <th>数量</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td><small>{{ transaction.transaction_number[-8:] }}</small></td>
+                                <td>
+                                    {% if transaction.transaction_type == 'inbound' %}
+                                    <span class="badge bg-success">入库</span>
+                                    {% elif transaction.transaction_type == 'outbound' %}
+                                    <span class="badge bg-danger">出库</span>
+                                    {% else %}
+                                    <span class="badge bg-info">调整</span>
+                                    {% endif %}
+                                </td>
+                                <td><small class="text-truncate d-inline-block" style="max-width: 70px;">{{ transaction.spare_part.name }}</small></td>
+                                <td>{{ transaction.quantity }}</td>
+                                <td><small>{{ transaction.created_at.strftime('%m-%d %H:%M') }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center" style="height: 180px;">
+                    <p class="text-muted mb-0"><i class="fas fa-inbox text-muted me-2"></i>暂无交易记录</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 待处理维修工单 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0; padding: 1rem var(--spacing-md);">
+                <h5 class="mb-0 fw-600">待处理维修工单 <span class="badge bg-warning ms-2">{{ pending_maintenance|length }}</span></h5>
+                <a href="{{ url_for('maintenance.index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">查看全部</a>
+            </div>
+            <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                {% if pending_maintenance %}
+                <div class="list-group list-group-flush">
+                    {% for order in pending_maintenance %}
+                    <a href="{{ url_for('maintenance.detail', order_id=order.id) }}" class="list-group-item list-group-item-action border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="overflow-hidden">
+                                <h6 class="mb-0 text-truncate" style="max-width: 140px;">{{ order.order_number }}</h6>
+                                <small class="text-muted">{{ order.equipment.name }}</small>
+                            </div>
+                            <span class="badge bg-warning flex-shrink-0">{{ order.priority }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center" style="height: 180px;">
+                    <p class="text-muted mb-0"><i class="fas fa-check-circle text-success me-2"></i>暂无待处理工单</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 库存状态饼图
+    const ctx = document.getElementById('stockStatusChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常', '低库存', '缺货', '超储'],
+                datasets: [{
+                    data: [
+                        {{ stats.stock_status.normal }},
+                        {{ stats.stock_status.low }},
+                        {{ stats.stock_status.out }},
+                        {{ stats.stock_status.overstock }}
+                    ],
+                    backgroundColor: [
+                        '#28a745',
+                        '#ffc107',
+                        '#dc3545',
+                        '#17a2b8'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1.5,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.parsed || 0;
+                                let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                let percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                return label + ': ' + value + ' (' + percentage + ')';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}400 错误 - 请求无效{% endblock %}
+
+{% block page_title %}400 错误{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="display-1 text-danger">400</h1>
+    <h2 class="mb-4">请求无效</h2>
+    <p class="lead text-muted mb-4">您提交的请求包含错误，请检查后重试。</p>
+    <div class="mt-4">
+        <a href="javascript:history.back()" class="btn btn-primary me-2">
+            <i class="fas fa-arrow-left"></i> 返回上一页
+        </a>
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary">
+            <i class="fas fa-home"></i> 返回首页
+        </a>
+    </div>
+</div>
+{% endblock %}
