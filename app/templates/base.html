@@ -491,6 +491,107 @@
             color: rgba(255, 255, 255, 0.5) !important;
         }
         
+        /* 轮播图样式 */
+        .carousel-section {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .carousel-item {
+            height: 350px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        
+        .carousel-item:hover img {
+            transform: scale(1.05);
+        }
+        
+        .carousel-caption {
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+            padding: 2rem 1.5rem 1.5rem;
+            text-align: left;
+        }
+        
+        .carousel-caption h5 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .carousel-caption p {
+            font-size: 0.95rem;
+            margin-bottom: 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 50px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .carousel:hover .carousel-control-prev,
+        .carousel:hover .carousel-control-next {
+            opacity: 0.8;
+        }
+        
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            padding: 8px;
+        }
+        
+        .carousel-indicators {
+            bottom: 20px;
+        }
+        
+        .carousel-indicators button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin: 0 6px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        .carousel-indicators button.active {
+            background-color: #fff;
+            transform: scale(1.2);
+        }
+        
+        /* 响应式轮播图高度 */
+        @media (max-width: 768px) {
+            .carousel-item {
+                height: 250px;
+            }
+            
+            .carousel-caption h5 {
+                font-size: 1.2rem;
+            }
+            
+            .carousel-caption p {
+                font-size: 0.85rem;
+            }
+        }
+        
         /* 全局 z-index 层级 */
         .dropdown,
         .dropup {
@@ -866,6 +967,9 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 轮播图区域 -->
+        {% block carousel %}{% endblock %}
         
         <!-- 消息提示 -->
         {% with messages = get_flashed_messages(with_categories=true) %}
