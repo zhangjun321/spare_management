@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "BOSCH M8×1.25×30 六角头螺栓",
+    "specification": "M8×1.25×30",
+    "category_name": "螺栓",
+    "category_code": "D.01.01",
+    "brand": "BOSCH",
+    "material": "碳钢8.8级",
+    "unit_price": 2.5,
+    "supplier": "上海博世工业配件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PEM S-M3-2 压铆螺母",
+    "specification": "S-M3-2",
+    "category_name": "螺母",
+    "category_code": "D.01.02",
+    "brand": "PEM",
+    "material": "不锈钢304",
+    "unit_price": 1.8,
+    "supplier": "苏州沛恩紧固件有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "SOUTHCO M4×16 十字槽盘头螺钉",
+    "specification": "M4×16",
+    "category_name": "螺钉",
+    "category_code": "D.02.01",
+    "brand": "SOUTHCO",
+    "material": "碳钢镀锌",
+    "unit_price": 0.9,
+    "supplier": "东莞南方科紧固件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "WD DIN125-M8 平垫圈",
+    "specification": "DIN125-M8",
+    "category_name": "垫圈",
+    "category_code": "D.02.02",
+    "brand": "WD",
+    "material": "碳钢",
+    "unit_price": 0.2,
+    "supplier": "无锡威达紧固件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Hilti HRD-M6-10 抽芯铆钉",
+    "specification": "HRD-M6-10",
+    "category_name": "铆钉",
+    "category_code": "D.03.01",
+    "brand": "Hilti",
+    "material": "铝合金",
+    "unit_price": 3.2,
+    "supplier": "喜利得（中国）商贸有限公司",
+    "stock_status": "紧张"
+  }
+]
+```

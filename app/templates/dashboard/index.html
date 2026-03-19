@@ -14,9 +14,18 @@
     <div class="col-md-3 mb-4">
         <div class="card stat-card h-100" style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);">
             <div class="card-body position-relative">
-                <h6 class="card-title text-white-50">备件总数</h6>
-                <h2 class="mb-0 text-white">{{ stats.spare_parts_count }}</h2>
-                <i class="fas fa-box stat-icon text-white"></i>
+                <h6 class="card-title text-white-50">备件信息</h6>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-white-50 small">备件种类</div>
+                        <h2 class="mb-0 text-white">{{ stats.spare_parts_count }}</h2>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-white-50 small">备件总数</div>
+                        <h2 class="mb-0 text-white">{{ stats.spare_parts_total_stock }}</h2>
+                    </div>
+                </div>
+                <i class="fas fa-boxes stat-icon text-white"></i>
             </div>
             <div class="card-footer bg-transparent border-0">
                 <a href="{{ url_for('spare_parts.index') }}" class="text-white text-decoration-none">
@@ -208,17 +217,20 @@
     // 库存状态饼图
     const ctx = document.getElementById('stockStatusChart');
     if (ctx) {
+        const stockData = [
+            {{ stats.stock_status.normal }},
+            {{ stats.stock_status.low }},
+            {{ stats.stock_status.out }},
+            {{ stats.stock_status.overstocked }}
+        ];
+        const total = stockData.reduce((a, b) => a + b, 0);
+        
         new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: ['正常', '低库存', '缺货', '超储'],
                 datasets: [{
-                    data: [
-                        {{ stats.stock_status.normal }},
-                        {{ stats.stock_status.low }},
-                        {{ stats.stock_status.out }},
-                        {{ stats.stock_status.overstock }}
-                    ],
+                    data: stockData,
                     backgroundColor: [
                         '#28a745',
                         '#ffc107',
@@ -242,6 +254,24 @@
                             pointStyle: 'circle',
                             font: {
                                 size: 11
+                            },
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                                        return {
+                                            text: `${label}: ${value} (${percentage}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            strokeStyle: data.datasets[0].borderColor,
+                                            lineWidth: data.datasets[0].borderWidth,
+                                            hidden: isNaN(data.datasets[0].data[i]) || chart.getDatasetMeta(0).data[i].hidden,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
                             }
                         }
                     },
@@ -250,7 +280,6 @@
                             label: function(context) {
                                 let label = context.label || '';
                                 let value = context.parsed || 0;
-                                let total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 let percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
                                 return label + ': ' + value + ' (' + percentage + ')';
                             }

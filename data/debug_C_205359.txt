@@ -1,0 +1,158 @@
+```json
+[
+  {
+    "part_name": "SIEMENS 3RT1015-1BB40 接触器",
+    "specification": "3RT1015-1BB40, 额定电流 9A",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "SIEMENS",
+    "material": "工程塑料、铜合金",
+    "unit_price": 125.00,
+    "supplier": "上海西门子工业自动化有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "ABB AF16-30-00-13 断路器",
+    "specification": "AF16-30-00-13, 额定电流 16A",
+    "category_name": "断路器",
+    "category_code": "C.02.02",
+    "brand": "ABB",
+    "material": "热塑性塑料、银合金",
+    "unit_price": 85.00,
+    "supplier": "北京ABB电气传动系统有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Schneider XB2BA21 按钮开关",
+    "specification": "XB2BA21, 1NO+1NC 触点",
+    "category_name": "开关",
+    "category_code": "C.01.01",
+    "brand": "Schneider",
+    "material": "聚碳酸酯、不锈钢",
+    "unit_price": 32.00,
+    "supplier": "施耐德电气（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "OMRON E2E-X10MD1-Z 接近传感器",
+    "specification": "E2E-X10MD1-Z, 检测距离 10mm",
+    "category_name": "传感器",
+    "category_code": "C.01.02",
+    "brand": "OMRON",
+    "material": "不锈钢、环氧树脂",
+    "unit_price": 150.00,
+    "supplier": "欧姆龙自动化（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Mitsubishi FX3U-32MR-ES/A PLC",
+    "specification": "FX3U-32MR-ES/A, 32点输入输出",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "Mitsubishi",
+    "material": "工程塑料、电子元件",
+    "unit_price": 2800.00,
+    "supplier": "三菱电机自动化（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Phoenix Contact FLK 20/EZ-DR/ 500/000 接线端子",
+    "specification": "FLK 20/EZ-DR/ 500/000, 20位",
+    "category_name": "接线端子",
+    "category_code": "C.03.02",
+    "brand": "Phoenix Contact",
+    "material": "聚酰胺、铜",
+    "unit_price": 120.00,
+    "supplier": "菲尼克斯电气（南京）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "SIEMENS 6ES7214-1BD23-0XB8 PLC",
+    "specification": "6ES7214-1BD23-0XB8, 14点输入输出",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "SIEMENS",
+    "material": "工程塑料、电子元件",
+    "unit_price": 3500.00,
+    "supplier": "上海西门子工业自动化有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "ABB OSMC32N3C100M 断路器",
+    "specification": "OSMC32N3C100M, 额定电流 100A",
+    "category_name": "断路器",
+    "category_code": "C.02.02",
+    "brand": "ABB",
+    "material": "热固性塑料、银合金",
+    "unit_price": 450.00,
+    "supplier": "北京ABB电气传动系统有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Schneider XC2-24R 继电器",
+    "specification": "XC2-24R, 24VDC 线圈",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "Schneider",
+    "material": "工程塑料、铜合金",
+    "unit_price": 75.00,
+    "supplier": "施耐德电气（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "OMRON E3Z-R61 光电传感器",
+    "specification": "E3Z-R61, 检测距离 600mm",
+    "category_name": "传感器",
+    "category_code": "C.01.02",
+    "brand": "OMRON",
+    "material": "铝合金、环氧树脂",
+    "unit_price": 280.00,
+    "supplier": "欧姆龙自动化（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Mitsubishi MR-J4-20A 伺服驱动器",
+    "specification": "MR-J4-20A, 额定功率 200W",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "Mitsubishi",
+    "material": "铝合金、电子元件",
+    "unit_price": 3200.00,
+    "supplier": "三菱电机自动化（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Phoenix Contact MKDS 3-5.08 接线端子",
+    "specification": "MKDS 3-5.08, 3位",
+    "category_name": "接线端子",
+    "category_code": "C.03.02",
+    "brand": "Phoenix Contact",
+    "material": "聚酰胺、铜",
+    "unit_price": 15.00,
+    "supplier": "菲尼克斯电气（南京）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "SIEMENS 3RT1044-1BB40 接触器",
+    "specification": "3RT1044-1BB40, 额定电流 45A",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "SIEMENS",
+    "material": "工程塑料、铜合金",
+    "unit_price": 220.00,
+    "supplier": "上海西门子工业自动化有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "ABB TMAX T2N 160 R 160A 断路器",
+    "specification": "TMAX T2N 160 R 160A, 额定电流 160A",
+    "category_name": "断路器",
+    "category_code": "C.02.02",
+    "brand": "ABB",
+    "material": "热固性塑料、银合金",
+    "unit_price": 680.00,
+    "supplier": "北京ABB电气传动系统有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Schneider XB2Z

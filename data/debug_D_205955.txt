@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "BOSCH DIN933 M8x20 六角头螺栓",
+    "specification": "DIN933 M8x20",
+    "category_name": "螺栓",
+    "category_code": "D.01.01",
+    "brand": "BOSCH",
+    "material": "碳钢镀锌",
+    "unit_price": 1.2,
+    "supplier": "上海博世工具有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PEM SMTSO-M4-1 压铆螺母",
+    "specification": "SMTSO-M4-1",
+    "category_name": "螺母",
+    "category_code": "D.01.02",
+    "brand": "PEM",
+    "material": "不锈钢304",
+    "unit_price": 0.85,
+    "supplier": "苏州沛恩电子有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "SOUTHCO E6-10-301-20 压缩螺钉",
+    "specification": "E6-10-301-20",
+    "category_name": "螺钉",
+    "category_code": "D.02.01",
+    "brand": "SOUTHCO",
+    "material": "钢镀镍",
+    "unit_price": 3.5,
+    "supplier": "深圳市索斯科科技有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "WD DIN125 M8 平垫圈",
+    "specification": "DIN125 M8",
+    "category_name": "垫圈",
+    "category_code": "D.02.02",
+    "brand": "WD",
+    "material": "碳钢",
+    "unit_price": 0.15,
+    "supplier": "无锡威迪机械配件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Hilti HST3-R8 抽芯铆钉",
+    "specification": "HST3-R8",
+    "category_name": "铆钉",
+    "category_code": "D.03.01",
+    "brand": "Hilti",
+    "material": "铝合金",
+    "unit_price": 0.45,
+    "supplier": "喜利得（中国）商贸有限公司",
+    "stock_status": "紧张"
+  }
+]
+```

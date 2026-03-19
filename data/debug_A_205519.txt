@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "SKF 6205-2RS1 深沟球轴承",
+    "specification": "内径25mm，外径52mm，宽度15mm",
+    "category_name": "轴承",
+    "category_code": "A.01.01",
+    "brand": "SKF",
+    "material": "高碳铬轴承钢（GCr15）",
+    "unit_price": 45,
+    "supplier": "上海优耐特轴承有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "FAG NU2210-E-TVP2 圆柱滚子轴承",
+    "specification": "内径50mm，外径90mm，宽度23mm",
+    "category_name": "轴承",
+    "category_code": "A.01.01",
+    "brand": "FAG",
+    "material": "高碳铬轴承钢（GCr15）",
+    "unit_price": 180,
+    "supplier": "北京中航泰达机电设备有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "NSK 6308ZZ 深沟球轴承",
+    "specification": "内径40mm，外径90mm，宽度23mm",
+    "category_name": "轴承",
+    "category_code": "A.01.01",
+    "brand": "NSK",
+    "material": "高碳铬轴承钢（GCr15）",
+    "unit_price": 65,
+    "supplier": "广州联钺轴承有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "TIMKEN 30205 圆锥滚子轴承",
+    "specification": "内径25mm，外径52mm，宽度16.25mm",
+    "category_name": "轴承",
+    "category_code": "A.01.01",
+    "brand": "TIMKEN",
+    "material": "高碳铬轴承钢（GCr15）",
+    "unit_price": 75,
+    "supplier": "天津瑞德轴承销售有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "INA SL182912 圆柱滚子轴承",
+    "specification": "内径60mm，外径85mm，宽度16mm",
+    "category_name": "轴承",
+    "category_code": "A.01.01",
+    "brand": "INA",
+    "material": "高碳铬轴承钢（GCr15）",
+    "unit_price": 210,
+    "supplier": "上海精工轴承有限公司",
+    "stock_status": "充足"
+  }
+]
+```

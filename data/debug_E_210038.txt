@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "Shell Omala S4 GX 320 润滑油",
+    "specification": "ISO VG 320",
+    "category_name": "润滑油",
+    "category_code": "E.01.01",
+    "brand": "Shell",
+    "material": "矿物基础油+复合添加剂",
+    "unit_price": 1250,
+    "supplier": "上海壳牌润滑油有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Mobil SHC 634 润滑脂",
+    "specification": "NLGI 2级",
+    "category_name": "润滑脂",
+    "category_code": "E.01.02",
+    "brand": "Mobil",
+    "material": "聚脲基+合成基础油",
+    "unit_price": 890,
+    "supplier": "埃克森美孚（中国）投资有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "NOK TC-75×90×12 油封",
+    "specification": "内径75mm×外径90mm×厚度12mm",
+    "category_name": "油封",
+    "category_code": "E.03.01",
+    "brand": "NOK",
+    "material": "丁腈橡胶+弹簧钢",
+    "unit_price": 45,
+    "supplier": "日本NOK工业株式会社中国总代理",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "SKF LGMT 2/0.5 密封圈",
+    "specification": "内径2mm×线径0.5mm",
+    "category_name": "密封圈",
+    "category_code": "E.03.02",
+    "brand": "SKF",
+    "material": "氟橡胶",
+    "unit_price": 12,
+    "supplier": "斯凯孚（中国）销售有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Garlock 3000-125×125×3 密封垫",
+    "specification": "125mm×125mm×3mm",
+    "category_name": "密封垫",
+    "category_code": "E.02.02",
+    "brand": "Garlock",
+    "material": "改性聚四氟乙烯",
+    "unit_price": 280,
+    "supplier": "美国Garlock密封技术公司中国办事处",
+    "stock_status": "充足"
+  }
+]
+```

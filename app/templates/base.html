@@ -885,66 +885,23 @@
             <div class="d-flex align-items-center">
                 <!-- 通知 -->
                 <div class="dropdown me-3">
-                    <a href="#" class="notification-icon text-secondary" data-bs-toggle="dropdown" title="通知">
+                    <a href="#" class="notification-icon text-secondary" data-bs-toggle="dropdown" title="通知" id="notificationDropdown">
                         <i class="fas fa-bell"></i>
-                        <span class="badge bg-danger">3</span>
+                        <span class="badge bg-danger" id="unreadBadge">0</span>
                     </a>
-                    <div class="dropdown-menu dropdown-menu-end" style="width: 350px;">
+                    <div class="dropdown-menu dropdown-menu-end" style="width: 350px;" id="notificationMenu">
                         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                            <h6 class="mb-0 fw-600">通知 <span class="badge bg-danger ms-2">3</span></h6>
-                            <a href="#" class="small text-decoration-none">标记全部已读</a>
+                            <h6 class="mb-0 fw-600">通知 <span class="badge bg-danger ms-2" id="unreadCountInMenu">0</span></h6>
+                            <a href="javascript:void(0)" class="small text-decoration-none" onclick="markAllAsRead()">标记全部已读</a>
                         </div>
-                        
-                        <!-- 库存预警通知 -->
-                        <a class="dropdown-item" href="#">
-                            <div class="d-flex align-items-start">
-                                <div class="flex-shrink-0">
-                                    <div class="rounded-circle bg-warning bg-opacity-10 p-2">
-                                        <i class="fas fa-exclamation-triangle text-warning"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1 ms-3 overflow-hidden">
-                                    <h6 class="mb-1 text-truncate">库存预警</h6>
-                                    <p class="mb-1 small text-muted text-truncate">备件 A-001 库存不足，当前库存：5，最低库存：10</p>
-                                    <small class="text-muted">5 分钟前</small>
-                                </div>
+                        <div id="notificationList">
+                            <div class="text-center py-4">
+                                <i class="fas fa-spinner fa-spin text-muted"></i>
+                                <p class="text-muted small mt-2 mb-0">加载中...</p>
                             </div>
-                        </a>
-                        
-                        <!-- 维修工单通知 -->
-                        <a class="dropdown-item" href="#">
-                            <div class="d-flex align-items-start">
-                                <div class="flex-shrink-0">
-                                    <div class="rounded-circle bg-info bg-opacity-10 p-2">
-                                        <i class="fas fa-wrench text-info"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1 ms-3 overflow-hidden">
-                                    <h6 class="mb-1 text-truncate">新的维修工单</h6>
-                                    <p class="mb-1 small text-muted text-truncate">设备 CNC-001 需要维修，优先级：高</p>
-                                    <small class="text-muted">15 分钟前</small>
-                                </div>
-                            </div>
-                        </a>
-                        
-                        <!-- 采购通知 -->
-                        <a class="dropdown-item" href="#">
-                            <div class="d-flex align-items-start">
-                                <div class="flex-shrink-0">
-                                    <div class="rounded-circle bg-success bg-opacity-10 p-2">
-                                        <i class="fas fa-shopping-cart text-success"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1 ms-3 overflow-hidden">
-                                    <h6 class="mb-1 text-truncate">采购订单已到货</h6>
-                                    <p class="mb-1 small text-muted text-truncate">采购单 PO-2026-001 已完成入库</p>
-                                    <small class="text-muted">1 小时前</small>
-                                </div>
-                            </div>
-                        </a>
-                        
+                        </div>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item text-center py-2" href="#">
+                        <a class="dropdown-item text-center py-2" href="{{ url_for('notification.index') }}">
                             <i class="fas fa-list me-2"></i>查看全部通知
                         </a>
                     </div>
@@ -960,6 +917,9 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}"><i class="fas fa-user me-2 text-primary"></i>个人资料</a></li>
+                        {% if current_user.is_admin %}
+                        <li><a class="dropdown-item" href="{{ url_for('user_email.my_email_config') }}"><i class="fas fa-envelope me-2 text-success"></i>我的邮箱配置</a></li>
+                        {% endif %}
                         <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}"><i class="fas fa-key me-2 text-warning"></i>修改密码</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2 text-danger"></i>退出登录</a></li>
@@ -1176,6 +1136,76 @@
                 behavior: 'smooth'
             });
         });
+        
+        // 加载通知
+        function loadNotifications() {
+            fetch('/notification/api/recent')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notificationList');
+                    const unreadBadge = document.getElementById('unreadBadge');
+                    const unreadCountInMenu = document.getElementById('unreadCountInMenu');
+                    
+                    if (data.notifications && data.notifications.length > 0) {
+                        let html = '';
+                        data.notifications.forEach(n => {
+                            const iconClass = n.type === 'stock_alert' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+                            const colorClass = n.level === 'danger' ? 'danger' : (n.level === 'warning' ? 'warning' : 'info');
+                            const bgClass = n.level === 'danger' ? 'bg-danger' : (n.level === 'warning' ? 'bg-warning' : 'bg-info');
+                            
+                            html += `
+                                <a class="dropdown-item ${!n.is_read ? 'bg-light' : ''}" href="/notification">
+                                    <div class="d-flex align-items-start">
+                                        <div class="flex-shrink-0">
+                                            <div class="rounded-circle ${bgClass} bg-opacity-10 p-2">
+                                                <i class="fas ${iconClass} text-${colorClass}"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3 overflow-hidden">
+                                            <h6 class="mb-1 text-truncate ${!n.is_read ? 'fw-bold' : ''}">
+                                                ${n.title}
+                                                ${!n.is_read ? '<span class="badge bg-danger ms-1">新</span>' : ''}
+                                            </h6>
+                                            <p class="mb-1 small text-muted text-truncate">${n.message}</p>
+                                            <small class="text-muted">${n.created_at}</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            `;
+                        });
+                        notificationList.innerHTML = html;
+                    } else {
+                        notificationList.innerHTML = '<div class="text-center py-4"><i class="fas fa-bell-slash text-muted" style="font-size: 2rem;"></i><p class="text-muted small mt-2 mb-0">暂无通知</p></div>';
+                    }
+                    
+                    // 加载未读数
+                    fetch('/notification/api/unread-count')
+                        .then(response => response.json())
+                        .then(countData => {
+                            if (unreadBadge) unreadBadge.textContent = countData.count || 0;
+                            if (unreadCountInMenu) unreadCountInMenu.textContent = countData.count || 0;
+                        });
+                })
+                .catch(error => {
+                    console.error('加载通知失败:', error);
+                    document.getElementById('notificationList').innerHTML = '<div class="text-center py-4 text-muted small">加载失败</div>';
+                });
+        }
+        
+        // 标记全部已读
+        function markAllAsRead() {
+            fetch('/notification/mark-all-as-read', {method: 'POST'})
+                .then(() => {
+                    loadNotifications();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        // 页面加载时获取通知
+        loadNotifications();
+        
+        // 每 30 秒刷新一次通知
+        setInterval(loadNotifications, 30000);
     </script>
     
     {% block extra_js %}{% endblock %}

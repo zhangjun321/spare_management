@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}我的邮箱配置 - 备件管理系统{% endblock %}
+
+{% block page_title %}我的邮箱配置{% endblock %}
+
+{% block content %}
+<div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+    <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1.25rem;">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-600">
+                <i class="fas fa-envelope me-2 text-primary"></i>我的邮箱配置
+            </h5>
+            {% if has_config %}
+            <span class="badge bg-success">已配置</span>
+            {% else %}
+            <span class="badge bg-warning">未配置</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>说明：</strong>配置您的个人邮箱后，系统将在库存预警时发送邮件通知到您。
+        </div>
+        
+        {% if has_config %}
+        <div class="alert alert-success mb-4">
+            <i class="fas fa-check-circle me-2"></i>
+            您已配置邮箱，可以接收预警邮件通知
+        </div>
+        {% endif %}
+        
+        <form method="POST" action="{{ url_for('user_email.my_email_config') }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="smtp_server" class="form-label">{{ form.smtp_server.label.text }} <span class="text-danger">*</span></label>
+                    {{ form.smtp_server(class="form-control", placeholder="例如：smtp.qq.com") }}
+                    {% if form.smtp_server.errors %}
+                        <div class="text-danger small mt-1">{{ form.smtp_server.errors[0] }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.smtp_server.description }}</div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="smtp_port" class="form-label">{{ form.smtp_port.label.text }} <span class="text-danger">*</span></label>
+                    {{ form.smtp_port(class="form-control", placeholder="465 或 587") }}
+                    {% if form.smtp_port.errors %}
+                        <div class="text-danger small mt-1">{{ form.smtp_port.errors[0] }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.smtp_port.description }}</div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="username" class="form-label">{{ form.username.label.text }} <span class="text-danger">*</span></label>
+                    {{ form.username(class="form-control", placeholder="SMTP 登录用户名") }}
+                    {% if form.username.errors %}
+                        <div class="text-danger small mt-1">{{ form.username.errors[0] }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.username.description }}</div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="password" class="form-label">{{ form.password.label.text }} <span class="text-danger">*</span></label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="SMTP 登录密码或授权码" value="{{ form.password.data or '' }}" autocomplete="off">
+                    {% if form.password.errors %}
+                        <div class="text-danger small mt-1">{{ form.password.errors[0] }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.password.description }}</div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="sender_email" class="form-label">{{ form.sender_email.label.text }} <span class="text-danger">*</span></label>
+                    {{ form.sender_email(class="form-control", placeholder="发件人邮箱地址") }}
+                    {% if form.sender_email.errors %}
+                        <div class="text-danger small mt-1">{{ form.sender_email.errors[0] }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="sender_name" class="form-label">{{ form.sender_name.label.text }}</label>
+                    {{ form.sender_name(class="form-control", placeholder="备件管理系统") }}
+                    {% if form.sender_name.errors %}
+                        <div class="text-danger small mt-1">{{ form.sender_name.errors[0] }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.sender_name.description }}</div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    {{ form.use_tls(class="form-check-input") }}
+                    <label class="form-check-label" for="use_tls">{{ form.use_tls.label.text }}</label>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    {{ form.is_active(class="form-check-input") }}
+                    <label class="form-check-label" for="is_active">{{ form.is_active.label.text }}</label>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                {{ form.submit(class="btn btn-primary") }}
+                <button type="button" class="btn btn-outline-success" onclick="testConnection(false)">
+                    <i class="fas fa-plug me-1"></i>测试连接
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="testConnection(true)">
+                    <i class="fas fa-envelope me-1"></i>发送测试邮件
+                </button>
+            </div>
+        </form>
+        
+        <hr class="my-4">
+        
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6><i class="fas fa-question-circle me-2"></i>常用 SMTP 配置</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless mb-0">
+                        <thead>
+                            <tr>
+                                <th>邮箱服务商</th>
+                                <th>SMTP 服务器</th>
+                                <th>端口</th>
+                                <th>说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>QQ 邮箱</td>
+                                <td>smtp.qq.com</td>
+                                <td>465/587</td>
+                                <td>需使用授权码</td>
+                            </tr>
+                            <tr>
+                                <td>163 邮箱</td>
+                                <td>smtp.163.com</td>
+                                <td>465/587</td>
+                                <td>需使用授权码</td>
+                            </tr>
+                            <tr>
+                                <td>Gmail</td>
+                                <td>smtp.gmail.com</td>
+                                <td>465/587</td>
+                                <td>需开启 SMTP 服务</td>
+                            </tr>
+                            <tr>
+                                <td>Outlook</td>
+                                <td>smtp.office365.com</td>
+                                <td>587</td>
+                                <td>需使用 TLS</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function testConnection(sendEmail = false) {
+    // 先验证表单
+    const form = document.querySelector('form');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const formData = new FormData(form);
+    formData.append('send_email', sendEmail ? '1' : '0');
+    
+    // 禁用按钮
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>测试中...';
+    
+    // 发送测试请求
+    fetch('{{ url_for("user_email.test_email") }}', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json().then(data => {
+                if (data.success) {
+                    alert('✓ ' + data.message);
+                } else {
+                    alert('✗ ' + data.message);
+                }
+            }).catch(() => {
+                window.location.reload();
+            });
+        } else {
+            alert('测试失败，请检查网络或服务器状态');
+        }
+    })
+    .catch(error => {
+        console.error('测试错误:', error);
+        alert('测试失败：' + error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+}
+</script>
+{% endblock %}

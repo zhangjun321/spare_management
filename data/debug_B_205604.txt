@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "REXROTH CDH2MT3/100-250-A7X 液压缸",
+    "specification": "CDH2MT3/100-250-A7X",
+    "category_name": "液压缸",
+    "category_code": "B.01.01",
+    "brand": "REXROTH",
+    "material": "高强度合金钢",
+    "unit_price": 4580,
+    "supplier": "上海博世力士乐液压技术有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PARKER PV023R1K1T1NMMC 液压泵",
+    "specification": "PV023R1K1T1NMMC",
+    "category_name": "液压泵",
+    "category_code": "B.01.02",
+    "brand": "PARKER",
+    "material": "铸铁",
+    "unit_price": 7850,
+    "supplier": "派克汉尼汾流体传动产品（上海）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "SMC CQ2B20-20DM 气缸",
+    "specification": "CQ2B20-20DM",
+    "category_name": "气缸",
+    "category_code": "B.02.01",
+    "brand": "SMC",
+    "material": "不锈钢",
+    "unit_price": 1250,
+    "supplier": "SMC（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "FESTO MPYE-5-1/8-010B 气阀",
+    "specification": "MPYE-5-1/8-010B",
+    "category_name": "气阀",
+    "category_code": "B.02.02",
+    "brand": "FESTO",
+    "material": "铝合金",
+    "unit_price": 980,
+    "supplier": "费斯托（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "AirTAC 10-8-A-B 油管",
+    "specification": "10-8-A-B",
+    "category_name": "油管",
+    "category_code": "B.03.01",
+    "brand": "AirTAC",
+    "material": "聚氨酯",
+    "unit_price": 45,
+    "supplier": "亚德客（中国）有限公司",
+    "stock_status": "充足"
+  }
+]
+```

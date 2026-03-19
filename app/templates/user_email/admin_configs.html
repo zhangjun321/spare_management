@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}管理员邮箱管理 - 备件管理系统{% endblock %}
+
+{% block page_title %}管理员邮箱管理{% endblock %}
+
+{% block content %}
+<div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+    <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1.25rem;">
+        <h5 class="mb-0 fw-600">
+            <i class="fas fa-users-cog me-2 text-primary"></i>管理员邮箱管理
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>说明：</strong>以下列出所有系统管理员的邮箱配置状态。点击"配置"按钮可为管理员配置邮箱。
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>用户名</th>
+                        <th>姓名</th>
+                        <th>邮箱</th>
+                        <th>邮箱配置状态</th>
+                        <th>SMTP 服务器</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for admin in admins %}
+                    <tr>
+                        <td>{{ admin.username }}</td>
+                        <td>{{ admin.real_name or '-' }}</td>
+                        <td>{{ admin.email or '未设置' }}</td>
+                        <td>
+                            {% if admin.email_config %}
+                            <span class="badge bg-success">已配置</span>
+                            <div class="small text-muted mt-1">
+                                {{ admin.email_config.sender_email }}
+                            </div>
+                            {% else %}
+                            <span class="badge bg-warning">未配置</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if admin.email_config %}
+                            {{ admin.email_config.smtp_server }}:{{ admin.email_config.smtp_port }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if admin.email_config %}
+                            <a href="{{ url_for('user_email.my_email_config') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i> 修改
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('user_email.my_email_config') }}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-plus"></i> 配置
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="fas fa-user-slash" style="font-size: 2rem;"></i>
+                            <p class="mt-2">暂无管理员</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

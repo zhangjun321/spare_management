@@ -8,6 +8,10 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask
 from datetime import datetime
+from dotenv import load_dotenv
+
+# 加载 .env 文件
+load_dotenv()
 
 from app.config import config
 from app.extensions import init_extensions, db, login_manager
@@ -115,13 +119,17 @@ def register_blueprints(app):
     from app.routes.system import system_bp
     app.register_blueprint(system_bp, url_prefix='/system')
     
-    # 告警管理模块
-    from app.routes.alerts import alerts_bp
-    app.register_blueprint(alerts_bp, url_prefix='/alerts')
-    
     # 通知模块
     from app.routes.notification import notification_bp
     app.register_blueprint(notification_bp, url_prefix='/notification')
+    
+    # 用户邮箱配置模块
+    from app.routes.user_email import user_email_bp
+    app.register_blueprint(user_email_bp, url_prefix='/user_email')
+    
+    # 告警管理模块
+    from app.routes.alerts import alerts_bp
+    app.register_blueprint(alerts_bp, url_prefix='/alerts')
     
     # API 模块
     from app.routes.api import api_bp

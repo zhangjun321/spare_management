@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "REXROTH CDH2MT3/100/56/180/M/X 液压缸",
+    "specification": "CDH2MT3/100/56/180/M/X",
+    "category_name": "液压缸",
+    "category_code": "B.01.01",
+    "brand": "REXROTH",
+    "material": "高强度合金钢",
+    "unit_price": 8500,
+    "supplier": "上海力士乐液压设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PARKER PV023R1K1T1NMMC 液压泵",
+    "specification": "PV023R1K1T1NMMC",
+    "category_name": "液压泵",
+    "category_code": "B.01.02",
+    "brand": "PARKER",
+    "material": "铸铁",
+    "unit_price": 12000,
+    "supplier": "广州派克液压技术有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "SMC CQ2B20-20DM 气缸",
+    "specification": "CQ2B20-20DM",
+    "category_name": "气缸",
+    "category_code": "B.02.01",
+    "brand": "SMC",
+    "material": "铝合金",
+    "unit_price": 450,
+    "supplier": "深圳SMC自动化设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "FESTO VUVG-L14-M52-AD-F8P 气阀",
+    "specification": "VUVG-L14-M52-AD-F8P",
+    "category_name": "气阀",
+    "category_code": "B.02.02",
+    "brand": "FESTO",
+    "material": "不锈钢",
+    "unit_price": 1200,
+    "supplier": "苏州费斯托气动元件有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "AirTAC 10-8PU-B 油管",
+    "specification": "10-8PU-B",
+    "category_name": "油管",
+    "category_code": "B.03.01",
+    "brand": "AirTAC",
+    "material": "聚氨酯",
+    "unit_price": 35,
+    "supplier": "东莞亚德客气动元件有限公司",
+    "stock_status": "充足"
+  }
+]
+```

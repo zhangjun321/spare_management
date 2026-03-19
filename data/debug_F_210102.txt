@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "Donaldson P551008 液压油滤芯",
+    "specification": "P551008，过滤精度10μm，流量50L/min",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "Donaldson",
+    "material": "玻璃纤维+金属端盖",
+    "unit_price": 450,
+    "supplier": "上海滤芯工业设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Pall HC8300FKN13H 液压油滤芯",
+    "specification": "HC8300FKN13H，过滤精度3μm，流量100L/min",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "Pall",
+    "material": "不锈钢滤网+聚酯纤维",
+    "unit_price": 680,
+    "supplier": "北京帕克工业设备有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "HYDAC 0330D005BN3HC 回油滤芯",
+    "specification": "0330D005BN3HC，过滤精度5μm，流量30L/min",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "HYDAC",
+    "material": "玻璃纤维+金属外壳",
+    "unit_price": 320,
+    "supplier": "广州海德克液压设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Parker 937504Q 空气过滤器",
+    "specification": "937504Q，过滤精度0.01μm，流量200m³/h",
+    "category_name": "过滤器",
+    "category_code": "F.02.01",
+    "brand": "Parker",
+    "material": "铝合金外壳+聚酯纤维滤芯",
+    "unit_price": 1200,
+    "supplier": "苏州派克工业设备有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Camfil F7 板式初效过滤器",
+    "specification": "F7，过滤效率85%，尺寸592x592x46mm",
+    "category_name": "滤网",
+    "category_code": "F.01.02",
+    "brand": "Camfil",
+    "material": "镀锌钢板框架+合成纤维滤料",
+    "unit_price": 180,
+    "supplier": "深圳康斐尔空气净化设备有限公司",
+    "stock_status": "充足"
+  }
+]
+```

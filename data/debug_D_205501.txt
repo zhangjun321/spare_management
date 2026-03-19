@@ -1,0 +1,169 @@
+```json
+[
+  {
+    "part_name": "BOSCH M8×1.25×30 六角头螺栓",
+    "specification": "M8×1.25×30",
+    "category_name": "螺栓",
+    "category_code": "D.01.01",
+    "brand": "BOSCH",
+    "material": "碳钢镀锌",
+    "unit_price": 2.5,
+    "supplier": "上海博世工业配件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PEM SSS-440-6 自锁螺母",
+    "specification": "SSS-440-6",
+    "category_name": "螺母",
+    "category_code": "D.01.02",
+    "brand": "PEM",
+    "material": "不锈钢304",
+    "unit_price": 3.8,
+    "supplier": "深圳沛尔紧固件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "SOUTHCO E6-10-30-1 压缩螺钉",
+    "specification": "E6-10-30-1",
+    "category_name": "螺钉",
+    "category_code": "D.02.01",
+    "brand": "SOUTHCO",
+    "material": "钢镀镍",
+    "unit_price": 4.2,
+    "supplier": "苏州索斯科五金有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "WD DIN125-M10 平垫圈",
+    "specification": "DIN125-M10",
+    "category_name": "垫圈",
+    "category_code": "D.02.02",
+    "brand": "WD",
+    "material": "碳钢",
+    "unit_price": 0.3,
+    "supplier": "无锡威迪紧固件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Hilti HUS3-H10 碳钢铆钉",
+    "specification": "HUS3-H10",
+    "category_name": "铆钉",
+    "category_code": "D.03.01",
+    "brand": "Hilti",
+    "material": "碳钢",
+    "unit_price": 1.2,
+    "supplier": "喜利得（中国）商贸有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Bossard 89100-M6×16 内六角圆柱头螺钉",
+    "specification": "M6×16",
+    "category_name": "螺钉",
+    "category_code": "D.02.01",
+    "brand": "Bossard",
+    "material": "不锈钢316",
+    "unit_price": 5.5,
+    "supplier": "博世德（上海）贸易有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "BOSCH DIN934-M12 六角螺母",
+    "specification": "DIN934-M12",
+    "category_name": "螺母",
+    "category_code": "D.01.02",
+    "brand": "BOSCH",
+    "material": "碳钢镀锌",
+    "unit_price": 1.8,
+    "supplier": "上海博世工业配件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PEM FK-100-1 浮动螺母",
+    "specification": "FK-100-1",
+    "category_name": "螺母",
+    "category_code": "D.01.02",
+    "brand": "PEM",
+    "material": "不锈钢316",
+    "unit_price": 6.5,
+    "supplier": "深圳沛尔紧固件有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "SOUTHCO M4-0.7×12 十字槽盘头螺钉",
+    "specification": "M4-0.7×12",
+    "category_name": "螺钉",
+    "category_code": "D.02.01",
+    "brand": "SOUTHCO",
+    "material": "钢镀锌",
+    "unit_price": 0.8,
+    "supplier": "苏州索斯科五金有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "WD DIN9021-M8 大垫圈",
+    "specification": "DIN9021-M8",
+    "category_name": "垫圈",
+    "category_code": "D.02.02",
+    "brand": "WD",
+    "material": "不锈钢304",
+    "unit_price": 0.6,
+    "supplier": "无锡威迪紧固件有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Hilti HUS3-H12 碳钢铆钉",
+    "specification": "HUS3-H12",
+    "category_name": "铆钉",
+    "category_code": "D.03.01",
+    "brand": "Hilti",
+    "material": "碳钢",
+    "unit_price": 1.5,
+    "supplier": "喜利得（中国）商贸有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Bossard 7981-M8×25 六角头螺栓",
+    "specification": "M8×25",
+    "category_name": "螺栓",
+    "category_code": "D.01.01",
+    "brand": "Bossard",
+    "material": "不锈钢304",
+    "unit_price": 4.8,
+    "supplier": "博世德（上海）贸易有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "BOSCH DIN471-35 弹性挡圈",
+    "specification": "DIN471-35",
+    "category_name": "销",
+    "category_code": "D.03.02",
+    "brand": "BOSCH",
+    "material": "弹簧钢",
+    "unit_price": 0.9,
+    "supplier": "上海博世工业配件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PEM S-440-4 自锁螺母",
+    "specification": "S-440-4",
+    "category_name": "螺母",
+    "category_code": "D.01.02",
+    "brand": "PEM",
+    "material": "不锈钢304",
+    "unit_price": 3.2,
+    "supplier": "深圳沛尔紧固件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "SOUTHCO C6-20-10-1 压缩螺钉",
+    "specification": "C6-20-10-1",
+    "category_name": "螺钉",
+    "category_code": "D.02.01",
+    "brand": "SOUTHCO",
+    "material": "钢镀镍",
+    "unit_price": 5.0,
+    "supplier": "苏州索斯科五金有限公司",
+    "stock_status": "紧张"
+  }
+]
+```

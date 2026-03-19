@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置 - 备件管理系统{% endblock %}
+
+{% block page_title %}系统设置{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="list-group">
+            <a href="{{ url_for('system.index') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'system.index' %}active{% endif %}">
+                <i class="fas fa-cog me-2"></i>系统概览
+            </a>
+            <a href="{{ url_for('system.email_config') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'system.email_config' %}active{% endif %}">
+                <i class="fas fa-envelope me-2"></i>邮件配置
+            </a>
+            <a href="{{ url_for('system.settings') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'system.settings' %}active{% endif %}">
+                <i class="fas fa-sliders-h me-2"></i>系统参数
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1.25rem;">
+                <h5 class="mb-0 fw-600">系统设置</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center py-5">
+                    <div class="col-12">
+                        <i class="fas fa-cogs text-secondary" style="font-size: 4rem;"></i>
+                        <h4 class="mt-3">系统管理</h4>
+                        <p class="text-muted">请从左侧菜单选择设置项</p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6 class="mb-3">可用设置</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-envelope text-primary me-2"></i>邮件配置</h6>
+                                <p class="small text-muted mb-0">配置 SMTP 服务器用于发送预警邮件</p>
+                                <a href="{{ url_for('system.email_config') }}" class="btn btn-sm btn-outline-primary mt-2">配置</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-sliders-h text-primary me-2"></i>系统参数</h6>
+                                <p class="small text-muted mb-0">配置库存预警规则和通知方式</p>
+                                <a href="{{ url_for('system.settings') }}" class="btn btn-sm btn-outline-primary mt-2">配置</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

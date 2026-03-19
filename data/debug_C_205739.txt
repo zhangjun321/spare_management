@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "SIEMENS 3RT1044-1BB40 接触器",
+    "specification": "3RT1044-1BB40, 额定电流40A, 3P",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "SIEMENS",
+    "material": "热塑性塑料, 银合金触点",
+    "unit_price": 450,
+    "supplier": "上海西门子工业自动化有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "ABB OVPB-16 微型断路器",
+    "specification": "OVPB-16, 额定电流16A, 2P",
+    "category_name": "断路器",
+    "category_code": "C.02.02",
+    "brand": "ABB",
+    "material": "热固性塑料, 铜合金触点",
+    "unit_price": 85,
+    "supplier": "北京ABB电气传动系统有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Schneider XCMA-1210 限位开关",
+    "specification": "XCMA-1210, 2NO+2NC, IP67",
+    "category_name": "开关",
+    "category_code": "C.01.01",
+    "brand": "Schneider",
+    "material": "不锈钢外壳, 聚碳酸酯操作头",
+    "unit_price": 120,
+    "supplier": "施耐德电气（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "OMRON E3Z-R61 光电传感器",
+    "specification": "E3Z-R61, 漫反射型, NPN输出, 检测距离600mm",
+    "category_name": "传感器",
+    "category_code": "C.01.02",
+    "brand": "OMRON",
+    "material": "铝合金外壳, 聚碳酸酯透镜",
+    "unit_price": 320,
+    "supplier": "欧姆龙自动化（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Phoenix Contact MKDS 1,5/ 3-5.08 接线端子",
+    "specification": "MKDS 1,5/ 3-5.08, 3位, 5.08mm间距",
+    "category_name": "接线端子",
+    "category_code": "C.03.02",
+    "brand": "Phoenix Contact",
+    "material": "PA66阻燃塑料, 铜镀锡端子",
+    "unit_price": 15,
+    "supplier": "菲尼克斯电气（南京）有限公司",
+    "stock_status": "充足"
+  }
+]
+```

@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "Shell Omala S4 WE 320 润滑油",
+    "specification": "ISO VG 320",
+    "category_name": "润滑油",
+    "category_code": "E.01.01",
+    "brand": "Shell",
+    "material": "矿物基础油与添加剂",
+    "unit_price": 2850,
+    "supplier": "上海壳牌石油化工有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Mobil Grease XHP 222 润滑脂",
+    "specification": "NLGI 2",
+    "category_name": "润滑脂",
+    "category_code": "E.01.02",
+    "brand": "Mobil",
+    "material": "锂基复合稠化剂与合成基础油",
+    "unit_price": 320,
+    "supplier": "埃克森美孚（中国）投资有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "NOK TC 75×90×10 油封",
+    "specification": "75×90×10",
+    "category_name": "油封",
+    "category_code": "E.03.01",
+    "brand": "NOK",
+    "material": "丁腈橡胶（NBR）",
+    "unit_price": 45,
+    "supplier": "日本NOK株式会社中国分公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "SKF LGMT 2 润滑脂",
+    "specification": "NLGI 2",
+    "category_name": "润滑脂",
+    "category_code": "E.01.02",
+    "brand": "SKF",
+    "material": "锂基稠化剂与矿物基础油",
+    "unit_price": 280,
+    "supplier": "斯凯孚（中国）销售有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Garlock GYLON 3510 密封垫",
+    "specification": "150×150×3mm",
+    "category_name": "密封垫",
+    "category_code": "E.02.02",
+    "brand": "Garlock",
+    "material": "改性聚四氟乙烯（PTFE）",
+    "unit_price": 120,
+    "supplier": "美国Garlock公司中国代表处",
+    "stock_status": "紧张"
+  }
+]
+```

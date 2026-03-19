@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "SIEMENS 3RT1016-1BB04 接触器",
+    "specification": "3RT1016-1BB04, 额定电流 16A, 3P",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "SIEMENS",
+    "material": "工程塑料、银合金触点",
+    "unit_price": 285,
+    "supplier": "上海西门子工业自动化有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "ABB OVP2000 光电传感器",
+    "specification": "OVP2000, 检测距离 2000mm, NPN 输出",
+    "category_name": "传感器",
+    "category_code": "C.01.02",
+    "brand": "ABB",
+    "material": "不锈钢外壳、玻璃透镜",
+    "unit_price": 650,
+    "supplier": "北京ABB电气传动系统有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Schneider NSX100N 微型断路器",
+    "specification": "NSX100N, 额定电流 100A, 3P, 电磁脱扣",
+    "category_name": "断路器",
+    "category_code": "C.02.02",
+    "brand": "Schneider",
+    "material": "热固性塑料、铜合金触点",
+    "unit_price": 420,
+    "supplier": "施耐德电气（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "OMRON G6B-1114P-US 固态继电器",
+    "specification": "G6B-1114P-US, 输入电压 3-32VDC, 输出 100-240VAC, 10A",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "OMRON",
+    "material": "环氧树脂封装、铜基板",
+    "unit_price": 195,
+    "supplier": "欧姆龙自动化（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Phoenix Contact MKDS 1,5/ 3-5.08 接线端子",
+    "specification": "MKDS 1,5/ 3-5.08, 3位, 5.08mm 间距, 额定电流 24A",
+    "category_name": "接线端子",
+    "category_code": "C.03.02",
+    "brand": "Phoenix Contact",
+    "material": "PA66 阻燃塑料、镀锡铜",
+    "unit_price": 12,
+    "supplier": "菲尼克斯电气（南京）有限公司",
+    "stock_status": "充足"
+  }
+]
+```

@@ -9,12 +9,266 @@
 {% endblock %}
 
 {% block content %}
+<style>
+/* 卡片视图样式 */
+#partsTable.card-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+#partsTable.card-view thead {
+    display: none;
+}
+
+#partsTable.card-view tbody {
+    display: contents;
+}
+
+#partsTable.card-view tr {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: block;
+}
+
+#partsTable.card-view tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#partsTable.card-view td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#partsTable.card-view td:last-child {
+    border-bottom: none;
+}
+
+#partsTable.card-view td:first-child {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+}
+
+#partsTable.card-view td:nth-child(2) {
+    justify-content: center;
+    border-bottom: none;
+    padding-bottom: 15px;
+}
+
+#partsTable.card-view td:nth-child(2) img,
+#partsTable.card-view td:nth-child(2) div {
+    width: 120px !important;
+    height: 120px !important;
+    border-radius: 8px;
+}
+
+#partsTable.card-view td:nth-child(n+3):nth-child(-n+12) {
+    font-size: 13px;
+}
+
+#partsTable.card-view td:nth-child(n+3):nth-child(-n+12)::before {
+    font-weight: 600;
+    color: #666;
+    margin-right: 10px;
+}
+
+#partsTable.card-view td:nth-child(3)::before { content: '备件代码：'; }
+#partsTable.card-view td:nth-child(4)::before { content: '名称：'; }
+#partsTable.card-view td:nth-child(5)::before { content: '规格型号：'; }
+#partsTable.card-view td:nth-child(6)::before { content: '分类：'; }
+#partsTable.card-view td:nth-child(7)::before { content: '供应商：'; }
+#partsTable.card-view td:nth-child(8)::before { content: '库存：'; }
+#partsTable.card-view td:nth-child(9)::before { content: '状态：'; }
+#partsTable.card-view td:nth-child(10)::before { content: '单价：'; }
+#partsTable.card-view td:nth-child(11)::before { content: '单位：'; }
+#partsTable.card-view td:nth-child(12)::before { content: '启用：'; }
+
+#partsTable.card-view td:last-child {
+    justify-content: flex-end;
+    padding-top: 15px;
+}
+
+#partsTable.card-view .btn-group {
+    width: 100%;
+    justify-content: center;
+}
+
+/* 列表视图样式（默认） */
+#partsTable:not(.card-view) td:first-child {
+    position: static;
+}
+</style>
+
 <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">备件列表</h5>
-        <a href="{{ url_for('spare_parts.new') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> 新增备件
-        </a>
+        <div>
+            <div class="dropdown d-inline-block me-2">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="columnSelector" data-bs-toggle="dropdown" aria-expanded="false" data-bs-toggle="tooltip" title="列显示配置">
+                    <i class="fas fa-columns"></i> 列显示
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="columnSelector" style="max-height: 400px; overflow-y: auto;">
+                    <li><h6 class="dropdown-header">选择显示的列</h6></li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="all" id="selectAllColumns" checked>
+                                <label class="form-check-label" for="selectAllColumns">
+                                    全部列
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="thumbnail" id="column-thumbnail" checked>
+                                <label class="form-check-label" for="column-thumbnail">
+                                    缩略图
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="part_code" id="column-part_code" checked>
+                                <label class="form-check-label" for="column-part_code">
+                                    备件代码
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="name" id="column-name" checked>
+                                <label class="form-check-label" for="column-name">
+                                    名称
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="specification" id="column-specification" checked>
+                                <label class="form-check-label" for="column-specification">
+                                    规格型号
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="category" id="column-category" checked>
+                                <label class="form-check-label" for="column-category">
+                                    分类
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="supplier" id="column-supplier" checked>
+                                <label class="form-check-label" for="column-supplier">
+                                    供应商
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="current_stock" id="column-current_stock" checked>
+                                <label class="form-check-label" for="column-current_stock">
+                                    当前库存
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="stock_status" id="column-stock_status" checked>
+                                <label class="form-check-label" for="column-stock_status">
+                                    库存状态
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="unit_price" id="column-unit_price" checked>
+                                <label class="form-check-label" for="column-unit_price">
+                                    单价
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="unit" id="column-unit" checked>
+                                <label class="form-check-label" for="column-unit">
+                                    单位
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="is_active" id="column-is_active" checked>
+                                <label class="form-check-label" for="column-is_active">
+                                    状态
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="action" id="column-action" checked>
+                                <label class="form-check-label" for="column-action">
+                                    操作
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <div class="dropdown-item text-center">
+                            <button class="btn btn-sm btn-primary me-1" id="applyColumnSettings">应用</button>
+                            <button class="btn btn-sm btn-outline-secondary" id="resetColumnSettings">重置</button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <button class="btn btn-outline-secondary me-2" id="toggleView" title="切换到卡片视图" data-bs-toggle="tooltip">
+                <i class="fas fa-th"></i>
+            </button>
+            <button class="btn btn-outline-secondary me-2" id="batchExport" title="导出数据" data-bs-toggle="tooltip">
+                <i class="fas fa-file-export"></i>
+            </button>
+            <a href="{{ url_for('spare_parts.new') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 新增备件
+            </a>
+        </div>
     </div>
     <div class="card-body">
         <!-- 搜索表单 -->
@@ -51,6 +305,7 @@
                         <option value="">全部状态</option>
                         <option value="normal" {% if form.stock_status.data == 'normal' %}selected{% endif %}>正常</option>
                         <option value="low" {% if form.stock_status.data == 'low' %}selected{% endif %}>不足</option>
+                        <option value="out" {% if form.stock_status.data == 'out' %}selected{% endif %}>缺货</option>
                         <option value="overstocked" {% if form.stock_status.data == 'overstocked' %}selected{% endif %}>过剩</option>
                     </select>
                 </div>
@@ -69,39 +324,119 @@
             </div>
         </form>
 
+        <!-- 顶部分页控件 -->
+        {% if pagination.pages > 1 %}
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                    <span class="text-muted me-2">每页显示：</span>
+                    <select class="form-select form-select-sm" style="width: 80px;" 
+                            onchange="changePerPage(this.value)">
+                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    </select>
+                    <span class="text-muted ms-2">条</span>
+                    <span class="text-muted ms-3">
+                        共 {{ pagination.total }} 条记录，当前第 {{ pagination.page }}/{{ pagination.pages }} 页
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-end mb-0">
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('spare_parts.index', page=pagination.prev_num, per_page=per_page, keyword=request.args.get('keyword', ''), category_id=request.args.get('category_id', ''), supplier_id=request.args.get('supplier_id', ''), stock_status=request.args.get('stock_status', ''), is_active=request.args.get('is_active', '')) }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if page_num %}
+                                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('spare_parts.index', page=page_num, per_page=per_page, keyword=request.args.get('keyword', ''), category_id=request.args.get('category_id', ''), supplier_id=request.args.get('supplier_id', ''), stock_status=request.args.get('stock_status', ''), is_active=request.args.get('is_active', '')) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('spare_parts.index', page=pagination.next_num, per_page=per_page, keyword=request.args.get('keyword', ''), category_id=request.args.get('category_id', ''), supplier_id=request.args.get('supplier_id', ''), stock_status=request.args.get('stock_status', ''), is_active=request.args.get('is_active', '')) }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- 备件列表 -->
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover" id="partsTable">
                 <thead class="table-light">
                     <tr>
-                        <th>备件代码</th>
-                        <th>名称</th>
-                        <th>规格型号</th>
-                        <th>分类</th>
-                        <th>供应商</th>
-                        <th>当前库存</th>
-                        <th>库存状态</th>
-                        <th>单价</th>
-                        <th>单位</th>
-                        <th>状态</th>
-                        <th>操作</th>
+                        <th style="width: 40px;" data-column="checkbox">
+                            <input type="checkbox" id="selectAll" class="form-check-input">
+                        </th>
+                        <th data-column="thumbnail">缩略图</th>
+                        <th data-column="part_code">备件代码</th>
+                        <th data-column="name">名称</th>
+                        <th data-column="specification">规格型号</th>
+                        <th data-column="category">分类</th>
+                        <th data-column="supplier">供应商</th>
+                        <th data-column="current_stock">当前库存</th>
+                        <th data-column="stock_status">库存状态</th>
+                        <th data-column="unit_price">单价</th>
+                        <th data-column="unit">单位</th>
+                        <th data-column="is_active">状态</th>
+                        <th data-column="action">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for part in pagination.items %}
                     <tr>
-                        <td>{{ part.part_code }}</td>
-                        <td>{{ part.name }}</td>
-                        <td>{{ part.specification or '-' }}</td>
-                        <td>{{ part.category.name if part.category else '-' }}</td>
-                        <td>{{ part.supplier.name if part.supplier else '-' }}</td>
                         <td>
-                            <span class="badge {% if part.stock_status == 'low' %}bg-danger{% elif part.stock_status == 'overstocked' %}bg-warning{% else %}bg-success{% endif %}">
-                                {{ part.current_stock }}
-                            </span>
+                            <input type="checkbox" class="form-check-input part-checkbox" value="{{ part.id }}" data-part-code="{{ part.part_code }}">
                         </td>
-                        <td>
-                            {% if part.stock_status == 'low' %}
+                        <td class="text-center" data-column="thumbnail">
+                            {% if part.image_url %}
+                            <img src="{{ part.image_url }}" alt="{{ part.name }}" 
+                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;" 
+                                 class="thumbnail-preview" 
+                                 data-part-code="{{ part.part_code }}"
+                                 data-bs-toggle="modal" 
+                                 data-bs-target="#imageModal">
+                            {% else %}
+                            <div style="width: 60px; height: 60px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-image" style="color: #ccc;"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td data-column="part_code">{{ part.part_code }}</td>
+                        <td data-column="name">{{ part.name }}</td>
+                        <td data-column="specification">{{ part.specification or '-' }}</td>
+                        <td data-column="category">{{ part.category.name if part.category else '-' }}</td>
+                        <td data-column="supplier">{{ part.supplier.name if part.supplier else '-' }}</td>
+                        <td data-column="current_stock">
+                            <div class="d-flex align-items-center">
+                                {% if part.stock_status == 'out' %}
+                                <i class="fas fa-times-circle text-danger me-2" title="缺货"></i>
+                                {% elif part.stock_status == 'low' %}
+                                <i class="fas fa-exclamation-triangle text-danger me-2" title="低库存"></i>
+                                {% elif part.stock_status == 'overstocked' %}
+                                <i class="fas fa-exclamation-circle text-warning me-2" title="库存过剩"></i>
+                                {% else %}
+                                <i class="fas fa-check-circle text-success me-2" title="库存正常"></i>
+                                {% endif %}
+                                <span class="badge {% if part.stock_status == 'out' or part.stock_status == 'low' %}bg-danger{% elif part.stock_status == 'overstocked' %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ part.current_stock }}
+                                </span>
+                            </div>
+                        </td>
+                        <td data-column="stock_status">
+                            {% if part.stock_status == 'out' %}
+                            <span class="badge bg-danger">缺货</span>
+                            {% elif part.stock_status == 'low' %}
                             <span class="badge bg-danger">不足</span>
                             {% elif part.stock_status == 'overstocked' %}
                             <span class="badge bg-warning">过剩</span>
@@ -109,16 +444,16 @@
                             <span class="badge bg-success">正常</span>
                             {% endif %}
                         </td>
-                        <td>¥{{ '%.2f'|format(part.unit_price or 0) }}</td>
-                        <td>{{ part.unit or '-' }}</td>
-                        <td>
+                        <td data-column="unit_price">¥{{ '%.2f'|format(part.unit_price or 0) }}</td>
+                        <td data-column="unit">{{ part.unit or '-' }}</td>
+                        <td data-column="is_active">
                             {% if part.is_active %}
                             <span class="badge bg-success">启用</span>
                             {% else %}
                             <span class="badge bg-secondary">停用</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-column="action">
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ url_for('spare_parts.detail', id=part.id) }}" class="btn btn-outline-primary" title="查看详情">
                                     <i class="fas fa-eye"></i>
@@ -136,39 +471,307 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="11" class="text-center text-muted py-4">暂无备件数据</td>
+                        <td colspan="13" class="text-center text-muted py-4">暂无备件数据</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <!-- 分页 -->
+        <!-- 底部分页控件 -->
         {% if pagination.pages > 1 %}
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center">
-                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('spare_parts.index', page=pagination.prev_num, **request.args) }}">
-                        <i class="fas fa-chevron-left"></i>
-                    </a>
-                </li>
-                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-                    {% if page_num %}
-                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                            <a class="page-link" href="{{ url_for('spare_parts.index', page=page_num, **request.args) }}">{{ page_num }}</a>
+        <div class="row align-items-center mt-3">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                    <span class="text-muted me-2">每页显示：</span>
+                    <select class="form-select form-select-sm" style="width: 80px;" 
+                            onchange="changePerPage(this.value)">
+                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    </select>
+                    <span class="text-muted ms-2">条</span>
+                    <span class="text-muted ms-3">
+                        共 {{ pagination.total }} 条记录，当前第 {{ pagination.page }}/{{ pagination.pages }} 页
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-end mb-0">
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('spare_parts.index', page=pagination.prev_num, per_page=per_page, keyword=request.args.get('keyword', ''), category_id=request.args.get('category_id', ''), supplier_id=request.args.get('supplier_id', ''), stock_status=request.args.get('stock_status', ''), is_active=request.args.get('is_active', '')) }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
                         </li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                    {% endif %}
-                {% endfor %}
-                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('spare_parts.index', page=pagination.next_num, **request.args) }}">
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                </li>
-            </ul>
-        </nav>
+                        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if page_num %}
+                                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('spare_parts.index', page=page_num, per_page=per_page, keyword=request.args.get('keyword', ''), category_id=request.args.get('category_id', ''), supplier_id=request.args.get('supplier_id', ''), stock_status=request.args.get('stock_status', ''), is_active=request.args.get('is_active', '')) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('spare_parts.index', page=pagination.next_num, per_page=per_page, keyword=request.args.get('keyword', ''), category_id=request.args.get('category_id', ''), supplier_id=request.args.get('supplier_id', ''), stock_status=request.args.get('stock_status', ''), is_active=request.args.get('is_active', '')) }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
         {% endif %}
+    </div>
+</div>
+
+<script>
+// 全选/取消全选功能
+document.getElementById('selectAll')?.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.part-checkbox');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+});
+
+// 列显示配置功能
+const columnToggles = document.querySelectorAll('.column-toggle');
+const selectAllColumnsCheckbox = document.getElementById('selectAllColumns');
+
+// 全选/取消全选列
+if (selectAllColumnsCheckbox) {
+    selectAllColumnsCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        columnToggles.forEach(checkbox => {
+            if (checkbox.value !== 'all') {
+                checkbox.checked = isChecked;
+            }
+        });
+    });
+}
+
+// 单个列切换
+columnToggles.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        if (this.value === 'all') {
+            // 如果点击的是"全部列"
+            if (this.checked) {
+                columnToggles.forEach(cb => {
+                    if (cb.value !== 'all') cb.checked = true;
+                });
+            }
+        } else {
+            // 如果点击的是单个列
+            if (!this.checked) {
+                selectAllColumnsCheckbox.checked = false;
+            } else {
+                // 检查是否所有列都被选中
+                const allChecked = Array.from(columnToggles)
+                    .filter(cb => cb.value !== 'all')
+                    .every(cb => cb.checked);
+                selectAllColumnsCheckbox.checked = allChecked;
+            }
+        }
+    });
+});
+
+// 应用列设置
+document.getElementById('applyColumnSettings')?.addEventListener('click', function() {
+    const visibleColumns = [];
+    columnToggles.forEach(checkbox => {
+        if (checkbox.value !== 'all' && checkbox.checked) {
+            visibleColumns.push(checkbox.value);
+        }
+    });
+    
+    // 隐藏/显示对应的列
+    document.querySelectorAll('#partsTable th, #partsTable td').forEach(cell => {
+        const column = cell.getAttribute('data-column');
+        if (column) {
+            if (visibleColumns.includes(column) || column === 'checkbox') {
+                cell.style.display = '';
+            } else {
+                cell.style.display = 'none';
+            }
+        }
+    });
+    
+    // 保存到 localStorage
+    localStorage.setItem('sparePartsColumns', JSON.stringify(visibleColumns));
+    
+    // 关闭下拉菜单
+    const dropdown = document.getElementById('columnSelector');
+    const bsDropdown = bootstrap.Dropdown.getInstance(dropdown);
+    if (bsDropdown) {
+        bsDropdown.hide();
+    }
+});
+
+// 重置列设置
+document.getElementById('resetColumnSettings')?.addEventListener('click', function() {
+    // 重置所有复选框为选中状态
+    columnToggles.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    
+    // 显示所有列
+    document.querySelectorAll('#partsTable th, #partsTable td').forEach(cell => {
+        cell.style.display = '';
+    });
+    
+    // 清除 localStorage
+    localStorage.removeItem('sparePartsColumns');
+    
+    // 关闭下拉菜单
+    const dropdown = document.getElementById('columnSelector');
+    const bsDropdown = bootstrap.Dropdown.getInstance(dropdown);
+    if (bsDropdown) {
+        bsDropdown.hide();
+    }
+});
+
+// 从 localStorage 恢复列设置
+function restoreColumnSettings() {
+    const savedColumns = localStorage.getItem('sparePartsColumns');
+    if (savedColumns) {
+        const visibleColumns = JSON.parse(savedColumns);
+        
+        // 更新复选框状态
+        columnToggles.forEach(checkbox => {
+            if (checkbox.value === 'all') {
+                checkbox.checked = true; // 临时设置为 true
+            } else {
+                checkbox.checked = visibleColumns.includes(checkbox.value);
+            }
+        });
+        
+        // 更新"全部列"复选框状态
+        const allChecked = Array.from(columnToggles)
+            .filter(cb => cb.value !== 'all')
+            .every(cb => cb.checked);
+        selectAllColumnsCheckbox.checked = allChecked;
+        
+        // 应用列显示
+        document.querySelectorAll('#partsTable th, #partsTable td').forEach(cell => {
+            const column = cell.getAttribute('data-column');
+            if (column) {
+                if (visibleColumns.includes(column) || column === 'checkbox') {
+                    cell.style.display = '';
+                } else {
+                    cell.style.display = 'none';
+                }
+            }
+        });
+    }
+}
+
+// 视图切换功能
+let isListView = true;
+const toggleViewBtn = document.getElementById('toggleView');
+const partsTable = document.getElementById('partsTable');
+
+if (toggleViewBtn) {
+    toggleViewBtn.addEventListener('click', function() {
+        isListView = !isListView;
+        const icon = this.querySelector('i');
+        
+        if (isListView) {
+            // 切换到列表视图
+            partsTable.classList.remove('card-view');
+            icon.classList.remove('fa-list');
+            icon.classList.add('fa-th');
+            this.title = '切换到卡片视图';
+            this.setAttribute('data-bs-original-title', '切换到卡片视图');
+        } else {
+            // 切换到卡片视图
+            partsTable.classList.add('card-view');
+            icon.classList.remove('fa-th');
+            icon.classList.add('fa-list');
+            this.title = '切换到列表视图';
+            this.setAttribute('data-bs-original-title', '切换到列表视图');
+        }
+        
+        // 保存视图偏好到 localStorage
+        localStorage.setItem('sparePartsView', isListView ? 'list' : 'card');
+    });
+    
+    // 从 localStorage 恢复视图偏好
+    const savedView = localStorage.getItem('sparePartsView');
+    if (savedView === 'card') {
+        isListView = false;
+        partsTable.classList.add('card-view');
+        const icon = toggleViewBtn.querySelector('i');
+        icon.classList.remove('fa-th');
+        icon.classList.add('fa-list');
+        toggleViewBtn.title = '切换到列表视图';
+    }
+}
+
+// 批量导出功能
+document.getElementById('batchExport')?.addEventListener('click', function() {
+    const selectedCheckboxes = document.querySelectorAll('.part-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        // 导出所有
+        window.location.href = '{{ url_for("spare_parts.export", format="excel") }}';
+    } else {
+        // 导出选中的
+        const ids = Array.from(selectedCheckboxes).map(cb => cb.value);
+        window.location.href = '{{ url_for("spare_parts.export", format="excel") }}&ids=' + ids.join(',');
+    }
+});
+
+function changePerPage(value) {
+    // 获取当前 URL 参数
+    const urlParams = new URLSearchParams(window.location.search);
+    // 设置 per_page 参数
+    urlParams.set('per_page', value);
+    // 重置到第一页
+    urlParams.set('page', '1');
+    // 跳转
+    window.location.href = window.location.pathname + '?' + urlParams.toString();
+}
+
+// 图片预览功能
+document.addEventListener('DOMContentLoaded', function() {
+    const thumbnails = document.querySelectorAll('.thumbnail-preview');
+    
+    thumbnails.forEach(thumbnail => {
+        thumbnail.addEventListener('click', function() {
+            const partCode = this.getAttribute('data-part-code');
+            const modalImg = document.getElementById('modalImage');
+            
+            // 构建大图 URL（将 thumbnail.jpg 替换为 front.jpg）
+            const largeImageUrl = this.src.replace('thumbnail.jpg', 'front.jpg');
+            modalImg.src = largeImageUrl;
+        });
+    });
+    
+    // 初始化 Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // 恢复列设置
+    restoreColumnSettings();
+});
+</script>
+
+<!-- 图片查看模态框 -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">备件图片</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center" style="background: #f8f9fa; min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                <img id="modalImage" src="" alt="备件大图" class="img-fluid" style="max-height: 500px;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

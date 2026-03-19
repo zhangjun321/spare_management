@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "SIEMENS 3RT1015-1BB42 接触器",
+    "specification": "3RT1015-1BB42, 额定电流12A, 3极",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "SIEMENS",
+    "material": "工程塑料及银合金触点",
+    "unit_price": 285,
+    "supplier": "上海西门子工业自动化有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "ABB OSMC32N3 微型断路器",
+    "specification": "OSMC32N3, 3P, 32A, C型曲线",
+    "category_name": "断路器",
+    "category_code": "C.02.02",
+    "brand": "ABB",
+    "material": "热塑性塑料及铜合金",
+    "unit_price": 156,
+    "supplier": "北京ABB电气传动系统有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Schneider XB2BA31 按钮开关",
+    "specification": "XB2BA31, 直径22mm, 瞬动型, 红色",
+    "category_name": "开关",
+    "category_code": "C.01.01",
+    "brand": "Schneider",
+    "material": "聚碳酸酯及不锈钢",
+    "unit_price": 42,
+    "supplier": "施耐德电气（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "OMRON E3Z-R61 光电传感器",
+    "specification": "E3Z-R61, 漫反射型, NPN输出, 检测距离600mm",
+    "category_name": "传感器",
+    "category_code": "C.01.02",
+    "brand": "OMRON",
+    "material": "ABS树脂及光学玻璃",
+    "unit_price": 380,
+    "supplier": "欧姆龙自动化（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Phoenix Contact MKDS 1.5-5.08 接线端子",
+    "specification": "MKDS 1.5-5.08, 5.08mm间距, 1.5mm²导线截面",
+    "category_name": "接线端子",
+    "category_code": "C.03.02",
+    "brand": "Phoenix Contact",
+    "material": "聚酰胺66及铜合金",
+    "unit_price": 2.5,
+    "supplier": "菲尼克斯电气（南京）有限公司",
+    "stock_status": "充足"
+  }
+]
+```

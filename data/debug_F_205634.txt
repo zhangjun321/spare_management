@@ -1,0 +1,114 @@
+```json
+[
+  {
+    "part_name": "Donaldson P550435 液压油滤芯",
+    "specification": "P550435, 过滤精度10μm",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "Donaldson",
+    "material": "玻璃纤维",
+    "unit_price": 320,
+    "supplier": "上海滤芯工业有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Pall HC8300FKS39H 液压滤芯",
+    "specification": "HC8300FKS39H, 过滤精度5μm",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "Pall",
+    "material": "不锈钢网+玻璃纤维",
+    "unit_price": 450,
+    "supplier": "北京帕克过滤技术有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "HYDAC 0330D005BN3HC 回油滤芯",
+    "specification": "0330D005BN3HC, 过滤精度25μm",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "HYDAC",
+    "material": "纸质滤材",
+    "unit_price": 280,
+    "supplier": "广州海德克液压设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Parker 937304Q 空气滤芯",
+    "specification": "937304Q, 过滤精度1μm",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "Parker",
+    "material": "聚酯纤维",
+    "unit_price": 360,
+    "supplier": "苏州派克过滤系统有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "3M 7000020489 燃气滤网",
+    "specification": "7000020489, 孔径0.5mm",
+    "category_name": "滤网",
+    "category_code": "F.01.02",
+    "brand": "3M",
+    "material": "不锈钢",
+    "unit_price": 180,
+    "supplier": "深圳三菱过滤设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Camfil F7 袋式过滤器",
+    "specification": "F7, 效率85%@0.4μm",
+    "category_name": "过滤器",
+    "category_code": "F.02.01",
+    "brand": "Camfil",
+    "material": "无纺布",
+    "unit_price": 520,
+    "supplier": "杭州康斐尔空气净化有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Donaldson TO6VLM 空气滤清器",
+    "specification": "TO6VLM, 流量1000m³/h",
+    "category_name": "滤清器",
+    "category_code": "F.02.02",
+    "brand": "Donaldson",
+    "material": "纸质+金属外壳",
+    "unit_price": 890,
+    "supplier": "成都唐纳森环保设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Pall Ultipleat SRT 高流量过滤器",
+    "specification": "SRT-810-10, 流量100m³/h",
+    "category_name": "过滤器",
+    "category_code": "F.02.01",
+    "brand": "Pall",
+    "material": "聚丙烯",
+    "unit_price": 1200,
+    "supplier": "天津帕尔过滤技术有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "HYDAC RFBN-210*10C 回油滤清器",
+    "specification": "RFBN-210*10C, 过滤精度10μm",
+    "category_name": "滤清器",
+    "category_code": "F.02.02",
+    "brand": "HYDAC",
+    "material": "玻璃纤维+金属",
+    "unit_price": 750,
+    "supplier": "南京海德克液压系统有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Camfil City-Flo XL 除尘器",
+    "specification": "City-Flo XL, 处理风量5000m³/h",
+    "category_name": "除尘器",
+    "category_code": "F.03.01",
+    "brand": "Camfil",
+    "material": "镀锌钢板+滤筒",
+    "unit_price": 15000,
+    "supplier": "上海康斐尔环保设备有限公司",
+    "stock_status": "缺货"
+  }
+]
+```

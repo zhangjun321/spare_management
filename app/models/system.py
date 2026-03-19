@@ -88,16 +88,44 @@ class EmailConfig(db.Model):
     __tablename__ = 'email_config'
     
     id = db.Column(db.Integer, primary_key=True)
-    smtp_server = db.Column(db.String(100), nullable=False, comment='SMTP 服务器')
+    config_name = db.Column(db.String(100), comment='配置名称')
+    smtp_server = db.Column(db.String(200), nullable=False, comment='SMTP 服务器')
     smtp_port = db.Column(db.Integer, nullable=False, comment='SMTP 端口')
+    use_tls = db.Column(db.Boolean, default=True, comment='是否使用 TLS')
     username = db.Column(db.String(100), nullable=False, comment='用户名')
-    password = db.Column(db.String(200), nullable=False, comment='密码')
+    password = db.Column(db.String(255), nullable=False, comment='密码')
     sender_email = db.Column(db.String(100), nullable=False, comment='发件人邮箱')
     sender_name = db.Column(db.String(100), comment='发件人名称')
-    use_tls = db.Column(db.Boolean, default=True, comment='是否使用 TLS')
+    is_default = db.Column(db.Boolean, default=False, comment='是否默认配置')
     is_active = db.Column(db.Boolean, default=True, comment='是否启用')
+    last_test_at = db.Column(db.DateTime, comment='最后测试时间')
+    last_test_result = db.Column(db.Boolean, comment='最后测试结果')
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, comment='更新时间')
     
     def __repr__(self):
         return f'<EmailConfig {self.sender_email}>'
+
+
+class UserEmailConfig(db.Model):
+    """用户邮箱配置 - 支持每个管理员配置自己的邮箱"""
+    __tablename__ = 'user_email_config'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, comment='用户 ID')
+    smtp_server = db.Column(db.String(200), nullable=False, comment='SMTP 服务器')
+    smtp_port = db.Column(db.Integer, nullable=False, comment='SMTP 端口')
+    use_tls = db.Column(db.Boolean, default=True, comment='是否使用 TLS')
+    username = db.Column(db.String(100), nullable=False, comment='用户名')
+    password = db.Column(db.String(255), nullable=False, comment='密码')
+    sender_email = db.Column(db.String(100), nullable=False, comment='发件人邮箱')
+    sender_name = db.Column(db.String(100), comment='发件人名称')
+    is_active = db.Column(db.Boolean, default=True, comment='是否启用')
+    created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, comment='更新时间')
+    
+    # 关联关系
+    user = db.relationship('User', backref=db.backref('email_config', uselist=False))
+    
+    def __repr__(self):
+        return f'<UserEmailConfig {self.user.username} - {self.sender_email}>'

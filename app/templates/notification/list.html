@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}我的通知 - 备件管理系统{% endblock %}
+
+{% block page_title %}我的通知{% endblock %}
+
+{% block content %}
+<div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+    <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1.25rem;">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-600">
+                <i class="fas fa-bell me-2 text-primary"></i>通知中心
+                {% if unread_count > 0 %}
+                <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                {% endif %}
+            </h5>
+            <div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('notification.index', type='all') }}" 
+                       class="btn btn-sm {% if current_type == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        全部
+                    </a>
+                    <a href="{{ url_for('notification.index', type='stock_alert') }}" 
+                       class="btn btn-sm {% if current_type == 'stock_alert' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        <i class="fas fa-exclamation-triangle me-1"></i>库存预警
+                    </a>
+                </div>
+                {% if unread_count > 0 %}
+                <button class="btn btn-sm btn-outline-success ms-2" onclick="markAllAsRead()">
+                    <i class="fas fa-check-double me-1"></i>全部已读
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if notifications %}
+        <div class="list-group list-group-flush">
+            {% for notification in notifications %}
+            <div class="list-group-item list-group-item-action {% if not notification.is_read %}bg-light{% endif %}">
+                <div class="d-flex w-100 justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-start">
+                            <div class="me-3">
+                                {% if notification.type == 'stock_alert' %}
+                                <div class="rounded-circle bg-{% if notification.level == 'danger' %}danger{% elif notification.level == 'warning' %}warning{% else %}info{% endif %} bg-opacity-10 p-2">
+                                    <i class="fas fa-exclamation-triangle text-{% if notification.level == 'danger' %}danger{% elif notification.level == 'warning' %}warning{% else %}info{% endif %}"></i>
+                                </div>
+                                {% else %}
+                                <div class="rounded-circle bg-info bg-opacity-10 p-2">
+                                    <i class="fas fa-info-circle text-info"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h6 class="mb-1 {% if not notification.is_read %}fw-bold{% endif %}">
+                                    {{ notification.title }}
+                                    {% if not notification.is_read %}
+                                    <span class="badge bg-danger ms-2">新</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="mb-1 text-muted">{{ notification.message }}</p>
+                                <small class="text-muted">{{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        {% if not notification.is_read %}
+                        <button class="btn btn-sm btn-outline-primary" onclick="markAsRead({{ notification.id }})" title="标记为已读">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteNotification({{ notification.id }})" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-bell-slash text-muted" style="font-size: 4rem;"></i>
+            <p class="text-muted mt-3">暂无通知</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function markAsRead(id) {
+    fetch(`/notification/mark-as-read/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function markAllAsRead() {
+    if (confirm('确定要标记所有通知为已读吗？')) {
+        fetch('/notification/mark-all-as-read', {
+            method: 'POST'
+        })
+        .then(() => {
+            location.reload();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+}
+
+function deleteNotification(id) {
+    if (confirm('确定要删除此通知吗？')) {
+        fetch(`/notification/delete/${id}`, {
+            method: 'POST'
+        })
+        .then(() => {
+            location.reload();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+}
+</script>
+{% endblock %}

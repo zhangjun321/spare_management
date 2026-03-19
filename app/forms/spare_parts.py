@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, SelectField, DecimalField, IntegerField, BooleanField, SubmitField
+from wtforms import StringField, TextAreaField, SelectField, DecimalField, IntegerField, BooleanField, SubmitField, DateTimeLocalField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange, ValidationError
 from app.models.spare_part import SparePart
 from app.models.category import Category
@@ -32,6 +32,24 @@ class SparePartForm(FlaskForm):
     ])
     location = StringField('存放位置', validators=[
         Length(max=200, message='存放位置长度不能超过 200 个字符')
+    ])
+    brand = StringField('品牌', validators=[
+        Length(max=100, message='品牌长度不能超过 100 个字符')
+    ])
+    barcode = StringField('条形码', validators=[
+        Length(max=100, message='条形码长度不能超过 100 个字符')
+    ])
+    safety_stock = IntegerField('安全库存', default=0)
+    reorder_point = IntegerField('再订货点', validators=[Optional()])
+    last_purchase_price = DecimalField('最近采购价', places=2, validators=[
+        Optional(),
+        NumberRange(min=0, message='价格必须大于等于 0')
+    ])
+    currency = SelectField('币种', choices=[('CNY', '人民币'), ('USD', '美元'), ('EUR', '欧元'), ('JPY', '日元')], default='CNY')
+    warranty_period = IntegerField('质保期 (月)', validators=[Optional()])
+    last_purchase_date = DateTimeLocalField('最后采购日期', validators=[Optional()], format='%Y-%m-%dT%H:%M')
+    datasheet_url = StringField('数据手册 URL', validators=[
+        Length(max=500, message='数据手册 URL 长度不能超过 500 个字符')
     ])
     image_url = StringField('图片 URL', validators=[
         Length(max=500, message='图片 URL 长度不能超过 500 个字符')

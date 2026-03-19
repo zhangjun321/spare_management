@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "Donaldson P550435 液压油滤芯",
+    "specification": "P550435，过滤精度10μm",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "Donaldson",
+    "material": "玻璃纤维",
+    "unit_price": 850,
+    "supplier": "上海唐纳森工业设备有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Pall HC8304FKP39H 液压油滤芯",
+    "specification": "HC8304FKP39H，过滤精度5μm",
+    "category_name": "滤芯",
+    "category_code": "F.01.01",
+    "brand": "Pall",
+    "material": "复合纤维",
+    "unit_price": 1200,
+    "supplier": "北京颇尔过滤器技术有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "HYDAC 0330D003BN3HC 液压油过滤器",
+    "specification": "0330D003BN3HC，流量30L/min",
+    "category_name": "过滤器",
+    "category_code": "F.02.01",
+    "brand": "HYDAC",
+    "material": "不锈钢+玻璃纤维",
+    "unit_price": 2500,
+    "supplier": "贺德克液压技术（上海）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "Parker 937510Q 空气滤清器",
+    "specification": "937510Q，过滤面积0.5m²",
+    "category_name": "滤清器",
+    "category_code": "F.02.02",
+    "brand": "Parker",
+    "material": "聚酯纤维+金属网",
+    "unit_price": 1800,
+    "supplier": "派克汉尼汾液压系统（上海）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Camfil APC Gold Series X-Flo 除尘器",
+    "specification": "GSX-24，处理风量24000m³/h",
+    "category_name": "除尘器",
+    "category_code": "F.03.01",
+    "brand": "Camfil",
+    "material": "碳钢+纳米滤膜",
+    "unit_price": 85000,
+    "supplier": "康斐尔过滤设备（上海）有限公司",
+    "stock_status": "缺货"
+  }
+]
+```

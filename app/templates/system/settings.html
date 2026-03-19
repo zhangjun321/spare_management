@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}系统参数 - 备件管理系统{% endblock %}
+
+{% block page_title %}系统参数{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="list-group">
+            <a href="{{ url_for('system.index') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'system.index' %}active{% endif %}">
+                <i class="fas fa-cog me-2"></i>系统概览
+            </a>
+            <a href="{{ url_for('system.email_config') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'system.email_config' %}active{% endif %}">
+                <i class="fas fa-envelope me-2"></i>邮件配置
+            </a>
+            <a href="{{ url_for('system.settings') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'system.settings' %}active{% endif %}">
+                <i class="fas fa-sliders-h me-2"></i>系统参数
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1.25rem;">
+                <h5 class="mb-0 fw-600">
+                    <i class="fas fa-sliders-h me-2 text-primary"></i>系统参数
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>库存预警逻辑：</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><strong>缺货：</strong>当前库存 = 0</li>
+                        <li><strong>低库存：</strong>0 < 当前库存 ≤ 最低库存</li>
+                        <li><strong>正常：</strong>最低库存 < 当前库存 < 最高库存</li>
+                        <li><strong>超储：</strong>当前库存 ≥ 最高库存</li>
+                    </ul>
+                </div>
+                
+                <form method="POST" action="{{ url_for('system.settings') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <h6 class="mb-3"><i class="fas fa-exclamation-triangle text-warning me-2"></i>库存预警设置</h6>
+                    
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    {{ form.enable_stock_alert(class="form-check-input") }}
+                                    <label class="form-check-label" for="enable_stock_alert">
+                                        {{ form.enable_stock_alert.label.text }}
+                                    </label>
+                                </div>
+                                <div class="form-text ms-4">启用后，系统会自动检测库存状态并触发预警</div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        {{ form.alert_low_stock(class="form-check-input") }}
+                                        <label class="form-check-label" for="alert_low_stock">
+                                            {{ form.alert_low_stock.label.text }}
+                                        </label>
+                                    </div>
+                                    <div class="form-text ms-4">低库存时触发预警</div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        {{ form.alert_out_of_stock(class="form-check-input") }}
+                                        <label class="form-check-label" for="alert_out_of_stock">
+                                            {{ form.alert_out_of_stock.label.text }}
+                                        </label>
+                                    </div>
+                                    <div class="form-text ms-4">缺货时触发预警</div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        {{ form.alert_overstock(class="form-check-input") }}
+                                        <label class="form-check-label" for="alert_overstock">
+                                            {{ form.alert_overstock.label.text }}
+                                        </label>
+                                    </div>
+                                    <div class="form-text ms-4">超储时触发预警</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3"><i class="fas fa-bell text-primary me-2"></i>通知方式设置</h6>
+                    
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    {{ form.notify_by_email(class="form-check-input") }}
+                                    <label class="form-check-label" for="notify_by_email">
+                                        {{ form.notify_by_email.label.text }}
+                                    </label>
+                                </div>
+                                <div class="form-text ms-4">通过邮件发送预警通知给系统管理员</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    {{ form.notify_by_system(class="form-check-input") }}
+                                    <label class="form-check-label" for="notify_by_system">
+                                        {{ form.notify_by_system.label.text }}
+                                    </label>
+                                </div>
+                                <div class="form-text ms-4">在系统内发送通知消息（右上角铃铛图标）</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>注意：</strong>启用邮件通知前，请先在<a href="{{ url_for('system.email_config') }}" class="alert-link">邮件配置</a>中配置 SMTP 服务器。
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

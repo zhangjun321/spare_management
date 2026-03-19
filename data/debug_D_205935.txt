@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "BOSCH DIN 933 M8x30 六角头螺栓",
+    "specification": "M8x30",
+    "category_name": "螺栓",
+    "category_code": "D.01.01",
+    "brand": "BOSCH",
+    "material": "碳钢 8.8级",
+    "unit_price": 1.25,
+    "supplier": "上海博世工业配件有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "PEM SMTSS4-4 自锁螺母",
+    "specification": "4-4 UNC",
+    "category_name": "螺母",
+    "category_code": "D.01.02",
+    "brand": "PEM",
+    "material": "不锈钢 304",
+    "unit_price": 2.75,
+    "supplier": "苏州沛姆紧固件有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "SOUTHCO M4-0.7x12 十字槽盘头螺钉",
+    "specification": "M4-0.7x12",
+    "category_name": "螺钉",
+    "category_code": "D.02.01",
+    "brand": "SOUTHCO",
+    "material": "碳钢 镀锌",
+    "unit_price": 0.85,
+    "supplier": "深圳索斯科五金有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "WD DIN 125 A2 平垫圈",
+    "specification": "M10",
+    "category_name": "垫圈",
+    "category_code": "D.02.02",
+    "brand": "WD",
+    "material": "不锈钢 304",
+    "unit_price": 0.35,
+    "supplier": "无锡WD紧固件贸易有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Hilti HUS3 6x55 碳钢铆钉",
+    "specification": "6x55",
+    "category_name": "铆钉",
+    "category_code": "D.03.01",
+    "brand": "Hilti",
+    "material": "碳钢",
+    "unit_price": 1.50,
+    "supplier": "喜利得（中国）商贸有限公司",
+    "stock_status": "充足"
+  }
+]
+```

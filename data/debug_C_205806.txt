@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "part_name": "SIEMENS 3RT1016-1BB42 接触器",
+    "specification": "3RT1016-1BB42, 额定电流 16A, 3P, AC-3",
+    "category_name": "继电器",
+    "category_code": "C.02.01",
+    "brand": "SIEMENS",
+    "material": "热塑性塑料外壳, 银合金触点",
+    "unit_price": 285,
+    "supplier": "上海西门子工业自动化有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "ABB OSMC32N3 微型断路器",
+    "specification": "OSMC32N3, 额定电流 32A, 3P, 6kA",
+    "category_name": "断路器",
+    "category_code": "C.02.02",
+    "brand": "ABB",
+    "material": "热固性塑料外壳, 铜合金触点",
+    "unit_price": 150,
+    "supplier": "北京ABB电气传动系统有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Schneider XCMA-1210 限位开关",
+    "specification": "XCMA-1210, 1NO+1NC, IP67, 金属滚轮",
+    "category_name": "开关",
+    "category_code": "C.01.01",
+    "brand": "Schneider",
+    "material": "不锈钢外壳, 银合金触点",
+    "unit_price": 120,
+    "supplier": "施耐德电气（中国）有限公司",
+    "stock_status": "充足"
+  },
+  {
+    "part_name": "OMRON E3Z-D61 光电传感器",
+    "specification": "E3Z-D61, NPN, 检测距离 100mm, 漫反射型",
+    "category_name": "传感器",
+    "category_code": "C.01.02",
+    "brand": "OMRON",
+    "material": "ABS塑料外壳, 红外LED发射器",
+    "unit_price": 350,
+    "supplier": "欧姆龙自动化（中国）有限公司",
+    "stock_status": "紧张"
+  },
+  {
+    "part_name": "Phoenix Contact FLK 20/03-ST-5.08 接线端子",
+    "specification": "FLK 20/03-ST-5.08, 3位, 5.08mm间距, 螺钉连接",
+    "category_name": "接线端子",
+    "category_code": "C.03.02",
+    "brand": "Phoenix Contact",
+    "material": "PA66塑料外壳, 铜合金导电件",
+    "unit_price": 15,
+    "supplier": "菲尼克斯电气（南京）有限公司",
+    "stock_status": "充足"
+  }
+]
+```

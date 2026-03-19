@@ -32,9 +32,9 @@ def index():
         MaintenanceOrder.status.in_(['created', 'assigned'])
     ).order_by(MaintenanceOrder.created_at.desc()).limit(5).all()
     
-    # 库存预警
+    # 库存预警（包括低库存和缺货）
     low_stock_parts = SparePart.query.filter(
-        SparePart.stock_status == 'low'
+        SparePart.stock_status.in_(['low', 'out'])
     ).limit(5).all()
     
     return render_template(
@@ -48,8 +48,15 @@ def index():
 
 def get_dashboard_stats():
     """获取仪表盘统计数据"""
+    # 查询备件种类和总库存
+    spare_parts_query = db.session.query(
+        func.count(SparePart.id).label('count'),
+        func.coalesce(func.sum(SparePart.current_stock), 0).label('total_stock')
+    ).all()
+    
     stats = {
-        'spare_parts_count': SparePart.query.count(),
+        'spare_parts_count': spare_parts_query[0].count,
+        'spare_parts_total_stock': spare_parts_query[0].total_stock,
         'equipment_count': Equipment.query.count(),
         'pending_maintenance_count': MaintenanceOrder.query.filter(
             MaintenanceOrder.status.in_(['created', 'assigned'])
@@ -64,7 +71,7 @@ def get_dashboard_stats():
         'normal': SparePart.query.filter_by(stock_status='normal').count(),
         'low': SparePart.query.filter_by(stock_status='low').count(),
         'out': SparePart.query.filter_by(stock_status='out').count(),
-        'overstock': SparePart.query.filter_by(stock_status='overstock').count()
+        'overstocked': SparePart.query.filter_by(stock_status='overstocked').count()
     }
     
     return stats
