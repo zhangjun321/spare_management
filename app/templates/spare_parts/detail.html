@@ -90,6 +90,14 @@
                         <th>存放位置:</th>
                         <td>{{ spare_part.location or '-' }}</td>
                     </tr>
+                    <tr>
+                        <th>默认仓库:</th>
+                        <td>{{ spare_part.warehouse.name if spare_part.warehouse else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>默认货位:</th>
+                        <td>{{ spare_part.location.location_code if spare_part.location else '-' }}</td>
+                    </tr>
                 </table>
             </div>
         </div>

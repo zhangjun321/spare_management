@@ -62,7 +62,7 @@
             </div>
             
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="mb-3">
                         <label for="category_id" class="form-label">{{ form.category_id.label.text }}</label>
                         {{ form.category_id(class="form-select") }}
@@ -72,7 +72,7 @@
                     </div>
                 </div>
                 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="mb-3">
                         <label for="supplier_id" class="form-label">{{ form.supplier_id.label.text }}</label>
                         {{ form.supplier_id(class="form-select") }}
@@ -82,7 +82,29 @@
                     </div>
                 </div>
                 
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label for="warehouse_id" class="form-label">{{ form.warehouse_id.label.text }}</label>
+                        {{ form.warehouse_id(class="form-select") }}
+                        {% for error in form.warehouse_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label for="location_id" class="form-label">{{ form.location_id.label.text }}</label>
+                        {{ form.location_id(class="form-select") }}
+                        {% for error in form.location_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
                     <div class="mb-3">
                         <label for="location" class="form-label">{{ form.location.label.text }}</label>
                         {{ form.location(class="form-control") }}

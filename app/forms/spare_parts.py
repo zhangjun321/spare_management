@@ -4,6 +4,8 @@ from wtforms.validators import DataRequired, Length, Optional, NumberRange, Vali
 from app.models.spare_part import SparePart
 from app.models.category import Category
 from app.models.supplier import Supplier
+from app.models.warehouse import Warehouse
+from app.models.warehouse_location import WarehouseLocation
 
 
 class SparePartForm(FlaskForm):
@@ -20,6 +22,8 @@ class SparePartForm(FlaskForm):
     ])
     category_id = SelectField('分类', coerce=int, validators=[Optional()])
     supplier_id = SelectField('供应商', coerce=int, validators=[Optional()])
+    warehouse_id = SelectField('默认仓库', coerce=int, validators=[Optional()])
+    location_id = SelectField('默认货位', coerce=int, validators=[Optional()])
     current_stock = IntegerField('当前库存', default=0)
     min_stock = IntegerField('最低库存', default=0)
     max_stock = IntegerField('最高库存', validators=[Optional()])
@@ -66,6 +70,23 @@ class SparePartForm(FlaskForm):
         self.supplier_id.choices = [(0, '请选择供应商')] + [
             (s.id, s.name) for s in Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
         ]
+        self.warehouse_id.choices = [(0, '请选择仓库')] + [
+            (w.id, w.name) for w in Warehouse.query.filter_by(is_active=True).order_by(Warehouse.name).all()
+        ]
+        self.location_id.choices = [(0, '请选择货位')]
+        # 如果提供了仓库ID，只显示该仓库的货位
+        if 'warehouse_id' in kwargs and kwargs['warehouse_id']:
+            self.location_id.choices += [
+                (l.id, l.location_code) for l in WarehouseLocation.query.filter_by(
+                    warehouse_id=kwargs['warehouse_id'], status='available'
+                ).order_by(WarehouseLocation.location_code).all()
+            ]
+        else:
+            self.location_id.choices += [
+                (l.id, f"{l.warehouse.name}-{l.location_code}") for l in WarehouseLocation.query.filter_by(
+                    status='available'
+                ).order_by(WarehouseLocation.warehouse_id, WarehouseLocation.location_code).all()
+            ]
     
     def validate_part_code(self, field):
         if self.id:

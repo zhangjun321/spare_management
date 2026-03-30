@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block page_title %}仓库管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">仓库管理</h1>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总仓库数</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ statistics.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-warehouse fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">启用仓库</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ statistics.active }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">禁用仓库</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ statistics.inactive }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选和操作 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('warehouses.index') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="name" class="mr-2">仓库名称</label>
+                            <input type="text" id="name" name="name" class="form-control" value="{{ filters.name or '' }}" placeholder="输入仓库名称">
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="code" class="mr-2">仓库编码</label>
+                            <input type="text" id="code" name="code" class="form-control" value="{{ filters.code or '' }}" placeholder="输入仓库编码">
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="type" class="mr-2">仓库类型</label>
+                            <select id="type" name="type" class="form-control">
+                                <option value="">全部</option>
+                                <option value="general" {% if filters.type == 'general' %}selected{% endif %}>普通仓库</option>
+                                <option value="cold" {% if filters.type == 'cold' %}selected{% endif %}>冷库</option>
+                                <option value="hazardous" {% if filters.type == 'hazardous' %}selected{% endif %}>危险品仓库</option>
+                                <option value="valuable" {% if filters.type == 'valuable' %}selected{% endif %}>贵重物品仓库</option>
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="is_active" class="mr-2">状态</label>
+                            <select id="is_active" name="is_active" class="form-control">
+                                <option value="">全部</option>
+                                <option value="true" {% if filters.is_active is true %}selected{% endif %}>启用</option>
+                                <option value="false" {% if filters.is_active is false %}selected{% endif %}>禁用</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary mr-2">筛选</button>
+                        <a href="{{ url_for('warehouses.index') }}" class="btn btn-secondary mr-2">重置</a>
+                        <a href="{{ url_for('warehouses.create') }}" class="btn btn-success">创建仓库</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓库列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>仓库名称</th>
+                                    <th>仓库编码</th>
+                                    <th>仓库类型</th>
+                                    <th>管理员</th>
+                                    <th>状态</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for warehouse in pagination.items %}
+                                <tr>
+                                    <td>{{ warehouse.name }}</td>
+                                    <td>{{ warehouse.code }}</td>
+                                    <td>
+                                        {% if warehouse.type == 'general' %}普通仓库{% elif warehouse.type == 'cold' %}冷库{% elif warehouse.type == 'hazardous' %}危险品仓库{% elif warehouse.type == 'valuable' %}贵重物品仓库{% endif %}
+                                    </td>
+                                    <td>{{ warehouse.manager.real_name if warehouse.manager else '未指定' }}</td>
+                                    <td>
+                                        <span class="badge {% if warehouse.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                                            {% if warehouse.is_active %}启用{% else %}禁用{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>{{ warehouse.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('warehouses.detail', id=warehouse.id) }}" class="btn btn-info btn-sm mr-1">详情</a>
+                                        <a href="{{ url_for('warehouses.edit', id=warehouse.id) }}" class="btn btn-primary btn-sm mr-1">编辑</a>
+                                        <form action="{{ url_for('warehouses.delete', id=warehouse.id) }}" method="post" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('确定要删除该仓库吗？');">删除</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- 分页 -->
+                    <div class="mt-4">
+                        <nav aria-label="Page navigation example">
+                            <ul class="pagination justify-content-center">
+                                {% if pagination.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('warehouses.index', page=pagination.prev_num, **filters) }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('warehouses.index', page=page_num, **filters) }}">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#">...</a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                                {% if pagination.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('warehouses.index', page=pagination.next_num, **filters) }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

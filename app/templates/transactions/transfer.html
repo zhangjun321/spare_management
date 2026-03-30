@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}备件调拨 - 交易管理{% endblock %}
+
+{% block page_title %}备件调拨{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">备件调拨</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="from_warehouse_id" class="form-label">{{ form.from_warehouse_id.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.from_warehouse_id(class="form-select", **{"required": "required"}) }}
+                        {% for error in form.from_warehouse_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="to_warehouse_id" class="form-label">{{ form.to_warehouse_id.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.to_warehouse_id(class="form-select", **{"required": "required"}) }}
+                        {% for error in form.to_warehouse_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="spare_part_id" class="form-label">{{ form.spare_part_id.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.spare_part_id(class="form-select", **{"required": "required", "id": "spare_part_id"}) }}
+                        {% for error in form.spare_part_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="batch_id" class="form-label">{{ form.batch_id.label.text }}</label>
+                        {{ form.batch_id(class="form-select", id="batch_id") }}
+                        {% for error in form.batch_id.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">{{ form.quantity.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.quantity(class="form-control", **{"required": "required"}) }}
+                        {% for error in form.quantity.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="remark" class="form-label">{{ form.remark.label.text }}</label>
+                {{ form.remark(class="form-control", rows="3") }}
+                {% for error in form.remark.errors %}
+                <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('transactions.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回
+                </a>
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 当选择备件时，动态加载批次列表
+document.getElementById('spare_part_id').addEventListener('change', function() {
+    const spare_part_id = this.value;
+    const batchSelect = document.getElementById('batch_id');
+    
+    if (spare_part_id) {
+        // 显示加载状态
+        batchSelect.innerHTML = '<option value="0">加载中...</option>';
+        
+        // 发送AJAX请求获取批次列表
+        fetch(`{{ url_for('transactions.get_batches', spare_part_id=0) }}`.replace('0', spare_part_id))
+            .then(response => response.json())
+            .then(data => {
+                // 更新批次选择框
+                batchSelect.innerHTML = '';
+                data.forEach(option => {
+                    const opt = document.createElement('option');
+                    opt.value = option[0];
+                    opt.textContent = option[1];
+                    batchSelect.appendChild(opt);
+                });
+            })
+            .catch(error => {
+                console.error('获取批次失败:', error);
+                batchSelect.innerHTML = '<option value="0">获取批次失败</option>';
+            });
+    } else {
+        batchSelect.innerHTML = '<option value="0">请先选择备件</option>';
+    }
+});
+</script>
+{% endblock %}

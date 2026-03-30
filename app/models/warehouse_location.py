@@ -17,8 +17,9 @@ class WarehouseLocation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), comment='创建人 ID')
     
-    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id], backref='warehouse_locations')
-    batches = db.relationship('Batch', backref='warehouse_location', lazy='dynamic')
+    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id], back_populates='locations')
+    batches = db.relationship('Batch', foreign_keys='Batch.location_id', back_populates='location', lazy='dynamic')
+    spare_parts = db.relationship('SparePart', foreign_keys='SparePart.location_id', back_populates='warehouse_location', lazy='dynamic')
     
     __table_args__ = (
         db.UniqueConstraint('warehouse_id', 'location_code', name='uq_warehouse_location'),

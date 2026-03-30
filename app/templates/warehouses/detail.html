@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block page_title %}仓库详情{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">仓库详情</h1>
+        </div>
+    </div>
+
+    <!-- 仓库基本信息 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ warehouse.name }} ({{ warehouse.code }})</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">仓库类型</dt>
+                                <dd class="col-sm-8">
+                                    {% if warehouse.type == 'general' %}普通仓库{% elif warehouse.type == 'cold' %}冷库{% elif warehouse.type == 'hazardous' %}危险品仓库{% elif warehouse.type == 'valuable' %}贵重物品仓库{% endif %}
+                                </dd>
+                                <dt class="col-sm-4">仓库管理员</dt>
+                                <dd class="col-sm-8">{{ warehouse.manager.real_name if warehouse.manager else '未指定' }}</dd>
+                                <dt class="col-sm-4">仓库地址</dt>
+                                <dd class="col-sm-8">{{ warehouse.address or '未设置' }}</dd>
+                                <dt class="col-sm-4">联系电话</dt>
+                                <dd class="col-sm-8">{{ warehouse.phone or '未设置' }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">仓库面积</dt>
+                                <dd class="col-sm-8">{{ warehouse.area }} 平方米</dd>
+                                <dt class="col-sm-4">仓库容量</dt>
+                                <dd class="col-sm-8">{{ warehouse.capacity }} 件</dd>
+                                <dt class="col-sm-4">状态</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge {% if warehouse.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                                        {% if warehouse.is_active %}启用{% else %}禁用{% endif %}
+                                    </span>
+                                </dd>
+                                <dt class="col-sm-4">创建时间</dt>
+                                <dd class="col-sm-8">{{ warehouse.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <dt>仓库描述</dt>
+                            <dd>{{ warehouse.description or '无' }}</dd>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <a href="{{ url_for('warehouses.edit', id=warehouse.id) }}" class="btn btn-primary mr-2">编辑</a>
+                            <a href="{{ url_for('warehouses.index') }}" class="btn btn-secondary">返回</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓库统计信息 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总库存</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_inventory }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">利用率</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ utilization_rate }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">库位数</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ locations|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-map-marker-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">操作次数</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ operations_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-history fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库位列表 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col">
+                            <h6 class="m-0 font-weight-bold text-primary">库位列表</h6>
+                        </div>
+                        <div class="col text-right">
+                            <a href="{{ url_for('warehouses.location_create') }}" class="btn btn-success btn-sm">创建库位</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>库位编码</th>
+                                    <th>库位名称</th>
+                                    <th>库位类型</th>
+                                    <th>最大容量</th>
+                                    <th>状态</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for location in locations %}
+                                <tr>
+                                    <td>{{ location.location_code }}</td>
+                                    <td>{{ location.location_name or '未设置' }}</td>
+                                    <td>
+                                        {% if location.location_type == 'shelf' %}货架{% elif location.location_type == 'bin' %}料箱{% elif location.location_type == 'pallet' %}托盘{% elif location.location_type == 'area' %}区域{% endif %}
+                                    </td>
+                                    <td>{{ location.max_capacity or '未设置' }}</td>
+                                    <td>
+                                        <span class="badge {% if location.status == 'available' %}badge-success{% elif location.status == 'occupied' %}badge-warning{% elif location.status == 'maintenance' %}badge-info{% elif location.status == 'disabled' %}badge-danger{% endif %}">
+                                            {% if location.status == 'available' %}可用{% elif location.status == 'occupied' %}已占用{% elif location.status == 'maintenance' %}维护中{% elif location.status == 'disabled' %}禁用{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>{{ location.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('warehouses.location_detail', id=location.id) }}" class="btn btn-info btn-sm mr-1">详情</a>
+                                        <a href="{{ url_for('warehouses.location_edit', id=location.id) }}" class="btn btn-primary btn-sm mr-1">编辑</a>
+                                        <form action="{{ url_for('warehouses.location_delete', id=location.id) }}" method="post" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('确定要删除该库位吗？');">删除</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block page_title %}库存概览{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">库存概览</h1>
+        </div>
+    </div>
+
+    <!-- 总统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总库存数量</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stats.total_quantity }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">总库存价值</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">¥{{ total_stats.total_value|round(2) }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">备件种类</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stats.spare_part_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-cubes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库存操作按钮 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h6 class="m-0 font-weight-bold text-primary">库存操作</h6>
+                        </div>
+                        <div class="col text-right">
+                            <a href="{{ url_for('warehouses.inventory_adjust') }}" class="btn btn-primary mr-2">库存调整</a>
+                            <a href="{{ url_for('warehouses.inventory_transfer') }}" class="btn btn-success">库存调拨</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓库库存列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">仓库库存统计</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>仓库名称</th>
+                                    <th>仓库编码</th>
+                                    <th>库存数量</th>
+                                    <th>库存价值</th>
+                                    <th>备件种类</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in inventory_stats %}
+                                <tr>
+                                    <td>{{ stat.warehouse.name }}</td>
+                                    <td>{{ stat.warehouse.code }}</td>
+                                    <td>{{ stat.total_quantity }}</td>
+                                    <td>¥{{ stat.total_value|round(2) }}</td>
+                                    <td>{{ stat.spare_part_count }}</td>
+                                    <td>
+                                        <a href="{{ url_for('warehouses.inventory_warehouse', id=stat.warehouse.id) }}" class="btn btn-info btn-sm">查看详情</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block page_title %}操作记录{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">操作记录</h1>
+        </div>
+    </div>
+
+    <!-- 筛选和操作 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('warehouses.operations_list') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="warehouse_id" class="mr-2">仓库</label>
+                            <select id="warehouse_id" name="warehouse_id" class="form-control">
+                                <option value="">全部</option>
+                                {% for warehouse in warehouses %}
+                                <option value="{{ warehouse.id }}" {% if filters.warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="operation_type" class="mr-2">操作类型</label>
+                            <select id="operation_type" name="operation_type" class="form-control">
+                                <option value="">全部</option>
+                                <option value="in" {% if filters.operation_type == 'in' %}selected{% endif %}>入库</option>
+                                <option value="out" {% if filters.operation_type == 'out' %}selected{% endif %}>出库</option>
+                                <option value="transfer_in" {% if filters.operation_type == 'transfer_in' %}selected{% endif %}>调拨入库</option>
+                                <option value="transfer_out" {% if filters.operation_type == 'transfer_out' %}selected{% endif %}>调拨出库</option>
+                                <option value="adjust_in" {% if filters.operation_type == 'adjust_in' %}selected{% endif %}>调整增加</option>
+                                <option value="adjust_out" {% if filters.operation_type == 'adjust_out' %}selected{% endif %}>调整减少</option>
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="start_date" class="mr-2">开始日期</label>
+                            <input type="date" id="start_date" name="start_date" class="form-control" value="{{ filters.start_date or '' }}">
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="end_date" class="mr-2">结束日期</label>
+                            <input type="date" id="end_date" name="end_date" class="form-control" value="{{ filters.end_date or '' }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary mr-2">筛选</button>
+                        <a href="{{ url_for('warehouses.operations_list') }}" class="btn btn-secondary">重置</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作记录列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>操作类型</th>
+                                    <th>仓库</th>
+                                    <th>操作员</th>
+                                    <th>操作时间</th>
+                                    <th>备注</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for operation in pagination.items %}
+                                <tr>
+                                    <td>
+                                        {% if operation.transaction_type == 'in' %}入库{% elif operation.transaction_type == 'out' %}出库{% elif operation.transaction_type == 'transfer_in' %}调拨入库{% elif operation.transaction_type == 'transfer_out' %}调拨出库{% elif operation.transaction_type == 'adjust_in' %}调整增加{% elif operation.transaction_type == 'adjust_out' %}调整减少{% endif %}
+                                    </td>
+                                    <td>{{ operation.warehouse.name }}</td>
+                                    <td>{{ operation.user.real_name }}</td>
+                                    <td>{{ operation.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>{{ operation.remark or '无' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('warehouses.operation_detail', id=operation.id) }}" class="btn btn-info btn-sm">详情</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- 分页 -->
+                    <div class="mt-4">
+                        <nav aria-label="Page navigation example">
+                            <ul class="pagination justify-content-center">
+                                {% if pagination.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('warehouses.operations_list', page=pagination.prev_num, **filters) }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('warehouses.operations_list', page=page_num, **filters) }}">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#">...</a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                                {% if pagination.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('warehouses.operations_list', page=pagination.next_num, **filters) }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 页面加载时动态获取仓库列表
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{{ url_for('warehouses.api_warehouses') }}')
+            .then(response => response.json())
+            .then(data => {
+                const warehouseSelect = document.getElementById('warehouse_id');
+                // 清空现有选项（保留第一个"全部"选项）
+                while (warehouseSelect.options.length > 1) {
+                    warehouseSelect.remove(1);
+                }
+                // 添加仓库选项
+                data.forEach(warehouse => {
+                    const option = document.createElement('option');
+                    option.value = warehouse.id;
+                    option.textContent = warehouse.name;
+                    warehouseSelect.appendChild(option);
+                });
+            });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block page_title %}库存调整{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">库存调整</h1>
+        </div>
+    </div>
+
+    <!-- 表单卡片 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="post" action="">
+                        {{ form.csrf_token }}
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                {{ form.warehouse_id.label(class="form-control-label") }}
+                                {{ form.warehouse_id(class="form-control" + (' is-invalid' if form.warehouse_id.errors else ''), onchange="loadLocations(this.value)") }}
+                                {% for error in form.warehouse_id.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-group col-md-6">
+                                {{ form.location_id.label(class="form-control-label") }}
+                                {{ form.location_id(class="form-control" + (' is-invalid' if form.location_id.errors else ''), onchange="loadSpareParts(this.value)") }}
+                                {% for error in form.location_id.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                {{ form.spare_part_id.label(class="form-control-label") }}
+                                {{ form.spare_part_id(class="form-control" + (' is-invalid' if form.spare_part_id.errors else '')) }}
+                                {% for error in form.spare_part_id.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-group col-md-6">
+                                {{ form.quantity.label(class="form-control-label") }}
+                                {{ form.quantity(class="form-control" + (' is-invalid' if form.quantity.errors else '')) }}
+                                {% for error in form.quantity.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                                <small class="form-text text-muted">正数为增加库存，负数为减少库存</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            {{ form.remark.label(class="form-control-label") }}
+                            {{ form.remark(class="form-control" + (' is-invalid' if form.remark.errors else ''), rows=4) }}
+                            {% for error in form.remark.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary mr-2">{{ form.submit.label.text }}</button>
+                            <a href="{{ url_for('warehouses.inventory_overview') }}" class="btn btn-secondary">取消</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 加载库位列表
+    function loadLocations(warehouseId) {
+        if (!warehouseId) {
+            document.getElementById('location_id').innerHTML = '<option value="0">请选择仓库</option>';
+            document.getElementById('spare_part_id').innerHTML = '<option value="0">请选择库位</option>';
+            return;
+        }
+        
+        fetch('{{ url_for('warehouses.api_locations', warehouse_id=0) }}'.replace('0', warehouseId))
+            .then(response => response.json())
+            .then(data => {
+                const locationSelect = document.getElementById('location_id');
+                locationSelect.innerHTML = '<option value="">请选择库位</option>';
+                data.forEach(location => {
+                    const option = document.createElement('option');
+                    option.value = location.id;
+                    option.textContent = location.location_code + (location.location_name ? ' - ' + location.location_name : '');
+                    locationSelect.appendChild(option);
+                });
+                document.getElementById('spare_part_id').innerHTML = '<option value="0">请选择库位</option>';
+            });
+    }
+    
+    // 加载备件列表
+    function loadSpareParts(locationId) {
+        if (!locationId) {
+            document.getElementById('spare_part_id').innerHTML = '<option value="0">请选择库位</option>';
+            return;
+        }
+        
+        fetch('{{ url_for('warehouses.api_spare_parts', location_id=0) }}'.replace('0', locationId))
+            .then(response => response.json())
+            .then(data => {
+                const sparePartSelect = document.getElementById('spare_part_id');
+                sparePartSelect.innerHTML = '<option value="">请选择备件</option>';
+                data.forEach(sparePart => {
+                    const option = document.createElement('option');
+                    option.value = sparePart.id;
+                    option.textContent = sparePart.part_code + ' - ' + sparePart.name;
+                    sparePartSelect.appendChild(option);
+                });
+            });
+    }
+    
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        const warehouseId = document.getElementById('warehouse_id').value;
+        if (warehouseId) {
+            loadLocations(warehouseId);
+        }
+    });
+</script>
+{% endblock %}

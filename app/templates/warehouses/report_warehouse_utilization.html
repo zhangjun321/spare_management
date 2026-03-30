@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block page_title %}仓库利用率报表{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">仓库利用率报表</h1>
+        </div>
+    </div>
+
+    <!-- 筛选选项 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('warehouses.report_warehouse_utilization') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="warehouse_id" class="mr-2">仓库</label>
+                            <select id="warehouse_id" name="warehouse_id" class="form-control">
+                                <option value="">全部</option>
+                                {% for warehouse in warehouses %}
+                                <option value="{{ warehouse.id }}" {% if warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">筛选</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 报表数据 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">仓库利用率统计</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>仓库名称</th>
+                                    <th>仓库编码</th>
+                                    <th>容量</th>
+                                    <th>库存数量</th>
+                                    <th>利用率</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in report_data %}
+                                <tr>
+                                    <td>{{ item.warehouse_name }}</td>
+                                    <td>{{ item.warehouse_code }}</td>
+                                    <td>{{ item.capacity }}</td>
+                                    <td>{{ item.total_inventory }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar {% if item.utilization_rate < 50 %}bg-success{% elif item.utilization_rate < 80 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ item.utilization_rate }}%" aria-valuenow="{{ item.utilization_rate }}" aria-valuemin="0" aria-valuemax="100">
+                                                {{ item.utilization_rate }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if item.status == 'active' %}badge-success{% else %}badge-danger{% endif %}">
+                                            {{ item.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 页面加载时动态获取仓库列表
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{{ url_for('warehouses.api_warehouses') }}')
+            .then(response => response.json())
+            .then(data => {
+                const warehouseSelect = document.getElementById('warehouse_id');
+                // 清空现有选项（保留第一个"全部"选项）
+                while (warehouseSelect.options.length > 1) {
+                    warehouseSelect.remove(1);
+                }
+                // 添加仓库选项
+                data.forEach(warehouse => {
+                    const option = document.createElement('option');
+                    option.value = warehouse.id;
+                    option.textContent = warehouse.name;
+                    warehouseSelect.appendChild(option);
+                });
+            });
+    });
+</script>
+{% endblock %}

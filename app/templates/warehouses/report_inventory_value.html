@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block page_title %}库存价值报表{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">库存价值报表</h1>
+        </div>
+    </div>
+
+    <!-- 筛选选项 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('warehouses.report_inventory_value') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="warehouse_id" class="mr-2">仓库</label>
+                            <select id="warehouse_id" name="warehouse_id" class="form-control">
+                                <option value="">全部</option>
+                                {% for warehouse in warehouses %}
+                                <option value="{{ warehouse.id }}" {% if warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">筛选</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 总价值卡片 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">总库存价值</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">¥{{ report_data.total_value|round(2) }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 报表数据 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">库存价值分布</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>备件类别</th>
+                                    <th>数量</th>
+                                    <th>价值</th>
+                                    <th>占比</th>
+                                    <th>备件种类</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in report_data.category_breakdown %}
+                                <tr>
+                                    <td>{{ item.category }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>¥{{ item.value|round(2) }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ (item.value / report_data.total_value) * 100 }}%" aria-valuenow="{{ (item.value / report_data.total_value) * 100 }}" aria-valuemin="0" aria-valuemax="100">
+                                                {{ ((item.value / report_data.total_value) * 100)|round(2) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ item.spare_part_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 页面加载时动态获取仓库列表
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{{ url_for('warehouses.api_warehouses') }}')
+            .then(response => response.json())
+            .then(data => {
+                const warehouseSelect = document.getElementById('warehouse_id');
+                // 清空现有选项（保留第一个"全部"选项）
+                while (warehouseSelect.options.length > 1) {
+                    warehouseSelect.remove(1);
+                }
+                // 添加仓库选项
+                data.forEach(warehouse => {
+                    const option = document.createElement('option');
+                    option.value = warehouse.id;
+                    option.textContent = warehouse.name;
+                    warehouseSelect.appendChild(option);
+                });
+            });
+    });
+</script>
+{% endblock %}

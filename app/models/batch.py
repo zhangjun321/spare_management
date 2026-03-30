@@ -20,12 +20,12 @@ class Batch(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), comment='创建人 ID')
     
-    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id], backref='warehouse_batches')
-    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], backref='supplier_batches')
-    location = db.relationship('WarehouseLocation', foreign_keys=[location_id], backref='location_batches')
-    spare_part = db.relationship('SparePart', foreign_keys=[spare_part_id], backref='batch_spare_part')
-    serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.batch_id', backref='serial_batch', lazy='dynamic')
-    transactions = db.relationship('Transaction', foreign_keys='Transaction.batch_id', backref='transaction_batch', lazy='dynamic')
+    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id], back_populates='batches')
+    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], back_populates='batches')
+    location = db.relationship('WarehouseLocation', foreign_keys=[location_id], back_populates='batches')
+    spare_part = db.relationship('SparePart', foreign_keys=[spare_part_id], back_populates='batches')
+    serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.batch_id', back_populates='batch', lazy='dynamic')
+    transactions = db.relationship('Transaction', foreign_keys='Transaction.batch_id', back_populates='batch', lazy='dynamic')
     
     def __repr__(self):
         return f'<Batch {self.batch_number}>'

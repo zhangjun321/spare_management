@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block page_title %}库存流动报表{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">库存流动报表</h1>
+        </div>
+    </div>
+
+    <!-- 筛选选项 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('warehouses.report_inventory_flow') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="warehouse_id" class="mr-2">仓库</label>
+                            <select id="warehouse_id" name="warehouse_id" class="form-control">
+                                <option value="">全部</option>
+                                {% for warehouse in warehouses %}
+                                <option value="{{ warehouse.id }}" {% if warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="start_date" class="mr-2">开始日期</label>
+                            <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date or '' }}">
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="end_date" class="mr-2">结束日期</label>
+                            <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date or '' }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary">筛选</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 报表数据 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">库存流动统计</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>入库</th>
+                                    <th>出库</th>
+                                    <th>调拨入库</th>
+                                    <th>调拨出库</th>
+                                    <th>调整增加</th>
+                                    <th>调整减少</th>
+                                    <th>净变动</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in report_data %}
+                                <tr>
+                                    <td>{{ item.date }}</td>
+                                    <td>{{ item.in }}</td>
+                                    <td>{{ item.out }}</td>
+                                    <td>{{ item.transfer_in }}</td>
+                                    <td>{{ item.transfer_out }}</td>
+                                    <td>{{ item.adjust_in }}</td>
+                                    <td>{{ item.adjust_out }}</td>
+                                    <td>
+                                        <span class="{% if (item.in + item.transfer_in + item.adjust_in) - (item.out + item.transfer_out + item.adjust_out) >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {{ (item.in + item.transfer_in + item.adjust_in) - (item.out + item.transfer_out + item.adjust_out) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 页面加载时动态获取仓库列表
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{{ url_for('warehouses.api_warehouses') }}')
+            .then(response => response.json())
+            .then(data => {
+                const warehouseSelect = document.getElementById('warehouse_id');
+                // 清空现有选项（保留第一个"全部"选项）
+                while (warehouseSelect.options.length > 1) {
+                    warehouseSelect.remove(1);
+                }
+                // 添加仓库选项
+                data.forEach(warehouse => {
+                    const option = document.createElement('option');
+                    option.value = warehouse.id;
+                    option.textContent = warehouse.name;
+                    warehouseSelect.appendChild(option);
+                });
+            });
+    });
+</script>
+{% endblock %}

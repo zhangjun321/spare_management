@@ -3,6 +3,7 @@
 """
 
 from datetime import datetime
+import json
 from app.extensions import db
 
 
@@ -30,7 +31,10 @@ class Role(db.Model):
         """获取权限字典"""
         import json
         if self.permissions:
-            return json.loads(self.permissions)
+            try:
+                return json.loads(self.permissions)
+            except Exception:
+                return {}
         return {}
     
     def has_permission(self, module, action):
@@ -47,4 +51,28 @@ class Role(db.Model):
             if action in module_perms or '*' in module_perms:
                 return True
         
+        # 检查全局权限
+        if '*' in permissions:
+            global_perms = permissions['*']
+            if action in global_perms or '*' in global_perms:
+                return True
+        
         return False
+    
+    def add_permission(self, module, action):
+        """添加权限"""
+        permissions = self.get_permissions()
+        if module not in permissions:
+            permissions[module] = []
+        if action not in permissions[module]:
+            permissions[module].append(action)
+        self.permissions = json.dumps(permissions)
+    
+    def remove_permission(self, module, action):
+        """移除权限"""
+        permissions = self.get_permissions()
+        if module in permissions and action in permissions[module]:
+            permissions[module].remove(action)
+            if not permissions[module]:
+                del permissions[module]
+            self.permissions = json.dumps(permissions)

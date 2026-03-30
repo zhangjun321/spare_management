@@ -18,10 +18,10 @@ class SerialNumber(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), comment='创建人 ID')
     
-    spare_part = db.relationship('SparePart', foreign_keys=[spare_part_id])
-    batch = db.relationship('Batch', foreign_keys=[batch_id])
-    equipment = db.relationship('Equipment', foreign_keys=[equipment_id])
-    supplier = db.relationship('Supplier', foreign_keys=[supplier_id])
+    spare_part = db.relationship('SparePart', foreign_keys=[spare_part_id], back_populates='serial_numbers')
+    batch = db.relationship('Batch', foreign_keys=[batch_id], back_populates='serial_numbers')
+    equipment = db.relationship('Equipment', foreign_keys=[equipment_id], back_populates='serial_numbers')
+    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], back_populates='serial_numbers')
     
     def __repr__(self):
         return f'<SerialNumber {self.serial_number}>'

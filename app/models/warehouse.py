@@ -26,9 +26,10 @@ class Warehouse(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')
     
     # 关系
-    locations = db.relationship('WarehouseLocation', foreign_keys='WarehouseLocation.warehouse_id', lazy='dynamic')
-    batches = db.relationship('Batch', foreign_keys='Batch.warehouse_id', lazy='dynamic')
-    transactions = db.relationship('Transaction', foreign_keys='Transaction.warehouse_id', lazy='dynamic')
+    locations = db.relationship('WarehouseLocation', foreign_keys='WarehouseLocation.warehouse_id', back_populates='warehouse', lazy='dynamic')
+    batches = db.relationship('Batch', foreign_keys='Batch.warehouse_id', back_populates='warehouse', lazy='dynamic')
+    transactions = db.relationship('Transaction', foreign_keys='Transaction.warehouse_id', back_populates='warehouse', lazy='dynamic')
+    spare_parts = db.relationship('SparePart', foreign_keys='SparePart.warehouse_id', back_populates='warehouse', lazy='dynamic')
     
     def __repr__(self):
         return f'<Warehouse {self.name}>'

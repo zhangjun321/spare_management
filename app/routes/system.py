@@ -19,7 +19,22 @@ system_bp = Blueprint('system', __name__, template_folder='../templates/system')
 @permission_required('system', 'read')
 def index():
     """系统设置首页"""
-    return render_template('system/index.html')
+    from datetime import datetime
+    from app.models.system import EmailConfig
+    
+    # 获取统计数据
+    total_users = User.query.count()
+    active_users = User.query.filter_by(is_active=True).count()
+    admin_count = User.query.filter_by(is_admin=True, is_active=True).count()
+    email_config = EmailConfig.query.filter_by(is_active=True).first()
+    email_configured = email_config is not None
+    
+    return render_template('system/index.html',
+                         total_users=total_users,
+                         active_users=active_users,
+                         admin_count=admin_count,
+                         email_configured=email_configured,
+                         now=datetime.now())
 
 
 @system_bp.route('/email-config', methods=['GET', 'POST'])

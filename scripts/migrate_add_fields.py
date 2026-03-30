@@ -120,6 +120,26 @@ def run_migration():
         "添加 datasheet_url 字段"
     )
     
+    # 添加 warehouse_id 字段
+    execute_sql(
+        "ALTER TABLE spare_part ADD COLUMN warehouse_id INT COMMENT '默认仓库 ID'",
+        "添加 warehouse_id 字段"
+    )
+    execute_sql(
+        "ALTER TABLE spare_part ADD CONSTRAINT fk_spare_part_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouse(id)",
+        "添加 warehouse_id 外键"
+    )
+    
+    # 添加 location_id 字段
+    execute_sql(
+        "ALTER TABLE spare_part ADD COLUMN location_id INT COMMENT '默认货位 ID'",
+        "添加 location_id 字段"
+    )
+    execute_sql(
+        "ALTER TABLE spare_part ADD CONSTRAINT fk_spare_part_location FOREIGN KEY (location_id) REFERENCES warehouse_location(id)",
+        "添加 location_id 外键"
+    )
+    
     print("=" * 60)
     print("✅ 数据库迁移完成！")
     print("=" * 60)

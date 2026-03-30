@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block page_title %}库存周转率报表{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">库存周转率报表</h1>
+        </div>
+    </div>
+
+    <!-- 筛选选项 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('warehouses.report_inventory_turnover') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="warehouse_id" class="mr-2">仓库</label>
+                            <select id="warehouse_id" name="warehouse_id" class="form-control">
+                                <option value="">全部</option>
+                                {% for warehouse in warehouses %}
+                                <option value="{{ warehouse.id }}" {% if warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="period_days" class="mr-2">统计周期</label>
+                            <select id="period_days" name="period_days" class="form-control">
+                                <option value="7" {% if period_days == 7 %}selected{% endif %}>7天</option>
+                                <option value="30" {% if period_days == 30 %}selected{% endif %}>30天</option>
+                                <option value="90" {% if period_days == 90 %}selected{% endif %}>90天</option>
+                                <option value="180" {% if period_days == 180 %}selected{% endif %}>180天</option>
+                                <option value="365" {% if period_days == 365 %}selected{% endif %}>365天</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">筛选</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 周转率统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">周转率</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ report_data.turnover_rate }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-sync-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">周转天数</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ report_data.turnover_days }} 天</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">期间出库量</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ report_data.total_out_quantity }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-box-out fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 报表数据 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">库存周转率详情</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>统计周期</th>
+                                    <th>期间出库量</th>
+                                    <th>平均库存</th>
+                                    <th>周转率</th>
+                                    <th>周转天数</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ report_data.period_days }} 天</td>
+                                    <td>{{ report_data.total_out_quantity }}</td>
+                                    <td>{{ report_data.average_inventory }}</td>
+                                    <td>{{ report_data.turnover_rate }}</td>
+                                    <td>{{ report_data.turnover_days }} 天</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4">
+                        <h6 class="font-weight-bold">说明：</h6>
+                        <ul>
+                            <li>周转率 = 期间出库量 / 平均库存</li>
+                            <li>周转天数 = 统计周期 / 周转率</li>
+                            <li>周转率越高，说明库存管理越好，资金占用越少</li>
+                            <li>周转天数越短，说明库存流动越快，库存管理效率越高</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 页面加载时动态获取仓库列表
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{{ url_for('warehouses.api_warehouses') }}')
+            .then(response => response.json())
+            .then(data => {
+                const warehouseSelect = document.getElementById('warehouse_id');
+                // 清空现有选项（保留第一个"全部"选项）
+                while (warehouseSelect.options.length > 1) {
+                    warehouseSelect.remove(1);
+                }
+                // 添加仓库选项
+                data.forEach(warehouse => {
+                    const option = document.createElement('option');
+                    option.value = warehouse.id;
+                    option.textContent = warehouse.name;
+                    warehouseSelect.appendChild(option);
+                });
+            });
+    });
+</script>
+{% endblock %}

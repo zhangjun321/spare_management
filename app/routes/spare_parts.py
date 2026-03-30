@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
 """
 备件管理模块路由
 """
+
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, Response
 from flask_login import login_required, current_user
@@ -12,6 +14,7 @@ from app.models.supplier import Supplier
 from app.forms.spare_parts import SparePartForm, SparePartSearchForm
 from app.utils.decorators import permission_required
 from app.utils.helpers import paginate_query
+from app.services.cache_service import cache, clear_cache
 import io
 import csv
 from datetime import datetime
@@ -68,12 +71,20 @@ def index():
     
     pagination = paginate_query(query, per_page=per_page)
     
+    @cache('categories:active', expire=3600)
+    def get_active_categories():
+        return Category.query.filter_by(is_active=True).all()
+    
+    @cache('suppliers:active', expire=3600)
+    def get_active_suppliers():
+        return Supplier.query.filter_by(is_active=True).all()
+    
     return render_template('spare_parts/list.html', 
                          pagination=pagination, 
                          form=form,
                          per_page=per_page,
-                         categories=Category.query.filter_by(is_active=True).all(),
-                         suppliers=Supplier.query.filter_by(is_active=True).all())
+                         categories=get_active_categories(),
+                         suppliers=get_active_suppliers())
 
 
 @spare_parts_bp.route('/new', methods=['GET', 'POST'])
@@ -90,6 +101,8 @@ def new():
             specification=form.specification.data,
             category_id=form.category_id.data if form.category_id.data != 0 else None,
             supplier_id=form.supplier_id.data if form.supplier_id.data != 0 else None,
+            warehouse_id=form.warehouse_id.data if form.warehouse_id.data != 0 else None,
+            location_id=form.location_id.data if form.location_id.data != 0 else None,
             current_stock=form.current_stock.data or 0,
             min_stock=form.min_stock.data or 0,
             max_stock=form.max_stock.data,
@@ -115,6 +128,10 @@ def new():
         
         db.session.add(spare_part)
         db.session.commit()
+        
+        # 清除相关缓存
+        clear_cache('categories:*')
+        clear_cache('suppliers:*')
         
         flash('备件创建成功！', 'success')
         return redirect(url_for('spare_parts.index'))
@@ -145,6 +162,8 @@ def edit(id):
         spare_part.specification = form.specification.data
         spare_part.category_id = form.category_id.data if form.category_id.data != 0 else None
         spare_part.supplier_id = form.supplier_id.data if form.supplier_id.data != 0 else None
+        spare_part.warehouse_id = form.warehouse_id.data if form.warehouse_id.data != 0 else None
+        spare_part.location_id = form.location_id.data if form.location_id.data != 0 else None
         spare_part.current_stock = form.current_stock.data or 0
         spare_part.min_stock = form.min_stock.data or 0
         spare_part.max_stock = form.max_stock.data
@@ -167,6 +186,10 @@ def edit(id):
         spare_part.update_stock_status()
         
         db.session.commit()
+        
+        # 清除相关缓存
+        clear_cache('categories:*')
+        clear_cache('suppliers:*')
         
         flash('备件更新成功！', 'success')
         return redirect(url_for('spare_parts.detail', id=spare_part.id))

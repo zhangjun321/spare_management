@@ -56,14 +56,14 @@ def create_database():
             CHARACTER SET utf8mb4 
             COLLATE utf8mb4_unicode_ci
         """)
-        print(f"  ✓ 数据库 {DATABASE_NAME} 创建成功")
+        print(f"  [OK] 数据库 {DATABASE_NAME} 创建成功")
         
         cursor.close()
         conn.close()
         return True
         
     except Exception as e:
-        print(f"  ✗ 创建数据库失败：{str(e)}")
+        print(f"  [ERROR] 创建数据库失败：{str(e)}")
         return False
 
 
@@ -76,7 +76,7 @@ def execute_sql_script():
         script_path = os.path.join(os.path.dirname(__file__), 'create_tables.sql')
         
         if not os.path.exists(script_path):
-            print(f"  ✗ SQL 脚本不存在：{script_path}")
+            print(f"  [ERROR] SQL 脚本不存在：{script_path}")
             return False
         
         with open(script_path, 'r', encoding='utf-8') as f:
@@ -109,7 +109,7 @@ def execute_sql_script():
         
         conn.commit()
         
-        print(f"  ✓ SQL 脚本执行完成")
+        print(f"  [OK] SQL 脚本执行完成")
         print(f"    成功：{success_count} 条语句")
         print(f"    失败：{error_count} 条语句")
         
@@ -118,7 +118,7 @@ def execute_sql_script():
         return True
         
     except Exception as e:
-        print(f"  ✗ 执行 SQL 脚本失败：{str(e)}")
+        print(f"  [ERROR] 执行 SQL 脚本失败：{str(e)}")
         import traceback
         traceback.print_exc()
         return False
@@ -135,7 +135,7 @@ def verify_database():
         # 检查表数量
         cursor.execute("SHOW TABLES")
         tables = cursor.fetchall()
-        print(f"  ✓ 共创建 {len(tables)} 个表")
+        print(f"  [OK] 共创建 {len(tables)} 个表")
         
         # 显示所有表
         print(f"\n  表列表:")
@@ -152,7 +152,7 @@ def verify_database():
         # 检查角色数据
         cursor.execute("SELECT COUNT(*) FROM role")
         role_count = cursor.fetchone()[0]
-        print(f"\n  ✓ 初始化 {role_count} 个系统角色")
+        print(f"\n  [OK] 初始化 {role_count} 个系统角色")
         
         # 显示角色
         cursor.execute("SELECT name, display_name FROM role")
@@ -175,7 +175,7 @@ def verify_database():
         return True
         
     except Exception as e:
-        print(f"  ✗ 验证失败：{str(e)}")
+        print(f"  [ERROR] 验证失败：{str(e)}")
         return False
 
 
@@ -223,13 +223,13 @@ if __name__ == '__main__':
     success = main()
     
     if success:
-        print("\n✓ 数据库初始化成功!")
+        print("\n[OK] 数据库初始化成功!")
         print("\n下一步:")
         print("1. 安装 Python 依赖：pip install -r requirements.txt")
         print("2. 启动应用：python run.py")
         print("3. 访问系统：http://localhost:5000")
         print("4. 默认管理员：admin / admin123")
     else:
-        print("\n✗ 数据库初始化失败!")
+        print("\n[ERROR] 数据库初始化失败!")
     
     input("\n按回车键退出...")

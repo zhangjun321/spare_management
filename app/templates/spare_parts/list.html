@@ -233,6 +233,26 @@
                     <li>
                         <div class="dropdown-item">
                             <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="warehouse" id="column-warehouse" checked>
+                                <label class="form-check-label" for="column-warehouse">
+                                    仓库
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="location" id="column-location" checked>
+                                <label class="form-check-label" for="column-location">
+                                    货位
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
                                 <input class="form-check-input column-toggle" type="checkbox" value="is_active" id="column-is_active" checked>
                                 <label class="form-check-label" for="column-is_active">
                                     状态
@@ -388,6 +408,8 @@
                         <th data-column="stock_status">库存状态</th>
                         <th data-column="unit_price">单价</th>
                         <th data-column="unit">单位</th>
+                        <th data-column="warehouse">仓库</th>
+                        <th data-column="location">货位</th>
                         <th data-column="is_active">状态</th>
                         <th data-column="action">操作</th>
                     </tr>
@@ -446,6 +468,8 @@
                         </td>
                         <td data-column="unit_price">¥{{ '%.2f'|format(part.unit_price or 0) }}</td>
                         <td data-column="unit">{{ part.unit or '-' }}</td>
+                        <td data-column="warehouse">{{ part.warehouse.name if part.warehouse else '-' }}</td>
+                        <td data-column="location">{{ part.location.location_code if part.location else '-' }}</td>
                         <td data-column="is_active">
                             {% if part.is_active %}
                             <span class="badge bg-success">启用</span>

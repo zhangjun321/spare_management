@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}创建交易{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">创建交易</h1>
+        <a href="{{ url_for('transactions.index') }}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> 返回列表
+        </a>
+    </div>
+
+    <!-- 交易表单 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">交易信息</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('transactions.create') }}">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.transaction_type.label(class="form-label") }}
+                    {{ form.transaction_type(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.warehouse_id.label(class="form-label") }}
+                    {{ form.warehouse_id(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.spare_part_id.label(class="form-label") }}
+                    {{ form.spare_part_id(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.batch_id.label(class="form-label") }}
+                    {{ form.batch_id(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.quantity.label(class="form-label") }}
+                    {{ form.quantity(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.unit_price.label(class="form-label") }}
+                    {{ form.unit_price(class="form-control") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.remark.label(class="form-label") }}
+                    {{ form.remark(class="form-control", rows=3) }}
+                </div>
+                
+                <button type="submit" class="btn btn-primary">创建交易</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 页面加载时初始化数据
+$(document).ready(function() {
+    // 当备件选择变化时，更新批次选项
+    $('#spare_part_id').change(function() {
+        var sparePartId = $(this).val();
+        if (sparePartId) {
+            $.ajax({
+                url: '{{ url_for('transactions.get_batches', spare_part_id=0) }}'.replace('0', sparePartId),
+                type: 'GET',
+                success: function(data) {
+                    var batchSelect = $('#batch_id');
+                    batchSelect.empty();
+                    $.each(data, function(index, option) {
+                        batchSelect.append($('<option>', {
+                            value: option[0],
+                            text: option[1]
+                        }));
+                    });
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block page_title %}库位管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">库位管理</h1>
+        </div>
+    </div>
+
+    <!-- 筛选和操作 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('warehouses.location_list') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="warehouse_id" class="mr-2">所属仓库</label>
+                            <select id="warehouse_id" name="warehouse_id" class="form-control">
+                                <option value="">全部</option>
+                                {% for warehouse in warehouses %}
+                                <option value="{{ warehouse.id }}" {% if filters.warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="location_code" class="mr-2">库位编码</label>
+                            <input type="text" id="location_code" name="location_code" class="form-control" value="{{ filters.location_code or '' }}" placeholder="输入库位编码">
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="location_type" class="mr-2">库位类型</label>
+                            <select id="location_type" name="location_type" class="form-control">
+                                <option value="">全部</option>
+                                <option value="shelf" {% if filters.location_type == 'shelf' %}selected{% endif %}>货架</option>
+                                <option value="bin" {% if filters.location_type == 'bin' %}selected{% endif %}>料箱</option>
+                                <option value="pallet" {% if filters.location_type == 'pallet' %}selected{% endif %}>托盘</option>
+                                <option value="area" {% if filters.location_type == 'area' %}selected{% endif %}>区域</option>
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="status" class="mr-2">状态</label>
+                            <select id="status" name="status" class="form-control">
+                                <option value="">全部</option>
+                                <option value="available" {% if filters.status == 'available' %}selected{% endif %}>可用</option>
+                                <option value="occupied" {% if filters.status == 'occupied' %}selected{% endif %}>已占用</option>
+                                <option value="maintenance" {% if filters.status == 'maintenance' %}selected{% endif %}>维护中</option>
+                                <option value="disabled" {% if filters.status == 'disabled' %}selected{% endif %}>禁用</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary mr-2">筛选</button>
+                        <a href="{{ url_for('warehouses.location_list') }}" class="btn btn-secondary mr-2">重置</a>
+                        <a href="{{ url_for('warehouses.location_create') }}" class="btn btn-success">创建库位</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库位列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>库位编码</th>
+                                    <th>库位名称</th>
+                                    <th>所属仓库</th>
+                                    <th>库位类型</th>
+                                    <th>最大容量</th>
+                                    <th>状态</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for location in pagination.items %}
+                                <tr>
+                                    <td>{{ location.location_code }}</td>
+                                    <td>{{ location.location_name or '未设置' }}</td>
+                                    <td>{{ location.warehouse.name }}</td>
+                                    <td>
+                                        {% if location.location_type == 'shelf' %}货架{% elif location.location_type == 'bin' %}料箱{% elif location.location_type == 'pallet' %}托盘{% elif location.location_type == 'area' %}区域{% endif %}
+                                    </td>
+                                    <td>{{ location.max_capacity or '未设置' }}</td>
+                                    <td>
+                                        <span class="badge {% if location.status == 'available' %}badge-success{% elif location.status == 'occupied' %}badge-warning{% elif location.status == 'maintenance' %}badge-info{% elif location.status == 'disabled' %}badge-danger{% endif %}">
+                                            {% if location.status == 'available' %}可用{% elif location.status == 'occupied' %}已占用{% elif location.status == 'maintenance' %}维护中{% elif location.status == 'disabled' %}禁用{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>{{ location.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('warehouses.location_detail', id=location.id) }}" class="btn btn-info btn-sm mr-1">详情</a>
+                                        <a href="{{ url_for('warehouses.location_edit', id=location.id) }}" class="btn btn-primary btn-sm mr-1">编辑</a>
+                                        <form action="{{ url_for('warehouses.location_delete', id=location.id) }}" method="post" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('确定要删除该库位吗？');">删除</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- 分页 -->
+                    <div class="mt-4">
+                        <nav aria-label="Page navigation example">
+                            <ul class="pagination justify-content-center">
+                                {% if pagination.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('warehouses.location_list', page=pagination.prev_num, **filters) }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('warehouses.location_list', page=page_num, **filters) }}">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#">...</a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                                {% if pagination.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('warehouses.location_list', page=pagination.next_num, **filters) }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 页面加载时动态获取仓库列表
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('{{ url_for('warehouses.api_warehouses') }}')
+            .then(response => response.json())
+            .then(data => {
+                const warehouseSelect = document.getElementById('warehouse_id');
+                // 清空现有选项（保留第一个"全部"选项）
+                while (warehouseSelect.options.length > 1) {
+                    warehouseSelect.remove(1);
+                }
+                // 添加仓库选项
+                data.forEach(warehouse => {
+                    const option = document.createElement('option');
+                    option.value = warehouse.id;
+                    option.textContent = warehouse.name;
+                    warehouseSelect.appendChild(option);
+                });
+            });
+    });
+</script>
+{% endblock %}

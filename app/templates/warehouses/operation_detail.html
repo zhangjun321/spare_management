@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block page_title %}操作详情{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">操作详情</h1>
+        </div>
+    </div>
+
+    <!-- 操作基本信息 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">操作信息</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">操作类型</dt>
+                                <dd class="col-sm-8">
+                                    {% if operation.transaction_type == 'in' %}入库{% elif operation.transaction_type == 'out' %}出库{% elif operation.transaction_type == 'transfer_in' %}调拨入库{% elif operation.transaction_type == 'transfer_out' %}调拨出库{% elif operation.transaction_type == 'adjust_in' %}调整增加{% elif operation.transaction_type == 'adjust_out' %}调整减少{% endif %}
+                                </dd>
+                                <dt class="col-sm-4">仓库</dt>
+                                <dd class="col-sm-8">{{ operation.warehouse.name }}</dd>
+                                <dt class="col-sm-4">操作员</dt>
+                                <dd class="col-sm-8">{{ operation.user.real_name }}</dd>
+                                <dt class="col-sm-4">操作时间</dt>
+                                <dd class="col-sm-8">{{ operation.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">总金额</dt>
+                                <dd class="col-sm-8">¥{{ operation.total_amount|round(2) }}</dd>
+                                <dt class="col-sm-4">状态</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge {% if operation.status == 'completed' %}badge-success{% elif operation.status == 'pending' %}badge-warning{% elif operation.status == 'failed' %}badge-danger{% endif %}">
+                                        {% if operation.status == 'completed' %}已完成{% elif operation.status == 'pending' %}待处理{% elif operation.status == 'failed' %}失败{% endif %}
+                                    </span>
+                                </dd>
+                                <dt class="col-sm-4">备注</dt>
+                                <dd class="col-sm-8">{{ operation.remark or '无' }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作明细 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">操作明细</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>备件名称</th>
+                                    <th>备件编码</th>
+                                    <th>数量</th>
+                                    <th>单价</th>
+                                    <th>总金额</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for detail in operation.details %}
+                                <tr>
+                                    <td>{{ detail.spare_part.name }}</td>
+                                    <td>{{ detail.spare_part.part_code }}</td>
+                                    <td>{{ detail.quantity }}</td>
+                                    <td>{{ detail.unit_price }}</td>
+                                    <td>{{ detail.total_price }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 返回按钮 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{{ url_for('warehouses.operations_list') }}" class="btn btn-secondary">返回列表</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

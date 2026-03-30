@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Flask 应用工厂
 创建和配置 Flask 应用
@@ -38,6 +39,13 @@ def create_app(config_name=None):
     # 初始化扩展
     init_extensions(app)
     
+    # 初始化 Redis 缓存（非强制）
+    try:
+        from app.services.cache_service import init_redis
+        init_redis()
+    except Exception as e:
+        print(f"Redis 初始化失败: {e}")
+    
     # 注册蓝图
     register_blueprints(app)
     
@@ -68,6 +76,21 @@ def create_app(config_name=None):
     @app.shell_context_processor
     def make_shell_context():
         return {'db': db, 'app': app}
+    
+    # 添加响应头部中间件
+    @app.after_request
+    def add_security_headers(response):
+        # 防止 MIME 类型嗅探
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        # 防止点击劫持
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        # 内容安全策略 - 允许 CDN 资源和内联样式
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*"
+        # 缓存控制
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     
     return app
 

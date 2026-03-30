@@ -250,7 +250,7 @@
             padding: var(--spacing-md);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             flex: 1;
-            min-height: calc(100vh - 180px);
+            min-height: 100vh;
         }
         
         .main-content.collapsed {
@@ -1041,56 +1041,73 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <script>
-        // 侧边栏折叠功能
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const mainContent = document.querySelector('.main-content');
-        const mainContentToggle = document.getElementById('mainContentToggle');
-        const toggleIcon = sidebarToggle?.querySelector('i');
-        
-        // 从本地存储恢复折叠状态
-        const savedCollapsedState = localStorage.getItem('sidebarCollapsed');
-        if (savedCollapsedState === 'true') {
-            sidebar.classList.add('collapsed');
-            mainContent?.classList.add('collapsed');
-            if (toggleIcon) {
-                toggleIcon.classList.remove('fa-chevron-left');
-                toggleIcon.classList.add('fa-chevron-right');
-            }
-        }
-        
-        // 侧边栏折叠按钮点击事件
-        sidebarToggle?.addEventListener('click', function() {
-            sidebar.classList.toggle('collapsed');
-            mainContent?.classList.toggle('collapsed');
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 侧边栏折叠功能
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const mainContent = document.querySelector('.main-content');
+            const mainContentToggle = document.getElementById('mainContentToggle');
+            const toggleIcon = sidebarToggle?.querySelector('i');
             
-            // 切换图标
+            // 确保侧边栏默认展开
+            if (sidebar) {
+                sidebar.classList.remove('collapsed');
+            }
+            if (mainContent) {
+                mainContent.classList.remove('collapsed');
+            }
             if (toggleIcon) {
-                if (sidebar.classList.contains('collapsed')) {
-                    toggleIcon.classList.remove('fa-chevron-left');
-                    toggleIcon.classList.add('fa-chevron-right');
-                } else {
-                    toggleIcon.classList.remove('fa-chevron-right');
-                    toggleIcon.classList.add('fa-chevron-left');
+                toggleIcon.classList.remove('fa-chevron-right');
+                toggleIcon.classList.add('fa-chevron-left');
+            }
+            
+            // 清除本地存储中的折叠状态
+            localStorage.removeItem('sidebarCollapsed');
+            
+            // 侧边栏折叠按钮点击事件
+            sidebarToggle?.addEventListener('click', function() {
+                if (sidebar) {
+                    sidebar.classList.toggle('collapsed');
                 }
-            }
+                if (mainContent) {
+                    mainContent.classList.toggle('collapsed');
+                }
+                
+                // 切换图标
+                if (toggleIcon) {
+                    if (sidebar && sidebar.classList.contains('collapsed')) {
+                        toggleIcon.classList.remove('fa-chevron-left');
+                        toggleIcon.classList.add('fa-chevron-right');
+                    } else {
+                        toggleIcon.classList.remove('fa-chevron-right');
+                        toggleIcon.classList.add('fa-chevron-left');
+                    }
+                }
+                
+                // 保存状态到本地存储
+                if (sidebar) {
+                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                }
+            });
             
-            // 保存状态到本地存储
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            // 主内容切换按钮（移动端）
+            mainContentToggle?.addEventListener('click', function() {
+                if (sidebar) {
+                    sidebar.classList.toggle('show');
+                }
+            });
+            
+            // 点击内容区域时关闭侧边栏（移动端）
+            document.querySelector('.main-content')?.addEventListener('click', function() {
+                if (window.innerWidth <= 768 && sidebar) {
+                    sidebar.classList.remove('show');
+                }
+            });
         });
-        
-        // 主内容切换按钮（移动端）
-        mainContentToggle?.addEventListener('click', function() {
-            sidebar.classList.toggle('show');
-        });
-        
-        // 点击内容区域时关闭侧边栏（移动端）
-        document.querySelector('.main-content')?.addEventListener('click', function() {
-            if (window.innerWidth <= 768) {
-                sidebar.classList.remove('show');
-            }
-        });
-        
+    </script>
+    
+    <script>
         // 自动隐藏消息提示
         setTimeout(function() {
             var alerts = document.querySelectorAll('.alert');
@@ -1202,10 +1219,12 @@
         }
         
         // 页面加载时获取通知
-        loadNotifications();
-        
-        // 每 30 秒刷新一次通知
-        setInterval(loadNotifications, 30000);
+        window.onload = function() {
+            loadNotifications();
+            
+            // 每 30 秒刷新一次通知
+            setInterval(loadNotifications, 30000);
+        }
     </script>
     
     {% block extra_js %}{% endblock %}

@@ -6,13 +6,15 @@ class SparePart(db.Model):
     __tablename__ = 'spare_part'
     
     id = db.Column(db.Integer, primary_key=True)
-    part_code = db.Column(db.String(50), unique=True, nullable=False, comment='备件代码')
-    name = db.Column(db.String(200), nullable=False, comment='备件名称')
+    part_code = db.Column(db.String(50), unique=True, nullable=False, index=True, comment='备件代码')
+    name = db.Column(db.String(200), nullable=False, index=True, comment='备件名称')
     specification = db.Column(db.String(200), comment='规格型号')
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), comment='分类 ID')
-    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), comment='供应商 ID')
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), index=True, comment='分类 ID')
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), index=True, comment='供应商 ID')
+    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouse.id'), index=True, comment='默认仓库 ID')
+    location_id = db.Column(db.Integer, db.ForeignKey('warehouse_location.id'), index=True, comment='默认货位 ID')
     current_stock = db.Column(db.Integer, nullable=False, default=0, comment='当前库存')
-    stock_status = db.Column(db.String(20), nullable=False, default='normal', comment='库存状态')
+    stock_status = db.Column(db.String(20), nullable=False, default='normal', index=True, comment='库存状态')
     min_stock = db.Column(db.Integer, default=0, comment='最低库存')
     max_stock = db.Column(db.Integer, comment='最高库存')
     unit = db.Column(db.String(20), comment='单位')
@@ -36,11 +38,13 @@ class SparePart(db.Model):
     technical_params = db.Column(db.JSON, comment='技术参数')
     datasheet_url = db.Column(db.String(500), comment='数据手册 URL')
     
-    category = db.relationship('Category', foreign_keys=[category_id], backref='category_spare_parts')
-    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], backref='supplier_spare_parts')
-    batches = db.relationship('Batch', foreign_keys='Batch.spare_part_id', backref='batch_spare_part', lazy='dynamic')
-    transactions = db.relationship('Transaction', foreign_keys='Transaction.spare_part_id', lazy='dynamic')
-    serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.spare_part_id', lazy='dynamic')
+    category = db.relationship('Category', foreign_keys=[category_id], back_populates='spare_parts')
+    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], back_populates='spare_parts')
+    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id], back_populates='spare_parts')
+    warehouse_location = db.relationship('WarehouseLocation', foreign_keys=[location_id], back_populates='spare_parts')
+    batches = db.relationship('Batch', foreign_keys='Batch.spare_part_id', back_populates='spare_part', lazy='dynamic')
+    transactions = db.relationship('Transaction', foreign_keys='Transaction.spare_part_id', back_populates='spare_part', lazy='dynamic')
+    serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.spare_part_id', back_populates='spare_part', lazy='dynamic')
     
     def update_stock_status(self):
         """更新库存状态并触发预警"""
@@ -64,6 +68,7 @@ class SparePart(db.Model):
         """触发库存预警"""
         from app.models.system import Alert, Notification
         from app.models.user import User
+        from app.models.role import Role
         from app.utils.email_service import email_service
         from flask import current_app
         import logging
@@ -93,30 +98,45 @@ class SparePart(db.Model):
         from app.extensions import db
         db.session.add(alert)
         
-        # 获取admin超级管理员
-        admin_user = User.query.filter_by(username='admin', is_admin=True, is_active=True).first()
+        # 获取所有需要接收预警的用户
+        # 1. 系统管理员
+        admin_users = User.query.filter_by(is_admin=True, is_active=True).all()
+        # 2. 仓库管理员
+        warehouse_admin_role = Role.query.filter_by(name='warehouse_manager').first()
+        warehouse_admins = []
+        if warehouse_admin_role:
+            warehouse_admins = User.query.filter_by(role_id=warehouse_admin_role.id, is_active=True).all()
+        # 3. 采购员
+        purchaser_role = Role.query.filter_by(name='purchaser').first()
+        purchasers = []
+        if purchaser_role:
+            purchasers = User.query.filter_by(role_id=purchaser_role.id, is_active=True).all()
         
-        # 只为admin超级管理员创建通知并发送邮件
-        if admin_user and admin_user.email:
-            # 创建系统内通知
-            notification = Notification(
-                user_id=admin_user.id,
-                title=title,
-                message=f"备件 {self.part_code} - {self.name} 触发{title}，当前库存：{self.current_stock}",
-                type='stock_alert',
-                level=level,
-                related_object_id=self.id,
-                related_object_type='spare_part'
-            )
-            db.session.add(notification)
-            
-            # 发送邮件通知 - 使用管理员自己的邮箱配置
-            try:
-                email_service.send_stock_alert(admin_user, self, user_id=admin_user.id)
-            except Exception as e:
-                logger.error(f"发送库存预警邮件失败：{str(e)}")
+        # 合并所有需要通知的用户
+        notify_users = set(admin_users + warehouse_admins + purchasers)
         
-        logger.info(f"库存预警已触发：{self.part_code}, 状态：{self.stock_status}")
+        # 为每个用户创建通知并发送邮件
+        for user in notify_users:
+            if user.email:
+                # 创建系统内通知
+                notification = Notification(
+                    user_id=user.id,
+                    title=title,
+                    message=f"备件 {self.part_code} - {self.name} 触发{title}，当前库存：{self.current_stock}",
+                    type='stock_alert',
+                    level=level,
+                    related_object_id=self.id,
+                    related_object_type='spare_part'
+                )
+                db.session.add(notification)
+                
+                # 发送邮件通知 - 使用用户自己的邮箱配置
+                try:
+                    email_service.send_stock_alert(user, self, user_id=user.id)
+                except Exception as e:
+                    logger.error(f"发送库存预警邮件给用户 {user.username} 失败：{str(e)}")
+        
+        logger.info(f"库存预警已触发：{self.part_code}, 状态：{self.stock_status}，通知用户数：{len(notify_users)}")
     
     def __repr__(self):
         return f'<SparePart {self.part_code}>'

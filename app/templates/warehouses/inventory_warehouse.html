@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block page_title %}仓库库存 - {{ warehouse.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">仓库库存 - {{ warehouse.name }}</h1>
+        </div>
+    </div>
+
+    <!-- 仓库库存统计 -->
+    <div class="row mb-4">
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">库存数量</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_quantity }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">库存价值</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">¥{{ stats.total_value|round(2) }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">备件种类</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.spare_part_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-cubes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库存操作按钮 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h6 class="m-0 font-weight-bold text-primary">库存操作</h6>
+                        </div>
+                        <div class="col text-right">
+                            <a href="{{ url_for('warehouses.inventory_adjust') }}" class="btn btn-primary mr-2">库存调整</a>
+                            <a href="{{ url_for('warehouses.inventory_transfer') }}" class="btn btn-success">库存调拨</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库存列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">库存详情</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>备件名称</th>
+                                    <th>备件编码</th>
+                                    <th>总数量</th>
+                                    <th>批次数量</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in inventory %}
+                                <tr>
+                                    <td>{{ item.spare_part.name }}</td>
+                                    <td>{{ item.spare_part.part_code }}</td>
+                                    <td>{{ item.total_quantity }}</td>
+                                    <td>{{ item.batches|length }}</td>
+                                    <td>
+                                        <button class="btn btn-info btn-sm" data-toggle="modal" data-target="#batchModal{{ item.spare_part.id }}">查看批次</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批次详情模态框 -->
+    {% for item in inventory %}
+    <div class="modal fade" id="batchModal{{ item.spare_part.id }}" tabindex="-1" role="dialog" aria-labelledby="batchModalLabel{{ item.spare_part.id }}" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="batchModalLabel{{ item.spare_part.id }}">批次详情 - {{ item.spare_part.name }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>批次编号</th>
+                                    <th>库位</th>
+                                    <th>数量</th>
+                                    <th>单价</th>
+                                    <th>总价值</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for batch in item.batches %}
+                                <tr>
+                                    <td>{{ batch.batch_number }}</td>
+                                    <td>{{ batch.warehouse_location.location_code }}</td>
+                                    <td>{{ batch.quantity }}</td>
+                                    <td>{{ batch.unit_price or 0 }}</td>
+                                    <td>{{ (batch.quantity * (batch.unit_price or 0))|round(2) }}</td>
+                                    <td>
+                                        <span class="badge {% if batch.status == 'active' %}badge-success{% elif batch.status == 'inactive' %}badge-danger{% endif %}">
+                                            {% if batch.status == 'active' %}活跃{% elif batch.status == 'inactive' %}不活跃{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
