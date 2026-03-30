@@ -142,6 +142,14 @@ def register_blueprints(app):
     from app.routes.system import system_bp
     app.register_blueprint(system_bp, url_prefix='/system')
     
+    # 系统监控模块
+    from app.routes.monitor import monitor_bp
+    app.register_blueprint(monitor_bp, url_prefix='/monitor')
+    
+    # 日志审计模块
+    from app.routes.logs import logs_bp
+    app.register_blueprint(logs_bp, url_prefix='/logs')
+    
     # 通知模块
     from app.routes.notification import notification_bp
     app.register_blueprint(notification_bp, url_prefix='/notification')

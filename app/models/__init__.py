@@ -24,6 +24,7 @@ from app.models.supplier_evaluation import SupplierEvaluation
 from app.models.system import Tag, Alert, AlertRule, Notification, EmailConfig
 from app.models.deletion_log import DeletionLog
 from app.models.system_log import SystemLog
+from app.models.system_monitor import SystemMonitor
 
 __all__ = [
     'db',
@@ -56,5 +57,6 @@ __all__ = [
     'Notification',
     'EmailConfig',
     'DeletionLog',
-    'SystemLog'
+    'SystemLog',
+    'SystemMonitor'
 ]

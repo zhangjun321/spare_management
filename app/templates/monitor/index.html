@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}系统监控 - 备件管理系统{% endblock %}
+
+{% block page_title %}系统运行监控{% endblock %}
+
+{% block content %}
+<style>
+    .monitor-card {
+        border: none;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .monitor-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+    
+    .monitor-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 16px 16px 0 0;
+    }
+    
+    .monitor-body {
+        padding: 1.5rem;
+    }
+    
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .status-normal { background: #48bb78; }
+    .status-warning { background: #ed8936; }
+    .status-critical { background: #f56565; }
+    
+    .progress {
+        height: 8px;
+        border-radius: 4px;
+        background: #e2e8f0;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
+    
+    .progress-bar.normal { background: linear-gradient(90deg, #48bb78, #38a169); }
+    .progress-bar.warning { background: linear-gradient(90deg, #ed8936, #dd6b20); }
+    .progress-bar.critical { background: linear-gradient(90deg, #f56565, #e53e3e); }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #718096;
+        margin-top: 0.25rem;
+    }
+    
+    .health-score {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: 700;
+        color: white;
+        margin: 0 auto;
+        position: relative;
+    }
+    
+    .health-excellent { background: linear-gradient(135deg, #48bb78, #38a169); }
+    .health-good { background: linear-gradient(135deg, #4299e1, #3182ce); }
+    .health-fair { background: linear-gradient(135deg, #ed8936, #dd6b20); }
+    .health-poor { background: linear-gradient(135deg, #f56565, #e53e3e); }
+</style>
+
+<div class="row g-4">
+    <!-- 健康度评分 -->
+    <div class="col-12">
+        <div class="monitor-card">
+            <div class="monitor-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-heartbeat me-2"></i>系统健康度</h5>
+                    <button class="btn btn-sm btn-light" onclick="loadMonitorData()">
+                        <i class="fas fa-sync-alt me-1"></i>刷新
+                    </button>
+                </div>
+            </div>
+            <div class="monitor-body">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center">
+                        <div id="healthScore" class="health-score health-excellent">
+                            --
+                        </div>
+                        <div class="text-center mt-3">
+                            <span id="healthLevel" class="badge bg-success">--</span>
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="alert alert-light border mb-0">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="status-indicator status-normal" id="serverStatus"></span>
+                                        <strong>服务器状态</strong>
+                                    </div>
+                                    <div id="serverIssues" class="small text-muted mt-2">-</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-light border mb-0">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="status-indicator status-normal" id="databaseStatus"></span>
+                                        <strong>数据库状态</strong>
+                                    </div>
+                                    <div id="databaseIssues" class="small text-muted mt-2">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 服务器资源 -->
+    <div class="col-md-4">
+        <div class="monitor-card">
+            <div class="monitor-header">
+                <h5 class="mb-0"><i class="fas fa-server me-2"></i>服务器资源</h5>
+            </div>
+            <div class="monitor-body">
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">CPU 使用率</span>
+                        <span id="cpuValue" class="fw-bold">--%</span>
+                    </div>
+                    <div class="progress">
+                        <div id="cpuProgress" class="progress-bar normal" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">内存使用率</span>
+                        <span id="memoryValue" class="fw-bold">--%</span>
+                    </div>
+                    <div class="progress">
+                        <div id="memoryProgress" class="progress-bar normal" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted" id="memoryDetail"></small>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">磁盘使用率</span>
+                        <span id="diskValue" class="fw-bold">--%</span>
+                    </div>
+                    <div class="progress">
+                        <div id="diskProgress" class="progress-bar normal" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted" id="diskDetail"></small>
+                </div>
+                
+                <div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">系统运行时间</span>
+                        <span id="uptimeValue" class="fw-bold">--</span>
+                    </div>
+                    <small class="text-muted" id="systemInfo"></small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 数据库状态 -->
+    <div class="col-md-4">
+        <div class="monitor-card">
+            <div class="monitor-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <h5 class="mb-0"><i class="fas fa-database me-2"></i>数据库状态</h5>
+            </div>
+            <div class="monitor-body">
+                <div class="text-center mb-4">
+                    <div class="stat-value" id="dbSize">-- MB</div>
+                    <div class="stat-label">数据库大小</div>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-6 text-center">
+                        <div class="stat-value" id="tableCount">--</div>
+                        <div class="stat-label">表数量</div>
+                    </div>
+                    <div class="col-6 text-center">
+                        <div class="stat-value" id="recordCount">--</div>
+                        <div class="stat-label">备件数量</div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="alert alert-success mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span id="dbConnectionStatus">数据库连接正常</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 服务状态 -->
+    <div class="col-md-4">
+        <div class="monitor-card">
+            <div class="monitor-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>服务状态</h5>
+            </div>
+            <div class="monitor-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fas fa-envelope me-2"></i>邮件服务</span>
+                        <span id="emailServiceStatus" class="badge bg-secondary">--</span>
+                    </div>
+                    <small class="text-muted" id="emailServiceMessage">-</small>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fas fa-memory me-2"></i>缓存服务</span>
+                        <span id="cacheServiceStatus" class="badge bg-secondary">--</span>
+                    </div>
+                    <small class="text-muted" id="cacheServiceMessage">-</small>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fas fa-file-alt me-2"></i>日志服务</span>
+                        <span id="logServiceStatus" class="badge bg-secondary">--</span>
+                    </div>
+                    <small class="text-muted" id="logServiceMessage">-</small>
+                </div>
+                
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fas fa-redis me-2"></i>Redis</span>
+                        <span id="redisStatus" class="badge bg-secondary">--</span>
+                    </div>
+                    <small class="text-muted" id="redisMessage">-</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getStatusClass(status) {
+    if (status === 'normal') return 'status-normal';
+    if (status === 'warning') return 'status-warning';
+    if (status === 'critical') return 'status-critical';
+    return 'status-normal';
+}
+
+function getProgressClass(status) {
+    if (status === 'normal') return 'normal';
+    if (status === 'warning') return 'warning';
+    if (status === 'critical') return 'critical';
+    return 'normal';
+}
+
+function getBadgeClass(status) {
+    if (status === 'normal' || status === 'success') return 'bg-success';
+    if (status === 'warning') return 'bg-warning';
+    if (status === 'critical' || status === 'error') return 'bg-danger';
+    return 'bg-secondary';
+}
+
+function loadMonitorData() {
+    // 加载概览数据
+    fetch('/monitor/api/overview')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const overview = data.data;
+                
+                // 更新健康度
+                const healthScoreEl = document.getElementById('healthScore');
+                const healthLevelEl = document.getElementById('healthLevel');
+                
+                healthScoreEl.textContent = overview.health_score;
+                healthLevelEl.textContent = overview.health_level;
+                
+                // 更新健康度颜色
+                healthScoreEl.className = 'health-score';
+                if (overview.health_score >= 90) {
+                    healthScoreEl.classList.add('health-excellent');
+                    healthLevelEl.className = 'badge bg-success';
+                } else if (overview.health_score >= 70) {
+                    healthScoreEl.classList.add('health-good');
+                    healthLevelEl.className = 'badge bg-primary';
+                } else if (overview.health_score >= 50) {
+                    healthScoreEl.classList.add('health-fair');
+                    healthLevelEl.className = 'badge bg-warning';
+                } else {
+                    healthScoreEl.classList.add('health-poor');
+                    healthLevelEl.className = 'badge bg-danger';
+                }
+                
+                // 更新问题列表
+                const issuesEl = document.getElementById('serverIssues');
+                if (overview.issues && overview.issues.length > 0) {
+                    issuesEl.textContent = overview.issues.join('，');
+                } else {
+                    issuesEl.textContent = '系统运行正常';
+                }
+            }
+        });
+    
+    // 加载服务器状态
+    fetch('/monitor/api/server')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const server = data.data;
+                
+                // CPU
+                document.getElementById('cpuValue').textContent = server.cpu.usage.toFixed(1) + '%';
+                document.getElementById('cpuProgress').style.width = server.cpu.usage + '%';
+                document.getElementById('cpuProgress').className = 'progress-bar ' + getProgressClass(server.cpu.status);
+                
+                // 内存
+                document.getElementById('memoryValue').textContent = server.memory.usage.toFixed(1) + '%';
+                document.getElementById('memoryProgress').style.width = server.memory.usage + '%';
+                document.getElementById('memoryProgress').className = 'progress-bar ' + getProgressClass(server.memory.status);
+                document.getElementById('memoryDetail').textContent = 
+                    `已用 ${server.memory.used.toFixed(1)}GB / 总计 ${server.memory.total.toFixed(1)}GB`;
+                
+                // 磁盘
+                document.getElementById('diskValue').textContent = server.disk.usage.toFixed(1) + '%';
+                document.getElementById('diskProgress').style.width = server.disk.usage + '%';
+                document.getElementById('diskProgress').className = 'progress-bar ' + getProgressClass(server.disk.status);
+                document.getElementById('diskDetail').textContent = 
+                    `已用 ${server.disk.used.toFixed(1)}GB / 总计 ${server.disk.total.toFixed(1)}GB`;
+                
+                // 运行时间
+                document.getElementById('uptimeValue').textContent = 
+                    `${server.uptime.days}天 ${server.uptime.hours}小时 ${server.uptime.minutes}分钟`;
+                
+                // 系统信息
+                document.getElementById('systemInfo').textContent = 
+                    `${server.system.platform} - Python ${server.system.python_version}`;
+                
+                // 服务器状态指示器
+                const serverStatus = server.cpu.status === 'critical' || server.memory.status === 'critical' || server.disk.status === 'critical' 
+                    ? 'critical' 
+                    : (server.cpu.status === 'warning' || server.memory.status === 'warning' || server.disk.status === 'warning' ? 'warning' : 'normal');
+                
+                document.getElementById('serverStatus').className = 'status-indicator ' + getStatusClass(serverStatus);
+            }
+        });
+    
+    // 加载数据库状态
+    fetch('/monitor/api/database')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const db = data.data;
+                
+                document.getElementById('dbSize').textContent = db.size_mb.toFixed(2) + ' MB';
+                document.getElementById('tableCount').textContent = db.table_count;
+                document.getElementById('recordCount').textContent = db.record_count;
+                document.getElementById('dbConnectionStatus').textContent = '数据库连接正常';
+                
+                document.getElementById('databaseStatus').className = 'status-indicator ' + getStatusClass(db.status);
+            } else {
+                document.getElementById('dbConnectionStatus').textContent = '数据库连接异常';
+                document.getElementById('databaseStatus').className = 'status-indicator status-critical';
+            }
+        });
+    
+    // 加载 Redis 状态
+    fetch('/monitor/api/redis')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const redis = data.data;
+                
+                if (redis.status === 'unavailable') {
+                    document.getElementById('redisStatus').textContent = '未启用';
+                    document.getElementById('redisStatus').className = 'badge bg-secondary';
+                    document.getElementById('redisMessage').textContent = redis.message;
+                } else {
+                    document.getElementById('redisStatus').textContent = '运行正常';
+                    document.getElementById('redisStatus').className = 'badge bg-success';
+                    document.getElementById('redisMessage').textContent = 
+                        `版本 ${redis.version} - 内存 ${redis.used_memory_mb}MB - 键 ${redis.db_size}`;
+                }
+            }
+        });
+    
+    // 加载服务状态
+    fetch('/monitor/api/service')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const services = data.data;
+                
+                // 邮件服务
+                const emailStatus = services.email_service.status === 'configured' ? '已配置' : '未配置';
+                const emailBadge = services.email_service.status === 'configured' ? 'bg-success' : 'bg-warning';
+                document.getElementById('emailServiceStatus').textContent = emailStatus;
+                document.getElementById('emailServiceStatus').className = 'badge ' + emailBadge;
+                document.getElementById('emailServiceMessage').textContent = services.email_service.message;
+                
+                // 缓存服务
+                document.getElementById('cacheServiceStatus').textContent = '已启用';
+                document.getElementById('cacheServiceStatus').className = 'badge bg-success';
+                document.getElementById('cacheServiceMessage').textContent = services.cache_service.message;
+                
+                // 日志服务
+                document.getElementById('logServiceStatus').textContent = '已启用';
+                document.getElementById('logServiceStatus').className = 'badge bg-success';
+                document.getElementById('logServiceMessage').textContent = services.log_service.message;
+            }
+        });
+}
+
+// 页面加载时获取数据
+document.addEventListener('DOMContentLoaded', function() {
+    loadMonitorData();
+    
+    // 每 30 秒刷新一次
+    setInterval(loadMonitorData, 30000);
+});
+</script>
+{% endblock %}
