@@ -26,6 +26,7 @@ from app.models.deletion_log import DeletionLog
 from app.models.system_log import SystemLog
 from app.models.system_monitor import SystemMonitor
 from app.models.system_config import SystemConfig
+from app.models.database_backup import DatabaseBackup
 
 __all__ = [
     'db',
@@ -60,5 +61,6 @@ __all__ = [
     'DeletionLog',
     'SystemLog',
     'SystemMonitor',
-    'SystemConfig'
+    'SystemConfig',
+    'DatabaseBackup'
 ]

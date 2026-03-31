@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}数据备份管理 - 备件管理系统{% endblock %}
+
+{% block page_title %}数据备份管理{% endblock %}
+
+{% block content %}
+<style>
+    .backup-card {
+        border: none;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .backup-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .backup-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .backup-item:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .status-success { background: #c6f6d5; color: #22543d; }
+    .status-failed { background: #fed7d7; color: #742a2a; }
+    .status-running { background: #bee3f8; color: #2c5282; }
+    .status-pending { background: #feebc8; color: #7c2d12; }
+</style>
+
+<div class="row g-4">
+    <!-- 操作面板 -->
+    <div class="col-md-12">
+        <div class="backup-card">
+            <div class="backup-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-database me-2"></i>备份管理</h5>
+                    <div>
+                        <button class="btn btn-light btn-sm me-2" onclick="createBackup()">
+                            <i class="fas fa-plus me-1"></i>新建备份
+                        </button>
+                        <button class="btn btn-light btn-sm" onclick="cleanupOldBackups()">
+                            <i class="fas fa-trash-alt me-1"></i>清理旧备份
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card border-0 bg-primary bg-opacity-10">
+                            <div class="card-body text-center">
+                                <div class="text-primary mb-2">
+                                    <i class="fas fa-database fa-2x"></i>
+                                </div>
+                                <h3 id="totalBackups" class="mb-0">--</h3>
+                                <small class="text-muted">总备份数</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-0 bg-success bg-opacity-10">
+                            <div class="card-body text-center">
+                                <div class="text-success mb-2">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                </div>
+                                <h3 id="successBackups" class="mb-0">--</h3>
+                                <small class="text-muted">成功备份</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-0 bg-danger bg-opacity-10">
+                            <div class="card-body text-center">
+                                <div class="text-danger mb-2">
+                                    <i class="fas fa-times-circle fa-2x"></i>
+                                </div>
+                                <h3 id="failedBackups" class="mb-0">--</h3>
+                                <small class="text-muted">失败备份</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-0 bg-info bg-opacity-10">
+                            <div class="card-body text-center">
+                                <div class="text-info mb-2">
+                                    <i class="fas fa-hdd fa-2x"></i>
+                                </div>
+                                <h3 id="totalSize" class="mb-0">--</h3>
+                                <small class="text-muted">总大小 (MB)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 备份列表 -->
+                <h6 class="mb-3"><i class="fas fa-list me-2"></i>备份历史</h6>
+                <div id="backupList">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <div>加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadBackups() {
+    fetch('/backup/api/list')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayBackups(data.data);
+                updateStatistics(data.data);
+            }
+        });
+}
+
+function displayBackups(backups) {
+    const container = document.getElementById('backupList');
+    
+    if (backups.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <div>暂无备份记录</div>
+                <button class="btn btn-primary mt-3" onclick="createBackup()">
+                    <i class="fas fa-plus me-1"></i>创建第一个备份
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    backups.forEach(backup => {
+        const statusClass = {
+            'success': 'status-success',
+            'failed': 'status-failed',
+            'running': 'status-running',
+            'pending': 'status-pending'
+        }[backup.status] || 'status-pending';
+        
+        const statusText = {
+            'success': '成功',
+            'failed': '失败',
+            'running': '进行中',
+            'pending': '等待中'
+        }[backup.status] || backup.status;
+        
+        html += `
+            <div class="backup-item">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <h6 class="mb-1">
+                            <i class="fas fa-database me-2 text-primary"></i>
+                            ${backup.backup_name}
+                        </h6>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>${backup.created_at}
+                        </small>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="col-md-2">
+                        <small class="text-muted">
+                            <div>大小：${backup.backup_size_mb || 0} MB</div>
+                            <div>类型：${backup.backup_type === 'manual' ? '手动' : '自动'}</div>
+                        </small>
+                    </div>
+                    <div class="col-md-2">
+                        ${backup.remark ? `<small class="text-muted"><i class="fas fa-info-circle me-1"></i>${backup.remark.substring(0, 30)}...</small>` : '-'}
+                    </div>
+                    <div class="col-md-2 text-end">
+                        ${backup.status === 'success' ? `
+                            <button class="btn btn-sm btn-success me-1" onclick="restoreBackup(${backup.id})" title="恢复">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button class="btn btn-sm btn-primary me-1" onclick="downloadBackup(${backup.id})" title="下载">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteBackup(${backup.id})" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function updateStatistics(backups) {
+    document.getElementById('totalBackups').textContent = backups.length;
+    document.getElementById('successBackups').textContent = backups.filter(b => b.status === 'success').length;
+    document.getElementById('failedBackups').textContent = backups.filter(b => b.status === 'failed').length;
+    document.getElementById('totalSize').textContent = backups.reduce((sum, b) => sum + (b.backup_size_mb || 0), 0).toFixed(2);
+}
+
+function createBackup() {
+    const backupName = prompt('请输入备份名称（留空则使用默认名称）：');
+    
+    fetch('/backup/api/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ backup_name: backupName || null })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('备份创建成功！');
+            loadBackups();
+        } else {
+            alert('备份失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('备份失败：' + error);
+    });
+}
+
+function deleteBackup(id) {
+    if (!confirm('确定要删除这个备份吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    fetch(`/backup/api/${id}/delete`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('删除成功');
+            loadBackups();
+        } else {
+            alert('删除失败：' + data.message);
+        }
+    });
+}
+
+function restoreBackup(id) {
+    if (!confirm('确定要恢复到此备份吗？\n\n警告：这将覆盖当前数据库的所有数据！')) {
+        return;
+    }
+    
+    if (!confirm('再次确认：此操作不可逆，确定要继续吗？')) {
+        return;
+    }
+    
+    fetch(`/backup/api/${id}/restore`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('恢复成功！请重启应用以使更改生效。');
+        } else {
+            alert('恢复失败：' + data.message);
+        }
+    });
+}
+
+function downloadBackup(id) {
+    window.location.href = `/backup/api/${id}/download`;
+}
+
+function cleanupOldBackups() {
+    const days = prompt('请输入要保留的天数（默认 30 天）：', '30');
+    if (!days) return;
+    
+    if (!confirm(`确定要清理 ${days} 天前的所有备份吗？`)) {
+        return;
+    }
+    
+    fetch('/backup/api/cleanup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ days: parseInt(days) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            loadBackups();
+        } else {
+            alert('清理失败：' + data.message);
+        }
+    });
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadBackups();
+    
+    // 每 30 秒刷新一次
+    setInterval(loadBackups, 30000);
+});
+</script>
+{% endblock %}

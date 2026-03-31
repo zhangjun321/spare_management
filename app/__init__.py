@@ -154,6 +154,10 @@ def register_blueprints(app):
     from app.routes.config import config_bp
     app.register_blueprint(config_bp, url_prefix='/config')
     
+    # 数据备份模块
+    from app.routes.backup import backup_bp
+    app.register_blueprint(backup_bp, url_prefix='/backup')
+    
     # 通知模块
     from app.routes.notification import notification_bp
     app.register_blueprint(notification_bp, url_prefix='/notification')
