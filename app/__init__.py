@@ -150,6 +150,10 @@ def register_blueprints(app):
     from app.routes.logs import logs_bp
     app.register_blueprint(logs_bp, url_prefix='/logs')
     
+    # 系统配置模块
+    from app.routes.config import config_bp
+    app.register_blueprint(config_bp, url_prefix='/config')
+    
     # 通知模块
     from app.routes.notification import notification_bp
     app.register_blueprint(notification_bp, url_prefix='/notification')

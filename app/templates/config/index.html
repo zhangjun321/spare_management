@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}系统参数配置 - 备件管理系统{% endblock %}
+
+{% block page_title %}系统参数配置{% endblock %}
+
+{% block content %}
+<style>
+    .config-card {
+        border: none;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .config-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .config-group-nav {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1rem;
+    }
+    
+    .nav-pill {
+        border: none;
+        background: white;
+        color: #4a5568;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    
+    .nav-pill:hover {
+        background: #e2e8f0;
+    }
+    
+    .nav-pill.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .config-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .config-item:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    
+    .config-label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    
+    .config-description {
+        color: #718096;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+    
+    .config-value {
+        font-family: monospace;
+        background: #f7fafc;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+
+<div class="row g-4">
+    <!-- 配置分组导航 -->
+    <div class="col-md-3">
+        <div class="config-group-nav">
+            <h6 class="mb-3"><i class="fas fa-th-list me-2"></i>配置分组</h6>
+            <div id="groupNav">
+                <button class="nav-pill w-100 text-start active" onclick="loadConfigs('all')">
+                    <i class="fas fa-globe me-2"></i>全部配置
+                </button>
+            </div>
+            <button class="btn btn-sm btn-primary w-100 mt-3" onclick="initDefaultConfigs()">
+                <i class="fas fa-sync-alt me-1"></i>初始化默认配置
+            </button>
+        </div>
+    </div>
+    
+    <!-- 配置列表 -->
+    <div class="col-md-9">
+        <div class="config-card">
+            <div class="config-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i><span id="currentGroup">全部配置</span></h5>
+                    <button class="btn btn-light btn-sm" onclick="saveAllChanges()">
+                        <i class="fas fa-save me-1"></i>保存全部
+                    </button>
+                </div>
+            </div>
+            <div class="p-4">
+                <div id="configsList">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <div>加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentGroup = 'all';
+let modifiedConfigs = {};
+
+function loadConfigs(group = 'all') {
+    currentGroup = group;
+    
+    // 更新导航状态
+    document.querySelectorAll('.nav-pill').forEach(pill => {
+        pill.classList.remove('active');
+    });
+    event.target.closest('.nav-pill')?.classList.add('active');
+    
+    // 更新标题
+    const groupNames = {
+        'all': '全部配置',
+        'inventory': '库存管理',
+        'purchase': '采购管理',
+        'maintenance': '维护管理',
+        'system': '系统设置'
+    };
+    document.getElementById('currentGroup').textContent = groupNames[group] || group;
+    
+    // 加载配置
+    const url = group === 'all' ? '/config/api/list' : `/config/api/list?group=${group}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayConfigs(data.data);
+            }
+        });
+}
+
+function displayConfigs(configs) {
+    const container = document.getElementById('configsList');
+    
+    // 如果是分组显示，configs 是数组；如果是全部显示，configs 是对象
+    let allConfigs = [];
+    if (Array.isArray(configs)) {
+        allConfigs = configs;
+    } else {
+        // 将对象转换为数组
+        for (let group in configs) {
+            allConfigs = allConfigs.concat(configs[group]);
+        }
+    }
+    
+    if (allConfigs.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <div>暂无配置项</div>
+                <button class="btn btn-primary mt-3" onclick="initDefaultConfigs()">
+                    <i class="fas fa-plus me-1"></i>初始化默认配置
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    // 按分组组织配置
+    const groupedConfigs = {};
+    allConfigs.forEach(config => {
+        if (!groupedConfigs[config.config_group]) {
+            groupedConfigs[config.config_group] = [];
+        }
+        groupedConfigs[config.config_group].push(config);
+    });
+    
+    let html = '';
+    for (let group in groupedConfigs) {
+        const groupConfigs = groupedConfigs[group];
+        const groupNames = {
+            'inventory': '库存管理',
+            'purchase': '采购管理',
+            'maintenance': '维护管理',
+            'system': '系统设置',
+            'custom': '自定义配置'
+        };
+        
+        if (currentGroup !== 'all' && currentGroup !== group) {
+            continue;
+        }
+        
+        if (currentGroup === 'all') {
+            html += `<h6 class="mt-4 mb-3"><span class="badge bg-primary">${groupNames[group] || group}</span></h6>`;
+        }
+        
+        groupConfigs.forEach(config => {
+            html += `
+                <div class="config-item">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="config-label">${config.description || config.config_key}</div>
+                            <div class="config-description">
+                                <small><i class="fas fa-code me-1"></i>${config.config_key}</small>
+                                ${config.is_editable ? '' : '<span class="badge bg-secondary ms-2">不可编辑</span>'}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            ${config.is_editable ? renderConfigInput(config) : renderConfigValue(config)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    container.innerHTML = html;
+}
+
+function renderConfigInput(config) {
+    const value = modifiedConfigs[config.config_key] !== undefined 
+        ? modifiedConfigs[config.config_key] 
+        : config.config_value;
+    
+    if (config.value_type === 'bool') {
+        const boolValue = value.toLowerCase() === 'true';
+        return `
+            <select class="form-select" onchange="updateModifiedConfig('${config.config_key}', this.value)">
+                <option value="true" ${boolValue ? 'selected' : ''}>是</option>
+                <option value="false" ${!boolValue ? 'selected' : ''}>否</option>
+            </select>
+        `;
+    } else if (config.value_type === 'json') {
+        return `
+            <textarea class="form-control" rows="3" onchange="updateModifiedConfig('${config.config_key}', this.value)">${value}</textarea>
+        `;
+    } else {
+        const inputType = config.value_type === 'int' || config.value_type === 'float' ? 'number' : 'text';
+        return `
+            <input type="${inputType}" class="form-control" value="${value}" 
+                   onchange="updateModifiedConfig('${config.config_key}', this.value)">
+        `;
+    }
+}
+
+function renderConfigValue(config) {
+    return `<div class="config-value text-end">${config.config_value}</div>`;
+}
+
+function updateModifiedConfig(key, value) {
+    modifiedConfigs[key] = value;
+}
+
+function saveAllChanges() {
+    const keys = Object.keys(modifiedConfigs);
+    
+    if (keys.length === 0) {
+        alert('没有需要保存的修改');
+        return;
+    }
+    
+    if (!confirm(`确定要保存 ${keys.length} 个配置项的修改吗？`)) {
+        return;
+    }
+    
+    fetch('/config/api/batch', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(modifiedConfigs)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('配置保存成功！');
+            modifiedConfigs = {};
+            loadConfigs(currentGroup);
+        } else {
+            alert('保存失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('保存失败：' + error);
+    });
+}
+
+function initDefaultConfigs() {
+    if (!confirm('确定要初始化默认配置吗？\n\n注意：这将添加所有默认配置项，但不会覆盖已有的自定义配置。')) {
+        return;
+    }
+    
+    fetch('/config/init', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('默认配置初始化完成！');
+            loadConfigs('all');
+        } else {
+            alert('初始化失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('初始化失败：' + error);
+    });
+}
+
+function loadGroups() {
+    fetch('/config/groups')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const nav = document.getElementById('groupNav');
+                const groupNames = {
+                    'inventory': '库存管理',
+                    'purchase': '采购管理',
+                    'maintenance': '维护管理',
+                    'system': '系统设置',
+                    'custom': '自定义配置'
+                };
+                
+                let html = `
+                    <button class="nav-pill w-100 text-start active" onclick="loadConfigs('all')">
+                        <i class="fas fa-globe me-2"></i>全部配置
+                    </button>
+                `;
+                
+                data.data.forEach(group => {
+                    html += `
+                        <button class="nav-pill w-100 text-start" onclick="loadConfigs('${group.group}')">
+                            <i class="fas fa-folder me-2"></i>${groupNames[group.group] || group.name}
+                        </button>
+                    `;
+                });
+                
+                nav.innerHTML = html;
+            }
+        });
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadGroups();
+    loadConfigs('all');
+});
+</script>
+{% endblock %}
