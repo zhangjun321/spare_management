@@ -66,6 +66,12 @@ htmlcov/
 # 备份文件
 *.bak
 *.backup
+app/backups/
+backups/
+
+# 测试脚本和调试脚本
+scripts/test_*.py
+scripts/*.pyc
 
 # 临时文件
 tmp/

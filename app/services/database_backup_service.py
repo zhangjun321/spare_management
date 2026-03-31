@@ -7,6 +7,7 @@ import os
 import subprocess
 import gzip
 import shutil
+import platform
 from datetime import datetime
 from app.extensions import db
 from app.models.database_backup import DatabaseBackup
@@ -25,6 +26,49 @@ class DatabaseBackupService:
         if not os.path.exists(DatabaseBackupService.BACKUP_DIR):
             os.makedirs(DatabaseBackupService.BACKUP_DIR)
             print(f"创建备份目录：{DatabaseBackupService.BACKUP_DIR}")
+    
+    @staticmethod
+    def find_mysqldump():
+        """查找 mysqldump 可执行文件"""
+        system = platform.system()
+        
+        # 常见的 mysqldump 路径
+        possible_paths = []
+        
+        if system == 'Windows':
+            possible_paths = [
+                'mysqldump.exe',
+                r'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe',
+                r'C:\Program Files\MySQL\MySQL Server 5.7\bin\mysqldump.exe',
+                r'C:\xampp\mysql\bin\mysqldump.exe',
+                r'C:\wamp64\bin\mysql\mysql8.0.31\bin\mysqldump.exe',
+            ]
+        else:
+            possible_paths = [
+                'mysqldump',
+                '/usr/bin/mysqldump',
+                '/usr/local/bin/mysqldump',
+                '/opt/mysql/bin/mysqldump',
+            ]
+        
+        # 检查路径
+        for path in possible_paths:
+            if os.path.isabs(path):
+                if os.path.exists(path):
+                    return path
+            else:
+                # 检查是否在 PATH 中
+                try:
+                    if system == 'Windows':
+                        result = subprocess.run(['where', path], capture_output=True, text=True)
+                    else:
+                        result = subprocess.run(['which', path], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        return path
+                except:
+                    pass
+        
+        return None
     
     @staticmethod
     def create_backup(backup_name=None, backup_type='manual', created_by=None):
@@ -56,34 +100,58 @@ class DatabaseBackupService:
             backup_record.start_time = datetime.now()
             db.session.commit()
             
+            # 查找 mysqldump
+            mysqldump_path = DatabaseBackupService.find_mysqldump()
+            if not mysqldump_path:
+                raise Exception('未找到 mysqldump 命令，请确保 MySQL 已安装并添加到 PATH 环境变量中')
+            
             # 获取数据库连接信息
-            from urllib.parse import urlparse
+            from urllib.parse import urlparse, unquote
             
             uri = urlparse(Config.SQLALCHEMY_DATABASE_URI)
             db_host = uri.hostname or 'localhost'
-            db_port = uri.port or '3306'
+            db_port = uri.port or 3306
             db_user = uri.username or 'root'
-            db_password = uri.password or ''
+            db_password = unquote(uri.password or '')
             db_name = uri.path.lstrip('/') or 'spare_parts_db'
             
-            # 执行 mysqldump
+            # 构建命令参数
             cmd = [
-                'mysqldump',
+                mysqldump_path,
                 '-h', db_host,
-                '-P', db_port,
+                '-P', str(db_port),
                 '-u', db_user,
-                f'-p{db_password}',
+                f'--password={db_password}',
                 '--single-transaction',
                 '--routines',
                 '--triggers',
                 db_name
             ]
             
-            with open(backup_file, 'w', encoding='utf-8') as f:
-                result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE)
+            # 执行 mysqldump
+            system = platform.system()
+            if system == 'Windows':
+                # Windows 下使用 shell=True 来处理复杂的命令
+                result = subprocess.run(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=False
+                )
+            else:
+                result = subprocess.run(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
             
             if result.returncode != 0:
-                raise Exception(f'mysqldump 失败：{result.stderr.decode("utf-8")}')
+                error_msg = result.stderr.decode('utf-8', errors='ignore')
+                raise Exception(f'mysqldump 执行失败：{error_msg}')
+            
+            # 写入备份文件
+            with open(backup_file, 'wb') as f:
+                f.write(result.stdout)
             
             # 压缩备份文件
             with open(backup_file, 'rb') as f_in:

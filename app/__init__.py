@@ -7,7 +7,7 @@ Flask 应用工厂
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from flask import Flask
+from flask import Flask, request, jsonify
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -44,7 +44,7 @@ def create_app(config_name=None):
         from app.services.cache_service import init_redis
         init_redis()
     except Exception as e:
-        print(f"Redis 初始化失败: {e}")
+        print(f"Redis 初始化失败：{e}")
     
     # 注册蓝图
     register_blueprints(app)
@@ -77,6 +77,30 @@ def create_app(config_name=None):
     def make_shell_context():
         return {'db': db, 'app': app}
     
+    # 请求日志中间件 - 记录所有请求
+    @app.before_request
+    def log_request_info():
+        app.logger.info(f"=== 请求开始 ===")
+        app.logger.info(f"方法：{request.method}")
+        app.logger.info(f"路径：{request.path}")
+        app.logger.info(f"请求头：{dict(request.headers)}")
+        if request.data:
+            app.logger.info(f"请求体：{request.data.decode('utf-8', errors='ignore')[:500]}")
+        app.logger.info(f"远程地址：{request.remote_addr}")
+        app.logger.info(f"用户：{request.remote_user if request.remote_user else '匿名'}")
+        
+        # 特殊处理备份 API 请求
+        if '/backup/api/' in request.path:
+            app.logger.warning(f"!!! 捕获到备份 API 请求 !!!")
+    
+    # 响应日志中间件
+    @app.after_request
+    def log_response_info(response):
+        app.logger.info(f"响应状态：{response.status_code}")
+        app.logger.info(f"响应头：{dict(response.headers)}")
+        app.logger.info(f"=== 请求结束 ===")
+        return response
+    
     # 添加响应头部中间件
     @app.after_request
     def add_security_headers(response):
@@ -85,7 +109,7 @@ def create_app(config_name=None):
         # 防止点击劫持
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         # 内容安全策略 - 允许 CDN 资源和内联样式
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self' http://localhost:* http://127.0.0.1:* https://* 'unsafe-inline'"
         # 缓存控制
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
@@ -158,6 +182,10 @@ def register_blueprints(app):
     from app.routes.backup import backup_bp
     app.register_blueprint(backup_bp, url_prefix='/backup')
     
+    # 豁免备份 API 的 CSRF 保护
+    from app.extensions import csrf
+    csrf.exempt(backup_bp)
+    
     # 通知模块
     from app.routes.notification import notification_bp
     app.register_blueprint(notification_bp, url_prefix='/notification')
@@ -173,6 +201,19 @@ def register_blueprints(app):
     # API 模块
     from app.routes.api import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # 注册一个测试路由，直接返回 JSON
+    @app.route('/backup/test', methods=['GET', 'POST'])
+    def backup_test():
+        """测试备份路由"""
+        app.logger.info(f"测试路由被调用：{request.method}")
+        return jsonify({
+            'status': 'success',
+            'message': '测试成功',
+            'method': request.method,
+            'path': request.path,
+            'headers': dict(request.headers)
+        })
 
 
 def configure_logging(app):

@@ -125,17 +125,51 @@
 </div>
 
 <script>
+// 加载备份列表
 function loadBackups() {
-    fetch('/backup/api/list')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                displayBackups(data.data);
-                updateStatistics(data.data);
-            }
-        });
+    console.log('开始加载备份列表...');
+    
+    fetch('/backup/api/list', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log('响应状态:', response.status);
+        console.log('响应头:', response.headers.get('Content-Type'));
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('收到数据:', data);
+        
+        if (data.status === 'success') {
+            displayBackups(data.data);
+            updateStatistics(data.data);
+        } else {
+            throw new Error(data.message || '获取数据失败');
+        }
+    })
+    .catch(error => {
+        console.error('加载失败:', error);
+        const container = document.getElementById('backupList');
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>加载失败</h6>
+                <p class="mb-0">${error.message}</p>
+                <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadBackups()">
+                    <i class="fas fa-redo me-1"></i>重试
+                </button>
+            </div>
+        `;
+    });
 }
 
+// 显示备份列表
 function displayBackups(backups) {
     const container = document.getElementById('backupList');
     
@@ -213,6 +247,7 @@ function displayBackups(backups) {
     container.innerHTML = html;
 }
 
+// 更新统计信息
 function updateStatistics(backups) {
     document.getElementById('totalBackups').textContent = backups.length;
     document.getElementById('successBackups').textContent = backups.filter(b => b.status === 'success').length;
@@ -220,18 +255,41 @@ function updateStatistics(backups) {
     document.getElementById('totalSize').textContent = backups.reduce((sum, b) => sum + (b.backup_size_mb || 0), 0).toFixed(2);
 }
 
+// 创建备份
 function createBackup() {
     const backupName = prompt('请输入备份名称（留空则使用默认名称）：');
+    if (backupName === null) {
+        console.log('用户取消创建备份');
+        return; // 用户取消
+    }
+    
+    console.log('开始创建备份，名称:', backupName);
     
     fetch('/backup/api/create', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
-        body: JSON.stringify({ backup_name: backupName || null })
+        body: JSON.stringify({ 
+            backup_name: backupName || null 
+        })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('响应状态:', response.status);
+        console.log('响应头:', response.headers.get('Content-Type'));
+        
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('错误响应:', text);
+                throw new Error(`服务器错误 (${response.status})`);
+            });
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('收到响应:', data);
+        
         if (data.status === 'success') {
             alert('备份创建成功！');
             loadBackups();
@@ -240,29 +298,43 @@ function createBackup() {
         }
     })
     .catch(error => {
-        alert('备份失败：' + error);
+        console.error('创建备份失败:', error);
+        alert('备份失败：' + error.message);
     });
 }
 
+// 删除备份
 function deleteBackup(id) {
     if (!confirm('确定要删除这个备份吗？此操作不可恢复。')) {
         return;
     }
     
+    console.log('删除备份 ID:', id);
+    
     fetch(`/backup/api/${id}/delete`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
+        console.log('删除结果:', data);
+        
         if (data.status === 'success') {
             alert('删除成功');
             loadBackups();
         } else {
             alert('删除失败：' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('删除失败:', error);
+        alert('删除失败：' + error.message);
     });
 }
 
+// 恢复备份
 function restoreBackup(id) {
     if (!confirm('确定要恢复到此备份吗？\n\n警告：这将覆盖当前数据库的所有数据！')) {
         return;
@@ -272,23 +344,37 @@ function restoreBackup(id) {
         return;
     }
     
+    console.log('恢复备份 ID:', id);
+    
     fetch(`/backup/api/${id}/restore`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
+        console.log('恢复结果:', data);
+        
         if (data.status === 'success') {
             alert('恢复成功！请重启应用以使更改生效。');
         } else {
             alert('恢复失败：' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('恢复失败:', error);
+        alert('恢复失败：' + error.message);
     });
 }
 
+// 下载备份
 function downloadBackup(id) {
+    console.log('下载备份 ID:', id);
     window.location.href = `/backup/api/${id}/download`;
 }
 
+// 清理旧备份
 function cleanupOldBackups() {
     const days = prompt('请输入要保留的天数（默认 30 天）：', '30');
     if (!days) return;
@@ -296,6 +382,8 @@ function cleanupOldBackups() {
     if (!confirm(`确定要清理 ${days} 天前的所有备份吗？`)) {
         return;
     }
+    
+    console.log('清理旧备份，保留天数:', days);
     
     fetch('/backup/api/cleanup', {
         method: 'POST',
@@ -306,17 +394,24 @@ function cleanupOldBackups() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('清理结果:', data);
+        
         if (data.status === 'success') {
             alert(data.message);
             loadBackups();
         } else {
             alert('清理失败：' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('清理失败:', error);
+        alert('清理失败：' + error.message);
     });
 }
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('页面加载完成，开始加载备份列表...');
     loadBackups();
     
     // 每 30 秒刷新一次
