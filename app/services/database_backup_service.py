@@ -57,11 +57,14 @@ class DatabaseBackupService:
             db.session.commit()
             
             # 获取数据库连接信息
-            db_host = Config.SQLALCHEMY_DATABASE_URI.split('@')[1].split('/')[0].split(':')[0]
-            db_port = Config.SQLALCHEMY_DATABASE_URI.split('@')[1].split('/')[0].split(':')[1] if ':' in Config.SQLALCHEMY_DATABASE_URI.split('@')[1].split('/')[0] else '3306'
-            db_user = Config.SQLALCHEMY_DATABASE_URI.split('//')[1].split(':')[0]
-            db_password = Config.SQLALCHEMY_DATABASE_URI.split('//')[1].split(':')[1].split('@')[0]
-            db_name = Config.SQLALCHEMY_DATABASE_URI.split('/')[-1]
+            from urllib.parse import urlparse
+            
+            uri = urlparse(Config.SQLALCHEMY_DATABASE_URI)
+            db_host = uri.hostname or 'localhost'
+            db_port = uri.port or '3306'
+            db_user = uri.username or 'root'
+            db_password = uri.password or ''
+            db_name = uri.path.lstrip('/') or 'spare_parts_db'
             
             # 执行 mysqldump
             cmd = [
@@ -152,11 +155,14 @@ class DatabaseBackupService:
         
         try:
             # 获取数据库连接信息
-            db_host = Config.SQLALCHEMY_DATABASE_URI.split('@')[1].split('/')[0].split(':')[0]
-            db_port = Config.SQLALCHEMY_DATABASE_URI.split('@')[1].split('/')[0].split(':')[1] if ':' in Config.SQLALCHEMY_DATABASE_URI.split('@')[1].split('/')[0] else '3306'
-            db_user = Config.SQLALCHEMY_DATABASE_URI.split('//')[1].split(':')[0]
-            db_password = Config.SQLALCHEMY_DATABASE_URI.split('//')[1].split(':')[1].split('@')[0]
-            db_name = Config.SQLALCHEMY_DATABASE_URI.split('/')[-1]
+            from urllib.parse import urlparse
+            
+            uri = urlparse(Config.SQLALCHEMY_DATABASE_URI)
+            db_host = uri.hostname or 'localhost'
+            db_port = uri.port or '3306'
+            db_user = uri.username or 'root'
+            db_password = uri.password or ''
+            db_name = uri.path.lstrip('/') or 'spare_parts_db'
             
             # 解压并恢复
             if backup.backup_file.endswith('.gz'):
