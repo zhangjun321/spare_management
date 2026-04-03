@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test JS</title>
+</head>
+<body>
+    <script>
+        let currentImageType = null;
+        const partId = 31;
+
+        // 页面加载时显示已有图片
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，partId =', partId);
+            
+            if (partId) {
+                console.log('开始加载图片...');
+                
+                // 立即从表单字段加载
+                try {
+                    loadImagesFromFormFields();
+                    console.log('loadImagesFromFormFields 执行完成');
+                } catch (e) {
+                    console.error('loadImagesFromFormFields 执行失败:', e);
+                }
+            }
+        });
+
+        // 从表单字段加载图片
+        function loadImagesFromFormFields() {
+            const imageTypes = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail'];
+            const fieldMap = {
+                'front': 'image_url',
+                'thumbnail': 'thumbnail_url_hidden',
+                'side': 'side_image_url_hidden',
+                'detail': 'detail_image_url_hidden',
+                'circuit': 'circuit_image_url_hidden',
+                'perspective': 'perspective_image_url_hidden'
+            };
+            
+            console.log('执行 loadImagesFromFormFields');
+            
+            for (const type of imageTypes) {
+                const fieldName = fieldMap[type];
+                const field = document.getElementById(fieldName);
+                if (field && field.value && field.value.trim() !== '') {
+                    console.log('加载图片:', type, field.value);
+                }
+            }
+        }
+        
+        console.log('Script loaded, partId:', partId);
+        console.log('loadImagesFromFormFields is:', typeof loadImagesFromFormFields);
+    </script>
+</body>
+</html>

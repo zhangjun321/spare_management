@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}API调用日志 - 备件管理系统{% endblock %}
+
+{% block page_title %}API 调用日志{% endblock %}
+
+{% block content %}
+<style>
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .status-success {
+        background: #dcfce7;
+        color: #166534;
+    }
+    
+    .status-error {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .method-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        min-width: 60px;
+        text-align: center;
+    }
+    
+    .method-get { background: #dbeafe; color: #1d4ed8; }
+    .method-post { background: #dcfce7; color: #166534; }
+    .method-put { background: #fef3c7; color: #92400e; }
+    .method-delete { background: #fee2e2; color: #991b1b; }
+</style>
+
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-history text-primary me-2"></i>API 调用日志
+            </h5>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="input-group">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-filter"></i>
+            </span>
+            <select class="form-select" id="statusFilter">
+                <option value="">全部状态</option>
+                <option value="success">成功</option>
+                <option value="error">失败</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="input-group">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" id="searchInput" 
+                   placeholder="搜索路径...">
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>方法</th>
+                    <th style="width: 35%">路径</th>
+                    <th>IP 地址</th>
+                    <th>状态码</th>
+                    <th>执行时间</th>
+                    <th>状态</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p class="mb-0">暂无日志记录</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('api_management.api_manage') }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-2"></i>返回管理
+    </a>
+</div>
+{% endblock %}

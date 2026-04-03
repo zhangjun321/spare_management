@@ -282,7 +282,169 @@
                 {% endfor %}
             </div>
             
-            <div class="d-flex justify-content-between">
+            <!-- 图片上传区域 -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-0 bg-light">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-images"></i> 备件图片管理</h5>
+                            <button type="button" class="btn btn-primary" onclick="autoUploadImages()">
+                                <i class="fas fa-magic"></i> 自动上传
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row" id="imageGallery">
+                                <!-- 正面图 -->
+                                <div class="col-md-4 col-sm-6 mb-3">
+                                    <div class="card image-card" data-image-type="front">
+                                        <div class="card-body text-center p-2">
+                                            <div class="image-preview-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                                                <img id="preview-front" src="" alt="正面图" class="img-fluid image-preview" style="max-height: 180px; display: none;">
+                                                <div id="placeholder-front" class="text-muted">
+                                                    <i class="fas fa-image fa-3x"></i>
+                                                    <p class="mt-2 mb-0">正面图</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadImage('front')">
+                                                    <i class="fas fa-upload"></i> 上传
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage('front')" id="delete-front" style="display: none;">
+                                                    <i class="fas fa-trash"></i> 删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 侧面图 -->
+                                <div class="col-md-4 col-sm-6 mb-3">
+                                    <div class="card image-card" data-image-type="side">
+                                        <div class="card-body text-center p-2">
+                                            <div class="image-preview-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                                                <img id="preview-side" src="" alt="侧面图" class="img-fluid image-preview" style="max-height: 180px; display: none;">
+                                                <div id="placeholder-side" class="text-muted">
+                                                    <i class="fas fa-image fa-3x"></i>
+                                                    <p class="mt-2 mb-0">侧面图</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadImage('side')">
+                                                    <i class="fas fa-upload"></i> 上传
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage('side')" id="delete-side" style="display: none;">
+                                                    <i class="fas fa-trash"></i> 删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 详细图 -->
+                                <div class="col-md-4 col-sm-6 mb-3">
+                                    <div class="card image-card" data-image-type="detail">
+                                        <div class="card-body text-center p-2">
+                                            <div class="image-preview-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                                                <img id="preview-detail" src="" alt="详细图" class="img-fluid image-preview" style="max-height: 180px; display: none;">
+                                                <div id="placeholder-detail" class="text-muted">
+                                                    <i class="fas fa-image fa-3x"></i>
+                                                    <p class="mt-2 mb-0">详细图</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadImage('detail')">
+                                                    <i class="fas fa-upload"></i> 上传
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage('detail')" id="delete-detail" style="display: none;">
+                                                    <i class="fas fa-trash"></i> 删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 电路图 -->
+                                <div class="col-md-4 col-sm-6 mb-3">
+                                    <div class="card image-card" data-image-type="circuit">
+                                        <div class="card-body text-center p-2">
+                                            <div class="image-preview-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                                                <img id="preview-circuit" src="" alt="电路图" class="img-fluid image-preview" style="max-height: 180px; display: none;">
+                                                <div id="placeholder-circuit" class="text-muted">
+                                                    <i class="fas fa-image fa-3x"></i>
+                                                    <p class="mt-2 mb-0">电路图</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadImage('circuit')">
+                                                    <i class="fas fa-upload"></i> 上传
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage('circuit')" id="delete-circuit" style="display: none;">
+                                                    <i class="fas fa-trash"></i> 删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 透视图 -->
+                                <div class="col-md-4 col-sm-6 mb-3">
+                                    <div class="card image-card" data-image-type="perspective">
+                                        <div class="card-body text-center p-2">
+                                            <div class="image-preview-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                                                <img id="preview-perspective" src="" alt="透视图" class="img-fluid image-preview" style="max-height: 180px; display: none;">
+                                                <div id="placeholder-perspective" class="text-muted">
+                                                    <i class="fas fa-image fa-3x"></i>
+                                                    <p class="mt-2 mb-0">透视图</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadImage('perspective')">
+                                                    <i class="fas fa-upload"></i> 上传
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage('perspective')" id="delete-perspective" style="display: none;">
+                                                    <i class="fas fa-trash"></i> 删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 缩略图 -->
+                                <div class="col-md-4 col-sm-6 mb-3">
+                                    <div class="card image-card" data-image-type="thumbnail">
+                                        <div class="card-body text-center p-2">
+                                            <div class="image-preview-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                                                <img id="preview-thumbnail" src="" alt="缩略图" class="img-fluid image-preview" style="max-height: 180px; display: none;">
+                                                <div id="placeholder-thumbnail" class="text-muted">
+                                                    <i class="fas fa-image fa-3x"></i>
+                                                    <p class="mt-2 mb-0">缩略图</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="uploadImage('thumbnail')">
+                                                    <i class="fas fa-upload"></i> 上传
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage('thumbnail')" id="delete-thumbnail" style="display: none;">
+                                                    <i class="fas fa-trash"></i> 删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 隐藏的图片字段（用于存储所有图片类型的 URL） -->
+            <input type="hidden" id="thumbnail_url_hidden" name="thumbnail_url_hidden" value="{{ form.thumbnail_url.data if form.thumbnail_url.data else '' }}">
+            <input type="hidden" id="side_image_url_hidden" name="side_image_url_hidden" value="{{ form.side_image_url.data if form.side_image_url.data else '' }}">
+            <input type="hidden" id="detail_image_url_hidden" name="detail_image_url_hidden" value="{{ form.detail_image_url.data if form.detail_image_url.data else '' }}">
+            <input type="hidden" id="circuit_image_url_hidden" name="circuit_image_url_hidden" value="{{ form.circuit_image_url.data if form.circuit_image_url.data else '' }}">
+            <input type="hidden" id="perspective_image_url_hidden" name="perspective_image_url_hidden" value="{{ form.perspective_image_url.data if form.perspective_image_url.data else '' }}">
+            
+            <div class="d-flex justify-content-between mt-4">
                 <a href="{{ url_for('spare_parts.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> 返回
                 </a>
@@ -291,4 +453,514 @@
         </form>
     </div>
 </div>
+
+<!-- 隐藏的文件输入 -->
+<input type="file" id="imageUploadInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+
+<!-- 自动上传进度模态框 -->
+<div class="modal fade" id="autoUploadModal" tabindex="-1" aria-labelledby="autoUploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="autoUploadModalLabel"><i class="fas fa-magic"></i> 自动上传图片</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeAutoUploadModal" disabled></button>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div id="autoUploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+                <div id="autoUploadStatus" class="text-muted text-center mb-3">准备中...</div>
+                <div id="autoUploadList" class="list-group">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentImageType = null;
+const partId = {{ spare_part.id if spare_part else 'null' }};
+
+// 立即执行图片加载
+console.log('脚本加载，partId =', partId);
+
+if (partId) {
+    console.log('开始加载图片...');
+    
+    // 使用 IIFE 包装加载逻辑
+    (function loadImages() {
+        // 等待 DOM 完全渲染
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', executeImageLoad);
+        } else {
+            executeImageLoad();
+        }
+    })();
+}
+
+function executeImageLoad() {
+    console.log('执行图片加载函数');
+    
+    // 立即从表单字段加载
+    try {
+        loadImagesFromFormFields();
+        console.log('loadImagesFromFormFields 执行完成');
+    } catch (e) {
+        console.error('loadImagesFromFormFields 执行失败:', e);
+    }
+    
+    // 500ms 后检查，如果没有加载成功则从 API 加载
+    setTimeout(() => {
+        const hasImages = checkIfImagesLoaded();
+        console.log('检查图片加载状态:', hasImages);
+        if (!hasImages) {
+            console.log('从 API 加载图片...');
+            try {
+                loadImagesFromAPI();
+            } catch (e) {
+                console.error('loadImagesFromAPI 执行失败:', e);
+            }
+        }
+    }, 500);
+}
+
+// 检查是否已经加载了图片
+function checkIfImagesLoaded() {
+    const imageTypes = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail'];
+    for (const type of imageTypes) {
+        const img = document.getElementById(`preview-${type}`);
+        if (img && img.style.display !== 'none' && img.src) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 从 API 加载图片
+function loadImagesFromAPI() {
+    fetch(`/spare_parts/${partId}/images`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.images) {
+                displayImages(data.images);
+            }
+        })
+        .catch(error => console.error('Error loading images from API:', error));
+}
+
+// 从表单字段加载图片
+function loadImagesFromFormFields() {
+    const imageTypes = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail'];
+    const fieldMap = {
+        'front': 'image_url',
+        'thumbnail': 'thumbnail_url_hidden',
+        'side': 'side_image_url_hidden',
+        'detail': 'detail_image_url_hidden',
+        'circuit': 'circuit_image_url_hidden',
+        'perspective': 'perspective_image_url_hidden'
+    };
+    
+    for (const type of imageTypes) {
+        const fieldName = fieldMap[type];
+        const field = document.getElementById(fieldName);
+        if (field && field.value && field.value.trim() !== '') {
+            showImagePreview(type, field.value);
+        }
+    }
+}
+
+// 获取备件代码（从输入框实时读取）
+function getPartCode() {
+    const partCodeInput = document.getElementById('part_code');
+    return partCodeInput ? partCodeInput.value.trim() : '';
+}
+
+// 显示图片
+function displayImages(images) {
+    // 遍历所有图片类型，从数据库加载的图片
+    const imageTypes = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail'];
+    
+    for (const type of imageTypes) {
+        const url = images[type];
+        if (url) {
+            showImagePreview(type, url);
+            updateHiddenField(type, url);
+        }
+    }
+}
+
+// 上传图片
+function uploadImage(type) {
+    currentImageType = type;
+    document.getElementById('imageUploadInput').click();
+}
+
+// 处理文件选择
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file && currentImageType) {
+        uploadFileToServer(file, currentImageType);
+    }
+    event.target.value = ''; // 清空以便重新选择同一文件
+}
+
+// 上传文件到服务器
+function uploadFileToServer(file, imageType) {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('image_type', imageType);
+    
+    const uploadBtn = document.querySelector(`button[onclick="uploadImage('${imageType}')"]`);
+    const originalText = uploadBtn ? uploadBtn.innerHTML : '上传';
+    if (uploadBtn) {
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+        uploadBtn.disabled = true;
+    }
+    
+    fetch(`/spare_parts/${partId}/upload-image`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showImagePreview(imageType, data.image_url);
+            alert('图片上传成功！');
+        } else {
+            alert('上传失败：' + data.message);
+        }
+        if (uploadBtn) {
+            uploadBtn.innerHTML = originalText;
+            uploadBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('上传失败：' + error.message);
+        if (uploadBtn) {
+            uploadBtn.innerHTML = originalText;
+            uploadBtn.disabled = false;
+        }
+    });
+}
+
+// 显示图片预览
+function showImagePreview(type, url) {
+    const img = document.getElementById(`preview-${type}`);
+    const placeholder = document.getElementById(`placeholder-${type}`);
+    const deleteBtn = document.getElementById(`delete-${type}`);
+    
+    if (img) {
+        img.src = url;
+        img.style.display = 'block';
+    }
+    
+    if (placeholder) {
+        placeholder.style.display = 'none';
+    }
+    
+    // 显示删除按钮
+    if (deleteBtn) {
+        deleteBtn.style.display = 'inline-block';
+    }
+}
+
+// 更新隐藏字段
+function updateHiddenField(type, url) {
+    const fieldMap = {
+        'front': 'image_url',
+        'thumbnail': 'thumbnail_url_hidden',
+        'side': 'side_image_url_hidden',
+        'detail': 'detail_image_url_hidden',
+        'circuit': 'circuit_image_url_hidden',
+        'perspective': 'perspective_image_url_hidden'
+    };
+    
+    const fieldName = fieldMap[type];
+    if (fieldName) {
+        const field = document.getElementById(fieldName);
+        if (field) {
+            field.value = url;
+        }
+    }
+}
+
+// 删除图片
+function removeImage(type) {
+    if (confirm('确定要删除这张图片吗？')) {
+        fetch(`/spare_parts/${partId}/remove-image`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ image_type: type })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const img = document.getElementById(`preview-${type}`);
+                const placeholder = document.getElementById(`placeholder-${type}`);
+                const deleteBtn = document.getElementById(`delete-${type}`);
+                
+                img.src = '';
+                img.style.display = 'none';
+                placeholder.style.display = 'block';
+                if (deleteBtn) {
+                    deleteBtn.style.display = 'none';
+                }
+                
+                // 更新隐藏字段
+                updateHiddenField(type, '');
+            } else {
+                alert('删除失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除失败：' + error.message);
+        });
+    }
+}
+
+// 自动上传图片
+async function autoUploadImages() {
+    // 从输入框实时读取备件代码
+    const partCode = getPartCode();
+    
+    if (!partCode) {
+        alert('请先输入备件代码！');
+        return;
+    }
+    
+    // 显示进度模态框
+    const modal = new bootstrap.Modal(document.getElementById('autoUploadModal'));
+    const progressBar = document.getElementById('autoUploadProgressBar');
+    const statusText = document.getElementById('autoUploadStatus');
+    const listGroup = document.getElementById('autoUploadList');
+    const closeBtn = document.getElementById('closeAutoUploadModal');
+    
+    // 初始化进度显示
+    progressBar.style.width = '0%';
+    progressBar.setAttribute('aria-valuenow', '0');
+    progressBar.textContent = '0%';
+    statusText.textContent = '正在检查 AI 生成的图片...';
+    listGroup.innerHTML = '';
+    closeBtn.disabled = true;
+    modal.show();
+    
+    try {
+        // 使用 partCode 检查 AI 生成的图片（不需要 partId）
+        const checkResponse = await fetch(`/spare_parts/code/${partCode}/check-ai-images`);
+        const checkData = await checkResponse.json();
+        
+        if (!checkData.success) {
+            statusText.textContent = '错误';
+            progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            progressBar.classList.add('bg-danger');
+            alert(checkData.message || '检查 AI 图片失败');
+            setTimeout(() => {
+                modal.hide();
+            }, 2000);
+            return;
+        }
+        
+        if (!checkData.hasImages) {
+            statusText.textContent = '没有 AI 图片';
+            progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            progressBar.classList.add('bg-warning');
+            alert('还没有 AI 生成的图片，请先生成 AI 图片！');
+            setTimeout(() => {
+                modal.hide();
+            }, 2000);
+            return;
+        }
+        
+        // 获取当前已有图片
+        const currentImages = {};
+        const imageTypes = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail'];
+        
+        imageTypes.forEach(type => {
+            const img = document.getElementById(`preview-${type}`);
+            if (img && img.style.display !== 'none' && img.src) {
+                currentImages[type] = img.src;
+            }
+        });
+        
+        // 比对图片是否需要更新
+        const imagesToUpdate = [];
+        const unchangedImages = [];
+        
+        checkData.images.forEach(imgType => {
+            const aiImagePath = `/uploads/images/${partCode}/${imgType}.jpg`;
+            const currentImage = currentImages[imgType];
+            
+            // 如果当前没有图片或图片路径不同，则需要更新
+            if (!currentImage || !currentImage.includes(aiImagePath)) {
+                imagesToUpdate.push(imgType);
+            } else {
+                unchangedImages.push(imgType);
+            }
+        });
+        
+        // 如果所有图片都不需要更新
+        if (imagesToUpdate.length === 0 && unchangedImages.length > 0) {
+            statusText.textContent = '当前图片已是最新';
+            progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            progressBar.classList.add('bg-success');
+            progressBar.style.width = '100%';
+            progressBar.textContent = '100%';
+            
+            // 显示详细信息
+            const typeNames = {
+                'front': '正面图',
+                'side': '侧面图',
+                'detail': '详细图',
+                'circuit': '电路图',
+                'perspective': '透视图',
+                'thumbnail': '缩略图'
+            };
+            
+            listGroup.innerHTML = `<div class="list-group-item text-center text-success">
+                <i class="fas fa-check-circle"></i> 所有 ${unchangedImages.length} 张图片都是最新的，无需更新
+            </div>`;
+            
+            closeBtn.disabled = false;
+            setTimeout(() => {
+                modal.hide();
+            }, 3000);
+            return;
+        }
+        
+        // 显示图片列表
+        statusText.textContent = `发现 ${checkData.images.length} 张 AI 图片，${imagesToUpdate.length} 张需要更新，${unchangedImages.length} 张已是最新`;
+        
+        // 先显示不需要更新的图片
+        unchangedImages.forEach(imgType => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center bg-light';
+            
+            const typeNames = {
+                'front': '正面图',
+                'side': '侧面图',
+                'detail': '详细图',
+                'circuit': '电路图',
+                'perspective': '透视图',
+                'thumbnail': '缩略图'
+            };
+            
+            item.innerHTML = `
+                <span>${typeNames[imgType] || imgType}</span>
+                <span class="badge bg-success"><i class="fas fa-check"></i> 已是最新</span>
+            `;
+            listGroup.appendChild(item);
+        });
+        
+        // 再显示需要更新的图片
+        imagesToUpdate.forEach(imgType => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            item.id = `upload-item-${imgType}`;
+            
+            const typeNames = {
+                'front': '正面图',
+                'side': '侧面图',
+                'detail': '详细图',
+                'circuit': '电路图',
+                'perspective': '透视图',
+                'thumbnail': '缩略图'
+            };
+            
+            item.innerHTML = `
+                <span>${typeNames[imgType] || imgType}</span>
+                <span id="status-${imgType}" class="badge bg-secondary">等待中...</span>
+            `;
+            listGroup.appendChild(item);
+        });
+        
+        // 逐个上传/更新图片
+        let successCount = 0;
+        const total = imagesToUpdate.length;
+        
+        // 如果没有需要更新的图片，直接完成
+        if (total === 0) {
+            closeBtn.disabled = false;
+            return;
+        }
+        
+        for (let i = 0; i < imagesToUpdate.length; i++) {
+            const imgType = imagesToUpdate[i];
+            const statusBadge = document.getElementById(`status-${imgType}`);
+            
+            if (statusBadge) {
+                statusBadge.className = 'badge bg-warning';
+                statusBadge.textContent = '处理中...';
+            }
+            statusText.textContent = `正在处理：${imgType}`;
+            
+            // 上传图片（使用 partCode 而不是 partId）
+            const uploadResponse = await fetch(`/spare_parts/code/${partCode}/auto-upload-image`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image_type: imgType })
+            });
+            
+            const uploadData = await uploadResponse.json();
+            
+            if (uploadData.success) {
+                if (statusBadge) {
+                    statusBadge.className = 'badge bg-success';
+                    statusBadge.textContent = uploadData.action === 'updated' ? '✓ 已更新' : '✓ 已上传';
+                }
+                successCount++;
+                
+                // 更新前端显示
+                showImagePreview(imgType, uploadData.image_url);
+                
+                // 更新隐藏字段
+                updateHiddenField(imgType, uploadData.image_url);
+            } else {
+                if (statusBadge) {
+                    statusBadge.className = 'badge bg-danger';
+                    statusBadge.textContent = '✗ 失败';
+                }
+            }
+            
+            // 更新进度条
+            const progress = Math.round(((i + 1) / total) * 100);
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressBar.textContent = `${progress}%`;
+        }
+        
+        // 完成
+        statusText.textContent = `自动上传完成！成功 ${successCount}/${total} 张`;
+        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+        
+        if (successCount === total) {
+            progressBar.classList.add('bg-success');
+        } else if (successCount > 0) {
+            progressBar.classList.add('bg-warning');
+        } else {
+            progressBar.classList.add('bg-danger');
+        }
+        
+        closeBtn.disabled = false;
+        
+        // 延迟关闭
+        setTimeout(() => {
+            modal.hide();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        statusText.textContent = '上传过程出错';
+        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+        progressBar.classList.add('bg-danger');
+        closeBtn.disabled = false;
+        alert('自动上传失败：' + error.message);
+    }
+}
+</script>
 {% endblock %}

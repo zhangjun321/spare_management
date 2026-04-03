@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}文档管理 - 帮助中心{% endblock %}
+
+{% block page_title %}文档管理{% endblock %}
+
+{% block content %}
+<style>
+    .action-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .status-published {
+        background: #dcfce7;
+        color: #166534;
+    }
+    
+    .status-draft {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .featured-badge {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+    }
+</style>
+
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-edit text-primary me-2"></i>文档管理
+            </h5>
+            <button class="btn btn-primary" onclick="showCreateModal()">
+                <i class="fas fa-plus me-2"></i>新建文档
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-filter"></i>
+            </span>
+            <select class="form-select" id="categoryFilter" onchange="loadDocuments()">
+                <option value="">所有分类</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" id="searchInput" 
+                   placeholder="搜索文档..." onkeyup="loadDocuments()">
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50%">标题</th>
+                    <th>分类</th>
+                    <th>状态</th>
+                    <th>浏览</th>
+                    <th>创建时间</th>
+                    <th class="text-end" style="width: 180px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="documentsTableBody">
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 创建/编辑文档模态框 -->
+<div class="modal fade" id="documentModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="documentModalTitle">新建文档</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="documentForm">
+                    <input type="hidden" id="documentId">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">文档标题 *</label>
+                            <input type="text" class="form-control" id="documentTitle" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">分类 *</label>
+                            <select class="form-select" id="documentCategory" required>
+                                <option value="">请选择分类</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">文档摘要</label>
+                            <textarea class="form-control" id="documentSummary" rows="2"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">文档内容 (Markdown) *</label>
+                            <textarea class="form-control" id="documentContent" rows="12" required></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">标签</label>
+                            <input type="text" class="form-control" id="documentTags" placeholder="用逗号分隔">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" id="documentSort" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mt-4">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="documentPublished">
+                                    <label class="form-check-label">发布</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="documentFeatured">
+                                    <label class="form-check-label">精选</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveDocument()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let documentModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    documentModal = new bootstrap.Modal(document.getElementById('documentModal'));
+    loadCategories();
+    loadDocuments();
+});
+
+function loadCategories() {
+    fetch('/help/api/categories')
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                const select = document.getElementById('categoryFilter');
+                const modalSelect = document.getElementById('documentCategory');
+                
+                result.data.forEach(cat => {
+                    select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                    modalSelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                });
+            }
+        });
+}
+
+function loadDocuments() {
+    const categoryId = document.getElementById('categoryFilter').value;
+    const search = document.getElementById('searchInput').value;
+    
+    let url = '/help/api/documents';
+    if (categoryId) {
+        url += `?category_id=${categoryId}`;
+    }
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                let docs = result.data;
+                
+                if (search) {
+                    docs = docs.filter(doc => 
+                        doc.title.toLowerCase().includes(search.toLowerCase())
+                    );
+                }
+                
+                renderDocuments(docs);
+            }
+        });
+}
+
+function renderDocuments(docs) {
+    const tbody = document.getElementById('documentsTableBody');
+    
+    if (docs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted py-5">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>暂无文档</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = docs.map(doc => `
+        <tr>
+            <td>
+                <div class="fw-medium">${doc.title}</div>
+                ${doc.is_featured ? '<span class="featured-badge">精选</span>' : ''}
+            </td>
+            <td>${doc.category_name || '-'}</td>
+            <td>
+                <span class="status-badge ${doc.is_published ? 'status-published' : 'status-draft'}">
+                    ${doc.is_published ? '已发布' : '草稿'}
+                </span>
+            </td>
+            <td>${doc.view_count}</td>
+            <td>${doc.created_at || '-'}</td>
+            <td class="text-end">
+                <button class="btn btn-outline-primary action-btn me-1" onclick="editDocument(${doc.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-outline-danger action-btn" onclick="deleteDocument(${doc.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showCreateModal() {
+    document.getElementById('documentModalTitle').textContent = '新建文档';
+    document.getElementById('documentForm').reset();
+    document.getElementById('documentId').value = '';
+    documentModal.show();
+}
+
+function editDocument(id) {
+    fetch(`/help/api/documents/${id}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                const doc = result.data;
+                document.getElementById('documentModalTitle').textContent = '编辑文档';
+                document.getElementById('documentId').value = doc.id;
+                document.getElementById('documentTitle').value = doc.title;
+                document.getElementById('documentCategory').value = doc.category_id;
+                document.getElementById('documentSummary').value = doc.summary || '';
+                document.getElementById('documentContent').value = doc.content;
+                document.getElementById('documentTags').value = doc.tags || '';
+                document.getElementById('documentSort').value = doc.sort_order;
+                document.getElementById('documentPublished').checked = doc.is_published;
+                document.getElementById('documentFeatured').checked = doc.is_featured;
+                documentModal.show();
+            }
+        });
+}
+
+function saveDocument() {
+    const id = document.getElementById('documentId').value;
+    const data = {
+        title: document.getElementById('documentTitle').value,
+        category_id: parseInt(document.getElementById('documentCategory').value),
+        summary: document.getElementById('documentSummary').value,
+        content: document.getElementById('documentContent').value,
+        tags: document.getElementById('documentTags').value,
+        sort_order: parseInt(document.getElementById('documentSort').value),
+        is_published: document.getElementById('documentPublished').checked,
+        is_featured: document.getElementById('documentFeatured').checked
+    };
+    
+    const url = id ? `/help/api/documents/${id}/update` : '/help/api/documents/create';
+    const method = id ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            alert(result.message);
+            documentModal.hide();
+            loadDocuments();
+        } else {
+            alert('保存失败：' + result.message);
+        }
+    });
+}
+
+function deleteDocument(id) {
+    if (!confirm('确定要删除这篇文档吗？')) {
+        return;
+    }
+    
+    fetch(`/help/api/documents/${id}/delete`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            alert('删除成功');
+            loadDocuments();
+        } else {
+            alert('删除失败：' + result.message);
+        }
+    });
+}
+</script>
+{% endblock %}

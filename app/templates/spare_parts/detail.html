@@ -137,6 +137,45 @@
         </div>
         {% endif %}
         
+        <!-- 备件图片 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h6 class="border-bottom pb-2 mb-3"><i class="fas fa-images"></i> 备件图片</h6>
+                <div class="row">
+                    {% set image_types = [
+                        ('image_url', '正面图'),
+                        ('side_image_url', '侧面图'),
+                        ('detail_image_url', '详细图'),
+                        ('circuit_image_url', '电路图'),
+                        ('perspective_image_url', '透视图'),
+                        ('thumbnail_url', '缩略图')
+                    ] %}
+                    
+                    {% for field, name in image_types %}
+                    <div class="col-md-4 col-sm-6 mb-3">
+                        <div class="card">
+                            <div class="card-body text-center p-2">
+                                <div style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+                                    {% if spare_part[field] %}
+                                    <img src="{{ spare_part[field] }}" alt="{{ name }}" class="img-fluid" style="max-height: 180px; max-width: 100%;">
+                                    {% else %}
+                                    <div class="text-muted">
+                                        <i class="fas fa-image fa-3x"></i>
+                                        <p class="mt-2 mb-0">{{ name }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">{{ name }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
         <div class="row mt-4">
             <div class="col-12">
                 <h6 class="border-bottom pb-2 mb-3">系统信息</h6>

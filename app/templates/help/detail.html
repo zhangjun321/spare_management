@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}{{ doc.title }} - 帮助中心{% endblock %}
+
+{% block page_title %}帮助文档{% endblock %}
+
+{% block content %}
+<style>
+    .doc-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+    
+    .doc-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        line-height: 1.8;
+    }
+    
+    .doc-content h1 {
+        font-size: 1.75rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: #2d3748;
+    }
+    
+    .doc-content h2 {
+        font-size: 1.5rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        color: #4a5568;
+    }
+    
+    .doc-content h3 {
+        font-size: 1.25rem;
+        margin-top: 1.25rem;
+        margin-bottom: 0.5rem;
+        color: #4a5568;
+    }
+    
+    .doc-content p {
+        margin-bottom: 1rem;
+        color: #4a5568;
+    }
+    
+    .doc-content ul, .doc-content ol {
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+    }
+    
+    .doc-content li {
+        margin-bottom: 0.5rem;
+        color: #4a5568;
+    }
+    
+    .doc-content code {
+        background: #f7fafc;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        color: #e53e3e;
+    }
+    
+    .doc-tag {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #e6fffa;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        color: #047857;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .related-card {
+        border: none;
+        border-radius: 12px;
+        padding: 1rem;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .related-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    
+    .view-meta {
+        color: #718096;
+        font-size: 0.875rem;
+    }
+    
+    .breadcrumb-item a {
+        color: #667eea;
+        text-decoration: none;
+    }
+    
+    .breadcrumb-item a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('help.help_index') }}">帮助中心</a>
+        </li>
+        {% if doc.category %}
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('help.help_category', code=doc.category.code) }}">
+                {{ doc.category.name }}
+            </a>
+        </li>
+        {% endif %}
+        <li class="breadcrumb-item active">{{ doc.title }}</li>
+    </ol>
+</nav>
+
+<div class="doc-header">
+    <h1 class="mb-3">{{ doc.title }}</h1>
+    {% if doc.summary %}
+    <p class="lead opacity-90 mb-3">{{ doc.summary }}</p>
+    {% endif %}
+    <div class="d-flex align-items-center gap-3">
+        <span class="view-meta">
+            <i class="fas fa-eye me-1"></i>{{ doc.view_count }} 次浏览
+        </span>
+        <span class="view-meta">
+            <i class="fas fa-clock me-1"></i>
+            创建于 {{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '' }}
+        </span>
+    </div>
+    {% if doc.tags %}
+    <div class="mt-3">
+        {% for tag in doc.get_tags_list() %}
+        <span class="doc-tag">{{ tag }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="doc-content" id="docContent">
+            {{ doc.content }}
+        </div>
+    </div>
+    
+    {% if related_docs %}
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+            <div class="card-header bg-white border-0 py-4">
+                <h5 class="mb-0">
+                    <i class="fas fa-link text-primary me-2"></i>相关文档
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                {% for related in related_docs %}
+                <a href="{{ url_for('help.help_detail', slug=related.slug) }}" 
+                   class="related-card text-decoration-none text-dark d-block mb-3">
+                    <h6 class="mb-1">{{ related.title }}</h6>
+                    {% if related.summary %}
+                    <p class="text-muted small mb-1">{{ related.summary }}</p>
+                    {% endif %}
+                    <div class="view-meta">
+                        <i class="fas fa-eye me-1"></i>{{ related.view_count }} 次浏览
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// 简单的 Markdown 解析（基础版）
+document.addEventListener('DOMContentLoaded', function() {
+    const content = document.getElementById('docContent');
+    if (content) {
+        let html = content.innerHTML;
+        
+        // 处理标题
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+        
+        // 处理列表
+        html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+        html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+        
+        // 处理粗体
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        content.innerHTML = html;
+    }
+});
+</script>
+{% endblock %}

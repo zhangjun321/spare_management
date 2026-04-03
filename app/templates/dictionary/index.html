@@ -1,0 +1,613 @@
+{% extends "base.html" %}
+
+{% block title %}数据字典管理 - 备件管理系统{% endblock %}
+
+{% block page_title %}数据字典管理{% endblock %}
+
+{% block content %}
+<style>
+    .dict-card {
+        border: none;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .dict-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .dict-type-item {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .dict-type-item:hover {
+        background: #f7fafc;
+    }
+    
+    .dict-type-item:last-child {
+        border-bottom: none;
+    }
+    
+    .system-badge {
+        background: #edf2f7;
+        color: #4a5568;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .item-count {
+        background: #e6fffa;
+        color: #047857;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .status-active {
+        background: #c6f6d5;
+        color: #22543d;
+    }
+    
+    .status-inactive {
+        background: #fed7d7;
+        color: #742a2a;
+    }
+    
+    .item-row {
+        padding: 0.75rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .item-row:hover {
+        background: #f7fafc;
+    }
+    
+    .css-class-preview {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .default-badge {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 0.125rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+    
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #11998e;
+    }
+    
+    .stat-label {
+        color: #718096;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+</style>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="totalTypes">--</div>
+            <div class="stat-label">字典类型</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="systemTypes">--</div>
+            <div class="stat-label">系统字典</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="customTypes">--</div>
+            <div class="stat-label">自定义字典</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="totalItems">--</div>
+            <div class="stat-label">字典项总数</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="dict-card">
+            <div class="dict-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">字典类型</h5>
+                    <small class="opacity-75">管理系统数据字典</small>
+                </div>
+                <button class="btn btn-light btn-sm" onclick="showTypeModal()">
+                    <i class="fas fa-plus"></i> 新建类型
+                </button>
+            </div>
+            <div class="p-3">
+                <div id="typeList">
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        <div class="dict-card" id="itemContainer">
+            <div class="dict-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">字典项</h5>
+                    <small class="opacity-75">选择字典类型查看详情</small>
+                </div>
+                <button class="btn btn-light btn-sm" id="addItemBtn" style="display: none;" onclick="showItemModal()">
+                    <i class="fas fa-plus"></i> 新建项
+                </button>
+            </div>
+            <div class="p-3" id="itemList">
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                    <p>请从左侧选择字典类型</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 字典类型模态框 -->
+<div class="modal fade" id="typeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="typeModalTitle">新建字典类型</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="typeForm">
+                    <div class="mb-3">
+                        <label class="form-label">字典名称 *</label>
+                        <input type="text" class="form-control" id="typeName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">字典编码 *</label>
+                        <input type="text" class="form-control" id="typeCode" required>
+                        <small class="text-muted">用于代码中调用，创建后不可修改</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" id="typeDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" id="typeSortOrder" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" id="typeStatus">
+                                <option value="1">启用</option>
+                                <option value="0">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveType()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 字典项模态框 -->
+<div class="modal fade" id="itemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemModalTitle">新建字典项</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="itemForm">
+                    <div class="mb-3">
+                        <label class="form-label">标签 *</label>
+                        <input type="text" class="form-control" id="itemLabel" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">键值 *</label>
+                        <input type="text" class="form-control" id="itemValue" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" id="itemDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" id="itemSortOrder" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" id="itemStatus">
+                                <option value="1">启用</option>
+                                <option value="0">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-3">
+                        <div class="col-md-6">
+                            <label class="form-label">样式类</label>
+                            <select class="form-select" id="itemCssClass">
+                                <option value="">无</option>
+                                <option value="primary">主要 (蓝色)</option>
+                                <option value="success">成功 (绿色)</option>
+                                <option value="warning">警告 (黄色)</option>
+                                <option value="danger">危险 (红色)</option>
+                                <option value="info">信息 (青色)</option>
+                                <option value="secondary">次要 (灰色)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="itemIsDefault">
+                                <label class="form-check-label">设为默认</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveItem()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentTypeId = null;
+let currentItemId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTypes();
+});
+
+async function loadTypes() {
+    try {
+        const response = await fetch('/dictionary/api/types');
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            renderTypeList(result.data);
+            updateStats(result.data);
+        }
+    } catch (error) {
+        console.error('加载字典类型失败:', error);
+        document.getElementById('typeList').innerHTML = 
+            '<div class="text-center py-4 text-danger">加载失败，请刷新重试</div>';
+    }
+}
+
+function renderTypeList(types) {
+    const container = document.getElementById('typeList');
+    
+    if (types.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-muted">暂无字典类型</div>';
+        return;
+    }
+    
+    container.innerHTML = types.map(type => `
+        <div class="dict-type-item" onclick="selectType(${type.id})" style="cursor: pointer;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">${type.dict_name}</h6>
+                    <small class="text-muted">${type.dict_code}</small>
+                    ${type.description ? `<p class="mb-0 mt-1 small text-muted">${type.description}</p>` : ''}
+                </div>
+                <div class="d-flex gap-2">
+                    ${type.is_system ? '<span class="system-badge">系统</span>' : ''}
+                    <span class="item-count">${type.item_count} 项</span>
+                    <span class="status-badge ${type.status ? 'status-active' : 'status-inactive'}">
+                        ${type.status ? '启用' : '禁用'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateStats(types) {
+    const total = types.length;
+    const system = types.filter(t => t.is_system).length;
+    const custom = total - system;
+    const totalItems = types.reduce((sum, t) => sum + t.item_count, 0);
+    
+    document.getElementById('totalTypes').textContent = total;
+    document.getElementById('systemTypes').textContent = system;
+    document.getElementById('customTypes').textContent = custom;
+    document.getElementById('totalItems').textContent = totalItems;
+}
+
+async function selectType(typeId) {
+    currentTypeId = typeId;
+    
+    try {
+        const response = await fetch(`/dictionary/api/types/${typeId}/items`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            renderItemList(result.data);
+            document.getElementById('addItemBtn').style.display = 'inline-block';
+        }
+    } catch (error) {
+        console.error('加载字典项失败:', error);
+    }
+}
+
+function renderItemList(items) {
+    const container = document.getElementById('itemList');
+    
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <p>暂无字典项</p>
+                <button class="btn btn-primary btn-sm mt-2" onclick="showItemModal()">
+                    <i class="fas fa-plus"></i> 添加第一个
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = items.map(item => `
+        <div class="item-row d-flex justify-content-between align-items-center">
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <strong>${item.item_label}</strong>
+                    ${item.is_default ? '<span class="default-badge">默认</span>' : ''}
+                    ${item.css_class ? `<span class="css-class-preview bg-${item.css_class} text-white">${item.css_class}</span>` : ''}
+                </div>
+                <small class="text-muted">${item.item_value}</small>
+                ${item.description ? `<p class="mb-0 mt-1 small text-muted">${item.description}</p>` : ''}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="status-badge ${item.status ? 'status-active' : 'status-inactive'}">
+                    ${item.status ? '启用' : '禁用'}
+                </span>
+                <button class="btn btn-light btn-sm" onclick="showEditItemModal(${item.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-light btn-sm text-danger" onclick="deleteItem(${item.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showTypeModal() {
+    currentTypeId = null;
+    document.getElementById('typeModalTitle').textContent = '新建字典类型';
+    document.getElementById('typeForm').reset();
+    document.getElementById('typeCode').disabled = false;
+    new bootstrap.Modal(document.getElementById('typeModal')).show();
+}
+
+async function showEditTypeModal() {
+    if (!currentTypeId) return;
+    
+    try {
+        const response = await fetch(`/dictionary/api/types/${currentTypeId}`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            const type = result.data;
+            document.getElementById('typeModalTitle').textContent = '编辑字典类型';
+            document.getElementById('typeName').value = type.dict_name;
+            document.getElementById('typeCode').value = type.dict_code;
+            document.getElementById('typeCode').disabled = type.is_system;
+            document.getElementById('typeDescription').value = type.description || '';
+            document.getElementById('typeSortOrder').value = type.sort_order;
+            document.getElementById('typeStatus').value = type.status ? '1' : '0';
+            
+            new bootstrap.Modal(document.getElementById('typeModal')).show();
+        }
+    } catch (error) {
+        console.error('加载字典类型失败:', error);
+    }
+}
+
+async function saveType() {
+    const name = document.getElementById('typeName').value.trim();
+    const code = document.getElementById('typeCode').value.trim();
+    const description = document.getElementById('typeDescription').value.trim();
+    const sortOrder = parseInt(document.getElementById('typeSortOrder').value) || 0;
+    const status = document.getElementById('typeStatus').value === '1';
+    
+    if (!name || !code) {
+        alert('请填写字典名称和编码');
+        return;
+    }
+    
+    try {
+        const url = currentTypeId ? 
+            `/dictionary/api/types/${currentTypeId}/update` : 
+            '/dictionary/api/types/create';
+        const method = currentTypeId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                dict_name: name,
+                dict_code: code,
+                description: description,
+                sort_order: sortOrder,
+                status: status
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            bootstrap.Modal.getInstance(document.getElementById('typeModal')).hide();
+            alert(result.message);
+            loadTypes();
+        } else {
+            alert(result.message || '保存失败');
+        }
+    } catch (error) {
+        console.error('保存字典类型失败:', error);
+        alert('保存失败，请重试');
+    }
+}
+
+function showItemModal() {
+    currentItemId = null;
+    document.getElementById('itemModalTitle').textContent = '新建字典项';
+    document.getElementById('itemForm').reset();
+    new bootstrap.Modal(document.getElementById('itemModal')).show();
+}
+
+async function showEditItemModal(itemId) {
+    currentItemId = itemId;
+    
+    try {
+        const response = await fetch(`/dictionary/api/items/${itemId}`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            const item = result.data;
+            document.getElementById('itemModalTitle').textContent = '编辑字典项';
+            document.getElementById('itemLabel').value = item.item_label;
+            document.getElementById('itemValue').value = item.item_value;
+            document.getElementById('itemDescription').value = item.description || '';
+            document.getElementById('itemSortOrder').value = item.sort_order;
+            document.getElementById('itemStatus').value = item.status ? '1' : '0';
+            document.getElementById('itemCssClass').value = item.css_class || '';
+            document.getElementById('itemIsDefault').checked = item.is_default;
+            
+            new bootstrap.Modal(document.getElementById('itemModal')).show();
+        }
+    } catch (error) {
+        console.error('加载字典项失败:', error);
+    }
+}
+
+async function saveItem() {
+    const label = document.getElementById('itemLabel').value.trim();
+    const value = document.getElementById('itemValue').value.trim();
+    const description = document.getElementById('itemDescription').value.trim();
+    const sortOrder = parseInt(document.getElementById('itemSortOrder').value) || 0;
+    const status = document.getElementById('itemStatus').value === '1';
+    const cssClass = document.getElementById('itemCssClass').value;
+    const isDefault = document.getElementById('itemIsDefault').checked;
+    
+    if (!label || !value) {
+        alert('请填写标签和键值');
+        return;
+    }
+    
+    try {
+        const url = currentItemId ? 
+            `/dictionary/api/items/${currentItemId}/update` : 
+            '/dictionary/api/items/create';
+        const method = currentItemId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                dict_type_id: currentTypeId,
+                item_label: label,
+                item_value: value,
+                description: description,
+                sort_order: sortOrder,
+                status: status,
+                css_class: cssClass,
+                is_default: isDefault
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide();
+            alert(result.message);
+            selectType(currentTypeId);
+            loadTypes();
+        } else {
+            alert(result.message || '保存失败');
+        }
+    } catch (error) {
+        console.error('保存字典项失败:', error);
+        alert('保存失败，请重试');
+    }
+}
+
+async function deleteItem(itemId) {
+    if (!confirm('确定要删除这个字典项吗？')) return;
+    
+    try {
+        const response = await fetch(`/dictionary/api/items/${itemId}/delete`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert(result.message);
+            selectType(currentTypeId);
+            loadTypes();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    } catch (error) {
+        console.error('删除字典项失败:', error);
+        alert('删除失败，请重试');
+    }
+}
+</script>
+{% endblock %}

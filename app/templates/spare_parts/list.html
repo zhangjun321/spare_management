@@ -421,11 +421,20 @@
                             <input type="checkbox" class="form-check-input part-checkbox" value="{{ part.id }}" data-part-code="{{ part.part_code }}">
                         </td>
                         <td class="text-center" data-column="thumbnail">
-                            {% if part.image_url %}
+                            {% if part.thumbnail_url %}
+                            <img src="{{ part.thumbnail_url }}" alt="{{ part.name }}" 
+                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;" 
+                                 class="thumbnail-preview" 
+                                 data-part-code="{{ part.part_code }}"
+                                 data-part-id="{{ part.id }}"
+                                 data-bs-toggle="modal" 
+                                 data-bs-target="#imageModal">
+                            {% elif part.image_url %}
                             <img src="{{ part.image_url }}" alt="{{ part.name }}" 
                                  style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;" 
                                  class="thumbnail-preview" 
                                  data-part-code="{{ part.part_code }}"
+                                 data-part-id="{{ part.id }}"
                                  data-bs-toggle="modal" 
                                  data-bs-target="#imageModal">
                             {% else %}
@@ -479,6 +488,9 @@
                         </td>
                         <td data-column="action">
                             <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-info generate-images-btn" data-part-id="{{ part.id }}" title="生成图片" {% if not current_user.has_permission('spare_part', 'update') %}disabled{% endif %}>
+                                    <i class="fas fa-magic"></i>
+                                </button>
                                 <a href="{{ url_for('spare_parts.detail', id=part.id) }}" class="btn btn-outline-primary" title="查看详情">
                                     <i class="fas fa-eye"></i>
                                 </a>
@@ -755,6 +767,122 @@ function changePerPage(value) {
     window.location.href = window.location.pathname + '?' + urlParams.toString();
 }
 
+// 图片类型列表
+const imageTypes = [
+    { type: 'front', name: '正面图' },
+    { type: 'side', name: '侧面图' },
+    { type: 'detail', name: '详细图' },
+    { type: 'circuit', name: '电路图' },
+    { type: 'perspective', name: '透视图' },
+    { type: 'thumbnail', name: '缩略图' }
+];
+
+// 生成图片功能 - 带进度显示
+async function generateImages(partId, btn) {
+    console.log('开始生成图片，partId:', partId);
+    
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+    
+    // 显示进度模态框
+    const modal = new bootstrap.Modal(document.getElementById('imageGenerationModal'));
+    const progressBar = document.getElementById('imageGenerationProgressBar');
+    const statusText = document.getElementById('imageGenerationStatus');
+    const listGroup = document.getElementById('imageGenerationList');
+    const closeBtn = document.getElementById('closeImageGenerationModal');
+    
+    // 初始化进度显示
+    progressBar.style.width = '0%';
+    progressBar.setAttribute('aria-valuenow', '0');
+    progressBar.textContent = '0%';
+    statusText.textContent = '准备中...';
+    listGroup.innerHTML = '';
+    
+    // 添加图片类型到列表
+    imageTypes.forEach((imgType, index) => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        item.id = `image-item-${imgType.type}`;
+        item.innerHTML = `
+            <span>${imgType.name}</span>
+            <span id="status-${imgType.type}" class="badge bg-secondary">待生成</span>
+        `;
+        listGroup.appendChild(item);
+    });
+    
+    closeBtn.disabled = true;
+    modal.show();
+    
+    let successCount = 0;
+    const total = imageTypes.length;
+    
+    try {
+        for (let i = 0; i < imageTypes.length; i++) {
+            const imgType = imageTypes[i];
+            const statusBadge = document.getElementById(`status-${imgType.type}`);
+            
+            statusBadge.className = 'badge bg-warning';
+            statusBadge.textContent = '生成中...';
+            statusText.textContent = `正在生成: ${imgType.name}`;
+            
+            const response = await fetch(`/spare_parts/${partId}/generate-single-image`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ image_type: imgType.type })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                statusBadge.className = 'badge bg-success';
+                statusBadge.textContent = '✓ 成功';
+                successCount++;
+            } else {
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.textContent = '✗ 失败';
+            }
+            
+            // 更新进度条
+            const progress = Math.round(((i + 1) / total) * 100);
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressBar.textContent = `${progress}%`;
+        }
+        
+        statusText.textContent = successCount === total ? '全部生成完成！' : `生成完成，成功 ${successCount}/${total} 张`;
+        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+        
+        if (successCount === total) {
+            progressBar.classList.add('bg-success');
+        } else if (successCount > 0) {
+            progressBar.classList.add('bg-warning');
+        } else {
+            progressBar.classList.add('bg-danger');
+        }
+        
+        closeBtn.disabled = false;
+        
+        // 延迟刷新页面
+        setTimeout(() => {
+            modal.hide();
+            window.location.reload();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        statusText.textContent = '生成过程出错: ' + error.message;
+        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+        progressBar.classList.add('bg-danger');
+        closeBtn.disabled = false;
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
+
 // 图片预览功能
 document.addEventListener('DOMContentLoaded', function() {
     const thumbnails = document.querySelectorAll('.thumbnail-preview');
@@ -770,6 +898,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // 生成图片按钮事件
+    const generateBtns = document.querySelectorAll('.generate-images-btn');
+    generateBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const partId = this.getAttribute('data-part-id');
+            if (confirm('确定要生成该备件的图片吗？这可能需要一些时间。')) {
+                generateImages(partId, this);
+            }
+        });
+    });
+    
     // 初始化 Bootstrap tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -780,6 +919,26 @@ document.addEventListener('DOMContentLoaded', function() {
     restoreColumnSettings();
 });
 </script>
+
+<!-- 图片生成进度模态框 -->
+<div class="modal fade" id="imageGenerationModal" tabindex="-1" aria-labelledby="imageGenerationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageGenerationModalLabel">正在生成图片</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeImageGenerationModal" disabled></button>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div id="imageGenerationProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+                <div id="imageGenerationStatus" class="text-muted text-center mb-3">准备中...</div>
+                <div id="imageGenerationList" class="list-group">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- 图片查看模态框 -->
 <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">

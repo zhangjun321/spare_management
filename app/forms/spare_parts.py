@@ -58,6 +58,21 @@ class SparePartForm(FlaskForm):
     image_url = StringField('图片 URL', validators=[
         Length(max=500, message='图片 URL 长度不能超过 500 个字符')
     ])
+    thumbnail_url = StringField('缩略图 URL', validators=[
+        Length(max=500, message='缩略图 URL 长度不能超过 500 个字符')
+    ])
+    side_image_url = StringField('侧面图 URL', validators=[
+        Length(max=500, message='侧面图 URL 长度不能超过 500 个字符')
+    ])
+    detail_image_url = StringField('详细图 URL', validators=[
+        Length(max=500, message='详细图 URL 长度不能超过 500 个字符')
+    ])
+    circuit_image_url = StringField('电路图 URL', validators=[
+        Length(max=500, message='电路图 URL 长度不能超过 500 个字符')
+    ])
+    perspective_image_url = StringField('透视图 URL', validators=[
+        Length(max=500, message='透视图 URL 长度不能超过 500 个字符')
+    ])
     remark = TextAreaField('备注', validators=[Optional()])
     is_active = BooleanField('是否启用', default=True)
     submit = SubmitField('保存')

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}帮助中心 - 备件管理系统{% endblock %}
+
+{% block page_title %}帮助中心{% endblock %}
+
+{% block content %}
+<style>
+    .help-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+    
+    .search-box {
+        position: relative;
+        max-width: 600px;
+        margin: 2rem auto 0;
+    }
+    
+    .search-box input {
+        padding: 1rem 1.5rem;
+        padding-right: 4rem;
+        border-radius: 50px;
+        border: none;
+        font-size: 1.1rem;
+    }
+    
+    .search-box button {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 50%;
+        width: 44px;
+        height: 44px;
+        color: white;
+    }
+    
+    .category-card {
+        border: none;
+        border-radius: 12px;
+        padding: 1.5rem;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .category-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    
+    .category-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .doc-card {
+        border: none;
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .doc-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    
+    .doc-tag {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #f7fafc;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        color: #718096;
+        margin-right: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .featured-badge {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .view-count {
+        color: #a0aec0;
+        font-size: 0.875rem;
+    }
+</style>
+
+<div class="help-hero text-center">
+    <h1 class="display-4 mb-3">有什么可以帮助您？</h1>
+    <p class="lead opacity-90">快速找到您需要的帮助文档</p>
+    
+    <div class="search-box">
+        <form action="{{ url_for('help.help_search') }}" method="GET">
+            <input type="text" name="q" class="form-control" 
+                   placeholder="搜索帮助文档..." id="searchInput">
+            <button type="submit" class="btn">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if featured_docs %}
+<div class="mb-5">
+    <h3 class="mb-4">
+        <i class="fas fa-star text-warning me-2"></i>精选文档
+    </h3>
+    <div class="row g-3">
+        {% for doc in featured_docs %}
+        <div class="col-md-6">
+            <a href="{{ url_for('help.help_detail', slug=doc.slug) }}" 
+               class="doc-card text-decoration-none text-dark">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0">{{ doc.title }}</h6>
+                    <span class="featured-badge">精选</span>
+                </div>
+                {% if doc.summary %}
+                <p class="text-muted small mb-2">{{ doc.summary }}</p>
+                {% endif %}
+                {% if doc.tags %}
+                <div class="mb-2">
+                    {% for tag in doc.get_tags_list() %}
+                    <span class="doc-tag">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="view-count">
+                    <i class="fas fa-eye me-1"></i>{{ doc.view_count }} 次浏览
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div>
+    <h3 class="mb-4">
+        <i class="fas fa-folder-open text-primary me-2"></i>文档分类
+    </h3>
+    <div class="row g-3">
+        {% for category in categories %}
+        <div class="col-md-4">
+            <a href="{{ url_for('help.help_category', code=category.code) }}" 
+               class="category-card text-decoration-none text-dark">
+                <div class="category-icon">
+                    <i class="fas {{ category.icon or 'fa-book' }}"></i>
+                </div>
+                <h5 class="mb-2">{{ category.name }}</h5>
+                {% if category.description %}
+                <p class="text-muted small mb-2">{{ category.description }}</p>
+                {% endif %}
+                <div class="text-primary small">
+                    <i class="fas fa-file-alt me-1"></i>
+                    {{ category.documents.count() if category.documents else 0 }} 篇文档
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+
+{% block title %}角色权限管理 - 备件管理系统{% endblock %}
+
+{% block page_title %}角色权限管理{% endblock %}
+
+{% block content %}
+<style>
+    .roles-card {
+        border: none;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .roles-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .role-item {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .role-item:hover {
+        background: #f7fafc;
+    }
+    
+    .role-item:last-child {
+        border-bottom: none;
+    }
+    
+    .system-badge {
+        background: #edf2f7;
+        color: #4a5568;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .user-count {
+        background: #e6fffa;
+        color: #047857;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .permission-checkbox {
+        margin-bottom: 0.5rem;
+    }
+    
+    .module-section {
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: #f7fafc;
+        border-radius: 8px;
+    }
+    
+    .action-btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+    
+    .stat-label {
+        color: #718096;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+</style>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="totalRoles">--</div>
+            <div class="stat-label">角色总数</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="systemRoles">--</div>
+            <div class="stat-label">系统角色</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="customRoles">--</div>
+            <div class="stat-label">自定义角色</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="totalUsers">--</div>
+            <div class="stat-label">关联用户</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="roles-card">
+            <div class="roles-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">角色列表</h5>
+                    <small class="opacity-75">管理系统角色和权限</small>
+                </div>
+                <button class="btn btn-light btn-sm" onclick="showCreateModal()">
+                    <i class="fas fa-plus"></i> 新建角色
+                </button>
+            </div>
+            <div class="p-3">
+                <div id="roleList">
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        <div class="roles-card" id="roleDetail">
+            <div class="roles-header">
+                <h5 class="mb-0">角色详情</h5>
+                <small class="opacity-75">选择一个角色查看详情</small>
+            </div>
+            <div class="p-4 text-center text-muted">
+                <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                <p>请从左侧选择一个角色</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 创建/编辑角色模态框 -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="roleModalTitle">新建角色</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="roleForm">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">角色名称 *</label>
+                            <input type="text" class="form-control" id="roleName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">显示名称 *</label>
+                            <input type="text" class="form-control" id="roleDisplayName" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色描述</label>
+                        <textarea class="form-control" id="roleDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">权限配置</label>
+                        <div id="permissionList">
+                            <div class="text-center py-3 text-muted">
+                                <i class="fas fa-spinner fa-spin"></i> 加载权限模块...
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveRole()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRoleId = null;
+let permissionModules = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadRoles();
+    loadPermissionModules();
+});
+
+async function loadRoles() {
+    try {
+        const response = await fetch('/roles/api/list');
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            renderRoleList(result.data);
+            updateStats(result.data);
+        }
+    } catch (error) {
+        console.error('加载角色列表失败:', error);
+        document.getElementById('roleList').innerHTML = 
+            '<div class="text-center py-4 text-danger">加载失败，请刷新重试</div>';
+    }
+}
+
+function renderRoleList(roles) {
+    const container = document.getElementById('roleList');
+    
+    if (roles.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-muted">暂无角色</div>';
+        return;
+    }
+    
+    container.innerHTML = roles.map(role => `
+        <div class="role-item" onclick="selectRole(${role.id})" style="cursor: pointer;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">${role.display_name}</h6>
+                    <small class="text-muted">${role.name}</small>
+                    ${role.description ? `<p class="mb-0 mt-1 small text-muted">${role.description}</p>` : ''}
+                </div>
+                <div class="d-flex gap-2">
+                    ${role.is_system ? '<span class="system-badge">系统</span>' : ''}
+                    <span class="user-count">${role.user_count} 用户</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateStats(roles) {
+    const total = roles.length;
+    const system = roles.filter(r => r.is_system).length;
+    const custom = total - system;
+    const totalUsers = roles.reduce((sum, r) => sum + r.user_count, 0);
+    
+    document.getElementById('totalRoles').textContent = total;
+    document.getElementById('systemRoles').textContent = system;
+    document.getElementById('customRoles').textContent = custom;
+    document.getElementById('totalUsers').textContent = totalUsers;
+}
+
+async function selectRole(roleId) {
+    currentRoleId = roleId;
+    
+    try {
+        const response = await fetch(`/roles/api/${roleId}`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            renderRoleDetail(result.data);
+        }
+    } catch (error) {
+        console.error('加载角色详情失败:', error);
+    }
+}
+
+async function loadRoleUsers(roleId) {
+    try {
+        const response = await fetch(`/roles/api/${roleId}/users`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            return result.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('加载用户列表失败:', error);
+        return [];
+    }
+}
+
+async function renderRoleDetail(role) {
+    const users = await loadRoleUsers(role.id);
+    const container = document.getElementById('roleDetail');
+    
+    container.innerHTML = `
+        <div class="roles-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">${role.display_name}</h5>
+                    <small class="opacity-75">${role.name}</small>
+                </div>
+                <div>
+                    ${!role.is_system ? `
+                        <button class="btn btn-light btn-sm me-2" onclick="showEditModal()">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteRole(${role.id})">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="p-4">
+            ${role.description ? `
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">描述</h6>
+                    <p>${role.description}</p>
+                </div>
+            ` : ''}
+            
+            <div class="mb-4">
+                <h6 class="text-muted mb-3">权限配置</h6>
+                <div id="permissionDisplay">
+                    ${renderPermissionDisplay(role.permissions)}
+                </div>
+            </div>
+            
+            <div>
+                <h6 class="text-muted mb-3">关联用户 (${users.length})</h6>
+                ${users.length > 0 ? `
+                    <div class="row g-2">
+                        ${users.map(u => `
+                            <div class="col-md-6">
+                                <div class="p-2 bg-light rounded">
+                                    <strong>${u.real_name}</strong>
+                                    <small class="text-muted ms-2">@${u.username}</small>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<p class="text-muted">暂无关联用户</p>'}
+            </div>
+        </div>
+    `;
+}
+
+function renderPermissionDisplay(permissions) {
+    if (!permissions || Object.keys(permissions).length === 0) {
+        return '<p class="text-muted">暂无权限配置</p>';
+    }
+    
+    const modules = [
+        {code: 'spare_parts', name: '备件管理'},
+        {code: 'batches', name: '批次管理'},
+        {code: 'warehouses', name: '仓库管理'},
+        {code: 'transactions', name: '交易管理'},
+        {code: 'equipment', name: '设备管理'},
+        {code: 'maintenance', name: '维修管理'},
+        {code: 'purchase', name: '采购管理'},
+        {code: 'reports', name: '报表统计'},
+        {code: 'system', name: '系统管理'},
+        {code: 'backup', name: '数据备份'},
+        {code: 'monitor', name: '系统监控'},
+        {code: 'logs', name: '日志审计'},
+        {code: 'config', name: '系统配置'},
+        {code: 'roles', name: '角色管理'}
+    ];
+    
+    return `
+        <div class="row g-2">
+            ${modules.map(m => {
+                const perms = permissions[m.code] || [];
+                if (perms.length === 0) return '';
+                return `
+                    <div class="col-md-6">
+                        <div class="p-2 bg-light rounded">
+                            <strong>${m.name}</strong>
+                            <div class="mt-1">
+                                ${perms.map(p => `
+                                    <span class="badge bg-primary me-1">${getActionName(p)}</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function getActionName(action) {
+    const names = {
+        'read': '查看',
+        'create': '创建',
+        'update': '编辑',
+        'delete': '删除',
+        'export': '导出',
+        'admin': '管理',
+        '*': '全部'
+    };
+    return names[action] || action;
+}
+
+async function loadPermissionModules() {
+    try {
+        const response = await fetch('/roles/api/permissions/modules');
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            permissionModules = result.data;
+        }
+    } catch (error) {
+        console.error('加载权限模块失败:', error);
+    }
+}
+
+function showCreateModal() {
+    currentRoleId = null;
+    document.getElementById('roleModalTitle').textContent = '新建角色';
+    document.getElementById('roleForm').reset();
+    renderPermissionCheckboxes({});
+    new bootstrap.Modal(document.getElementById('roleModal')).show();
+}
+
+async function showEditModal() {
+    if (!currentRoleId) return;
+    
+    try {
+        const response = await fetch(`/roles/api/${currentRoleId}`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            const role = result.data;
+            document.getElementById('roleModalTitle').textContent = '编辑角色';
+            document.getElementById('roleName').value = role.name;
+            document.getElementById('roleDisplayName').value = role.display_name;
+            document.getElementById('roleDescription').value = role.description || '';
+            renderPermissionCheckboxes(role.permissions);
+            
+            new bootstrap.Modal(document.getElementById('roleModal')).show();
+        }
+    } catch (error) {
+        console.error('加载角色详情失败:', error);
+    }
+}
+
+function renderPermissionCheckboxes(selectedPermissions) {
+    const container = document.getElementById('permissionList');
+    selectedPermissions = selectedPermissions || {};
+    
+    container.innerHTML = permissionModules.modules.map(module => `
+        <div class="module-section">
+            <h6 class="mb-2">${module.name}</h6>
+            <div class="row">
+                ${permissionModules.actions.map(action => {
+                    const isChecked = selectedPermissions[module.code] && 
+                        (selectedPermissions[module.code].includes(action.code) || 
+                         selectedPermissions[module.code].includes('*'));
+                    return `
+                        <div class="col-md-4 permission-checkbox">
+                            <div class="form-check">
+                                <input class="form-check-input permission-check" 
+                                       type="checkbox" 
+                                       data-module="${module.code}" 
+                                       data-action="${action.code}"
+                                       ${isChecked ? 'checked' : ''}>
+                                <label class="form-check-label">${action.name}</label>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function collectPermissions() {
+    const permissions = {};
+    const checkboxes = document.querySelectorAll('.permission-check:checked');
+    
+    checkboxes.forEach(cb => {
+        const module = cb.dataset.module;
+        const action = cb.dataset.action;
+        
+        if (!permissions[module]) {
+            permissions[module] = [];
+        }
+        permissions[module].push(action);
+    });
+    
+    return permissions;
+}
+
+async function saveRole() {
+    const name = document.getElementById('roleName').value.trim();
+    const displayName = document.getElementById('roleDisplayName').value.trim();
+    const description = document.getElementById('roleDescription').value.trim();
+    const permissions = collectPermissions();
+    
+    if (!name || !displayName) {
+        alert('请填写角色名称和显示名称');
+        return;
+    }
+    
+    try {
+        const url = currentRoleId ? 
+            `/roles/api/${currentRoleId}/update` : 
+            '/roles/api/create';
+        const method = currentRoleId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                display_name: displayName,
+                description: description,
+                permissions: permissions
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
+            alert(result.message);
+            loadRoles();
+            if (currentRoleId) {
+                selectRole(currentRoleId);
+            }
+        } else {
+            alert(result.message || '保存失败');
+        }
+    } catch (error) {
+        console.error('保存角色失败:', error);
+        alert('保存失败，请重试');
+    }
+}
+
+async function deleteRole(roleId) {
+    if (!confirm('确定要删除这个角色吗？')) return;
+    
+    try {
+        const response = await fetch(`/roles/api/${roleId}/delete`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            alert(result.message);
+            currentRoleId = null;
+            document.getElementById('roleDetail').innerHTML = `
+                <div class="roles-header">
+                    <h5 class="mb-0">角色详情</h5>
+                    <small class="opacity-75">选择一个角色查看详情</small>
+                </div>
+                <div class="p-4 text-center text-muted">
+                    <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                    <p>请从左侧选择一个角色</p>
+                </div>
+            `;
+            loadRoles();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    } catch (error) {
+        console.error('删除角色失败:', error);
+        alert('删除失败，请重试');
+    }
+}
+</script>
+{% endblock %}

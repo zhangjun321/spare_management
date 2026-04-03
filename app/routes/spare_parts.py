@@ -4,7 +4,7 @@
 """
 
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, Response
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, Response, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 from app.extensions import db
@@ -15,11 +15,17 @@ from app.forms.spare_parts import SparePartForm, SparePartSearchForm
 from app.utils.decorators import permission_required
 from app.utils.helpers import paginate_query
 from app.services.cache_service import cache, clear_cache
+from app.services.image_generation_service import ImageGenerationService
 import io
+import os
 import csv
 from datetime import datetime
 
 spare_parts_bp = Blueprint('spare_parts', __name__, template_folder='../templates/spare_parts')
+
+# CSRF 豁免配置
+from app.extensions import csrf
+csrf.exempt(spare_parts_bp)
 
 
 @spare_parts_bp.route('/')
@@ -180,6 +186,11 @@ def edit(id):
         spare_part.last_purchase_date = form.last_purchase_date.data
         spare_part.datasheet_url = form.datasheet_url.data
         spare_part.image_url = form.image_url.data
+        spare_part.thumbnail_url = form.thumbnail_url.data
+        spare_part.side_image_url = form.side_image_url.data
+        spare_part.detail_image_url = form.detail_image_url.data
+        spare_part.circuit_image_url = form.circuit_image_url.data
+        spare_part.perspective_image_url = form.perspective_image_url.data
         spare_part.remark = form.remark.data
         spare_part.is_active = form.is_active.data
         
@@ -194,7 +205,7 @@ def edit(id):
         flash('备件更新成功！', 'success')
         return redirect(url_for('spare_parts.detail', id=spare_part.id))
     
-    return render_template('spare_parts/form.html', form=form, title='编辑备件')
+    return render_template('spare_parts/form.html', form=form, title='编辑备件', spare_part=spare_part)
 
 
 @spare_parts_bp.route('/<int:id>/delete', methods=['POST'])
@@ -370,3 +381,519 @@ def export():
     except ImportError:
         flash('请先安装 openpyxl 库：pip install openpyxl', 'warning')
         return redirect(url_for('spare_parts.index'))
+
+
+@spare_parts_bp.route('/<int:id>/generate-images', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def generate_images(id):
+    """生成备件图片"""
+    from app.extensions import db, csrf
+    
+    spare_part = SparePart.query.get_or_404(id)
+    
+    try:
+        # 获取供应商名称
+        supplier_name = spare_part.supplier.name if spare_part.supplier else "未知供应商"
+        
+        # 初始化图片生成服务
+        image_service = ImageGenerationService()
+        
+        # 生成图片
+        results = image_service.generate_spare_part_images(
+            part_code=spare_part.part_code,
+            part_name=spare_part.name,
+            supplier_name=supplier_name
+        )
+        
+        # 更新备件的缩略图
+        if results.get('thumbnail_url'):
+            spare_part.thumbnail_url = results['thumbnail_url']
+        
+        # 更新图片URL（使用正面图）
+        if results.get('images', {}).get('front'):
+            spare_part.image_url = results['images']['front']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '图片生成成功',
+            'data': results
+        })
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'图片生成失败: {str(e)}'
+        }), 500
+
+@spare_parts_bp.route('/<int:id>/image-types', methods=['GET'])
+@login_required
+@permission_required('spare_part', 'view')
+def get_image_types(id):
+    """获取图片类型列表"""
+    image_service = ImageGenerationService()
+    types = image_service.get_image_types()
+    return jsonify({
+        'success': True,
+        'data': [{'type': t[0], 'name': t[1]} for t in types]
+    })
+
+
+@spare_parts_bp.route('/<int:id>/generate-single-image', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def generate_single_image(id):
+    """生成单张图片"""
+    from app.extensions import db, csrf
+    
+    spare_part = SparePart.query.get_or_404(id)
+    data = request.get_json()
+    image_type = data.get('image_type')
+    
+    if not image_type:
+        return jsonify({'success': False, 'message': '请指定图片类型'}), 400
+    
+    try:
+        supplier_name = spare_part.supplier.name if spare_part.supplier else "未知供应商"
+        image_service = ImageGenerationService()
+        
+        result = image_service.generate_single_image_by_type(
+            part_code=spare_part.part_code,
+            part_name=spare_part.name,
+            supplier_name=supplier_name,
+            image_type=image_type
+        )
+        
+        if result['success']:
+            if image_type == 'thumbnail':
+                spare_part.thumbnail_url = result['image_url']
+            elif image_type == 'front':
+                spare_part.image_url = result['image_url']
+            
+            db.session.commit()
+        
+        return jsonify(result)
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'图片生成失败: {str(e)}'
+        }), 500
+
+
+# 豁免此端点的 CSRF 保护
+from app.extensions import csrf
+csrf.exempt(generate_images)
+csrf.exempt(generate_single_image)
+
+
+@spare_parts_bp.route('/<int:id>/images', methods=['GET'])
+@login_required
+@permission_required('spare_part', 'view')
+def get_images(id):
+    """获取备件的所有图片"""
+    spare_part = SparePart.query.get_or_404(id)
+    
+    images = {
+        'front': spare_part.image_url,
+        'thumbnail': spare_part.thumbnail_url,
+        'side': spare_part.side_image_url,
+        'detail': spare_part.detail_image_url,
+        'circuit': spare_part.circuit_image_url,
+        'perspective': spare_part.perspective_image_url
+    }
+    
+    return jsonify({
+        'success': True,
+        'images': images
+    })
+
+
+@spare_parts_bp.route('/<int:id>/upload-image', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def upload_image(id):
+    """上传图片"""
+    from werkzeug.utils import secure_filename
+    
+    spare_part = SparePart.query.get_or_404(id)
+    
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'message': '没有选择图片'}), 400
+    
+    file = request.files['image']
+    image_type = request.form.get('image_type', 'front')
+    
+    if file.filename == '':
+        return jsonify({'success': False, 'message': '没有选择图片'}), 400
+    
+    # 允许的文件扩展名
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+    if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+        return jsonify({'success': False, 'message': '不支持的图片格式'}), 400
+    
+    try:
+        # 保存图片
+        part_code = spare_part.part_code
+        base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads/images')
+        part_dir = os.path.join(base_dir, part_code)
+        
+        if not os.path.exists(part_dir):
+            os.makedirs(part_dir, exist_ok=True)
+        
+        # 保存文件
+        filename = f'{image_type}.jpg'
+        filepath = os.path.join(part_dir, filename)
+        file.save(filepath)
+        
+        # 更新数据库
+        if image_type == 'front':
+            spare_part.image_url = f'/uploads/images/{part_code}/{filename}'
+        elif image_type == 'thumbnail':
+            spare_part.thumbnail_url = f'/uploads/images/{part_code}/{filename}'
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'image_url': f'/uploads/images/{part_code}/{filename}'
+        })
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'上传失败：{str(e)}'
+        }), 500
+
+
+@spare_parts_bp.route('/<int:id>/remove-image', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def remove_image(id):
+    """删除图片"""
+    spare_part = SparePart.query.get_or_404(id)
+    data = request.get_json()
+    image_type = data.get('image_type')
+    
+    if not image_type:
+        return jsonify({'success': False, 'message': '请指定图片类型'}), 400
+    
+    try:
+        part_code = spare_part.part_code
+        base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads/images')
+        part_dir = os.path.join(base_dir, part_code)
+        filepath = os.path.join(part_dir, f'{image_type}.jpg')
+        
+        # 删除文件
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        # 更新数据库
+        field_map = {
+            'front': 'image_url',
+            'thumbnail': 'thumbnail_url',
+            'side': 'side_image_url',
+            'detail': 'detail_image_url',
+            'circuit': 'circuit_image_url',
+            'perspective': 'perspective_image_url'
+        }
+        
+        field_name = field_map.get(image_type)
+        if field_name:
+            setattr(spare_part, field_name, None)
+        
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'删除失败：{str(e)}'
+        }), 500
+
+
+@spare_parts_bp.route('/<int:id>/check-ai-images', methods=['GET'])
+@login_required
+@permission_required('spare_part', 'view')
+def check_ai_images(id):
+    """检查 AI 生成的图片"""
+    spare_part = SparePart.query.get_or_404(id)
+    part_code = spare_part.part_code
+    
+    try:
+        base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads/images')
+        part_dir = os.path.join(base_dir, part_code)
+        
+        # 检查目录是否存在
+        if not os.path.exists(part_dir):
+            return jsonify({
+                'success': True,
+                'hasImages': False,
+                'message': '还没有 AI 生成的图片，请先生成 AI 图片！',
+                'images': []
+            })
+        
+        # 检查有哪些图片
+        image_types = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail']
+        available_images = []
+        
+        for img_type in image_types:
+            img_path = os.path.join(part_dir, f'{img_type}.jpg')
+            if os.path.exists(img_path):
+                available_images.append(img_type)
+        
+        if len(available_images) == 0:
+            return jsonify({
+                'success': True,
+                'hasImages': False,
+                'message': '还没有 AI 生成的图片，请先生成 AI 图片！',
+                'images': []
+            })
+        
+        return jsonify({
+            'success': True,
+            'hasImages': True,
+            'images': available_images
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'检查失败：{str(e)}'
+        }), 500
+
+
+@spare_parts_bp.route('/<int:id>/auto-upload-image', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def auto_upload_image(id):
+    """自动上传图片（从 AI 生成目录）"""
+    spare_part = SparePart.query.get_or_404(id)
+    data = request.get_json()
+    image_type = data.get('image_type')
+    
+    if not image_type:
+        return jsonify({'success': False, 'message': '请指定图片类型'}), 400
+    
+    try:
+        part_code = spare_part.part_code
+        base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads/images')
+        part_dir = os.path.join(base_dir, part_code)
+        
+        # 源文件路径
+        source_path = os.path.join(part_dir, f'{image_type}.jpg')
+        
+        # 检查源文件是否存在
+        if not os.path.exists(source_path):
+            return jsonify({
+                'success': False,
+                'message': f'{image_type} 图片不存在'
+            })
+        
+        # 检查是否已经有图片
+        current_url = None
+        if image_type == 'front':
+            current_url = spare_part.image_url
+        elif image_type == 'thumbnail':
+            current_url = spare_part.thumbnail_url
+        
+        action = 'uploaded'
+        
+        # 如果已有图片，检查是否需要替换（简单比较 URL）
+        if current_url:
+            # 如果 URL 相同，说明已经是这张图，不需要更新
+            expected_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            if current_url == expected_url:
+                action = 'skipped'
+            else:
+                action = 'updated'
+        
+        # 更新数据库
+        if action != 'skipped':
+            if image_type == 'front':
+                spare_part.image_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            elif image_type == 'thumbnail':
+                spare_part.thumbnail_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            elif image_type == 'side':
+                spare_part.side_image_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            elif image_type == 'detail':
+                spare_part.detail_image_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            elif image_type == 'circuit':
+                spare_part.circuit_image_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            elif image_type == 'perspective':
+                spare_part.perspective_image_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'image_url': f'/uploads/images/{part_code}/{image_type}.jpg',
+            'action': action
+        })
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'上传失败：{str(e)}'
+        }), 500
+
+
+@spare_parts_bp.route('/code/<part_code>/check-ai-images', methods=['GET'])
+@login_required
+@permission_required('spare_part', 'view')
+def check_ai_images_by_code(part_code):
+    """通过备件代码检查 AI 生成的图片"""
+    from flask import current_app
+    
+    try:
+        # 获取 UPLOAD_FOLDER 配置（应该是 uploads 目录）
+        base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        
+        # 如果是相对路径，转换为绝对路径
+        if not os.path.isabs(base_dir):
+            base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), base_dir)
+        
+        # 图片子目录
+        part_dir = os.path.join(base_dir, 'images', part_code)
+        
+        # 检查目录是否存在
+        if not os.path.exists(part_dir):
+            return jsonify({
+                'success': True,
+                'hasImages': False,
+                'message': '还没有 AI 生成的图片，请先生成 AI 图片！',
+                'images': []
+            })
+        
+        # 检查有哪些图片
+        image_types = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail']
+        available_images = []
+        
+        for img_type in image_types:
+            img_path = os.path.join(part_dir, f'{img_type}.jpg')
+            if os.path.exists(img_path):
+                available_images.append(img_type)
+        
+        if len(available_images) == 0:
+            return jsonify({
+                'success': True,
+                'hasImages': False,
+                'message': '还没有 AI 生成的图片，请先生成 AI 图片！',
+                'images': []
+            })
+        
+        return jsonify({
+            'success': True,
+            'hasImages': True,
+            'images': available_images
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'检查失败：{str(e)}'
+        }), 500
+
+
+@spare_parts_bp.route('/code/<part_code>/auto-upload-image', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def auto_upload_image_by_code(part_code):
+    """通过备件代码自动上传图片（从 AI 生成目录）"""
+    from flask import current_app
+    
+    data = request.get_json()
+    image_type = data.get('image_type')
+    
+    if not image_type:
+        return jsonify({'success': False, 'message': '请指定图片类型'}), 400
+    
+    try:
+        # 通过 part_code 查找备件
+        spare_part = SparePart.query.filter_by(part_code=part_code).first()
+        
+        if not spare_part:
+            return jsonify({
+                'success': False,
+                'message': '备件不存在，请先保存备件信息'
+            })
+        
+        # 获取 UPLOAD_FOLDER 配置（应该是 uploads 目录）
+        base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        
+        # 如果是相对路径，转换为绝对路径
+        if not os.path.isabs(base_dir):
+            base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), base_dir)
+        
+        # 图片子目录
+        part_dir = os.path.join(base_dir, 'images', part_code)
+        
+        # 源文件路径
+        source_path = os.path.join(part_dir, f'{image_type}.jpg')
+        
+        # 检查源文件是否存在
+        if not os.path.exists(source_path):
+            return jsonify({
+                'success': False,
+                'message': f'{image_type} 图片不存在'
+            })
+        
+        # 检查是否已经有图片
+        current_url = None
+        if image_type == 'front':
+            current_url = spare_part.image_url
+        elif image_type == 'thumbnail':
+            current_url = spare_part.thumbnail_url
+        
+        action = 'uploaded'
+        
+        # 如果已有图片，检查是否需要替换（简单比较 URL）
+        if current_url:
+            # 如果 URL 相同，说明已经是这张图，不需要更新
+            expected_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            if current_url == expected_url:
+                action = 'skipped'
+            else:
+                action = 'updated'
+        
+        # 更新数据库
+        if action != 'skipped':
+            if image_type == 'front':
+                spare_part.image_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            elif image_type == 'thumbnail':
+                spare_part.thumbnail_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'image_url': f'/uploads/images/{part_code}/{image_type}.jpg',
+            'action': action
+        })
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'上传失败：{str(e)}'
+        }), 500
+
+
+# �����Զ��ϴ� API �� CSRF ����
+csrf.exempt(auto_upload_image_by_code)

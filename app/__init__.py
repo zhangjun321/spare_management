@@ -33,6 +33,10 @@ def create_app(config_name=None):
     
     app = Flask(__name__)
     
+    # 添加uploads静态目录
+    uploads_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+    app.config['UPLOAD_FOLDER'] = uploads_path
+    
     # 加载配置
     app.config.from_object(config[config_name])
     
@@ -178,6 +182,22 @@ def register_blueprints(app):
     from app.routes.config import config_bp
     app.register_blueprint(config_bp, url_prefix='/config')
     
+    # 角色权限管理模块
+    from app.routes.roles import roles_bp
+    app.register_blueprint(roles_bp, url_prefix='/roles')
+    
+    # 数据字典管理模块
+    from app.routes.dictionary import dictionary_bp
+    app.register_blueprint(dictionary_bp, url_prefix='/dictionary')
+    
+    # 帮助文档管理模块
+    from app.routes.help import help_bp
+    app.register_blueprint(help_bp, url_prefix='/help')
+    
+    # API接口管理模块
+    from app.routes.api_management import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api-docs')
+    
     # 数据备份模块
     from app.routes.backup import backup_bp
     app.register_blueprint(backup_bp, url_prefix='/backup')
@@ -201,6 +221,12 @@ def register_blueprints(app):
     # API 模块
     from app.routes.api import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # 提供uploads目录的静态文件访问
+    @app.route('/uploads/<path:filename>')
+    def uploaded_file(filename):
+        from flask import send_from_directory
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
     
     # 注册一个测试路由，直接返回 JSON
     @app.route('/backup/test', methods=['GET', 'POST'])

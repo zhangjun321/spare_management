@@ -27,6 +27,9 @@ from app.models.system_log import SystemLog
 from app.models.system_monitor import SystemMonitor
 from app.models.system_config import SystemConfig
 from app.models.database_backup import DatabaseBackup
+from app.models.dictionary import DictType, DictItem
+from app.models.help import HelpCategory, HelpDocument
+from app.models.api import ApiCategory, ApiEndpoint, ApiLog
 
 __all__ = [
     'db',
@@ -62,5 +65,12 @@ __all__ = [
     'SystemLog',
     'SystemMonitor',
     'SystemConfig',
-    'DatabaseBackup'
+    'DatabaseBackup',
+    'DictType',
+    'DictItem',
+    'HelpCategory',
+    'HelpDocument',
+    'ApiCategory',
+    'ApiEndpoint',
+    'ApiLog'
 ]

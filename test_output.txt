@@ -1,0 +1,7 @@
+=== Testing Chat ===
+Status: 200
+Response: {"id":"as-q13h9fq3j5","object":"chat.completion","created":1775103498,"model":"ernie-4.0-turbo-8k","choices":[{"index":0,"message":{"role":"assistant","content":"Hello! How can I help you today? Whether you have a question, need assistance, or just want to chat, I'm here for"},"finish_reason":"length","flag":0}],"usage":{"prompt_tokens":1,"completion_tokens":29,"total_tokens":30}}
+
+=== Testing Image ===
+Image Status: 500
+Image Response: {"error":{"code":"image_internal_error","message":"image internal error","type":"internal_error"},"id":"as-ed4dqjj752"}

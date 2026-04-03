@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}{{ endpoint.name }} - API文档{% endblock %}
+
+{% block page_title %}API 文档 - {{ endpoint.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .doc-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+    
+    .method-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 700;
+        min-width: 80px;
+        text-align: center;
+        display: inline-block;
+    }
+    
+    .method-get { background: #dbeafe; color: #1d4ed8; }
+    .method-post { background: #dcfce7; color: #166534; }
+    .method-put { background: #fef3c7; color: #92400e; }
+    .method-delete { background: #fee2e2; color: #991b1b; }
+    
+    .section-card {
+        border: none;
+        border-radius: 12px;
+        padding: 1.5rem;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+    }
+    
+    .code-block {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 1.5rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+    }
+</style>
+
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('api_management.api_index') }}">API文档</a>
+        </li>
+        <li class="breadcrumb-item active">{{ endpoint.name }}</li>
+    </ol>
+</nav>
+
+<div class="doc-header">
+    <div class="d-flex align-items-center gap-3 mb-3">
+        <span class="method-badge method-{{ endpoint.method.lower() }}">
+            {{ endpoint.method }}
+        </span>
+        <h2 class="mb-0">{{ endpoint.name }}</h2>
+    </div>
+    <code class="fs-5 opacity-90">{{ endpoint.path }}</code>
+</div>
+
+{% if endpoint.description %}
+<div class="section-card">
+    <h5 class="mb-3">
+        <i class="fas fa-info-circle text-primary me-2"></i>接口描述
+    </h5>
+    <p class="mb-0">{{ endpoint.description }}</p>
+</div>
+{% endif %}
+
+{% if endpoint.parameters %}
+<div class="section-card">
+    <h5 class="mb-3">
+        <i class="fas fa-list text-primary me-2"></i>请求参数
+    </h5>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>描述</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set params = endpoint.get_parameters_list() %}
+                {% if params %}
+                {% for param in params %}
+                <tr>
+                    <td><code>{{ param.name }}</code></td>
+                    <td>{{ param.type or '-' }}</td>
+                    <td>
+                        {% if param.required %}
+                        <span class="text-danger">是</span>
+                        {% else %}
+                        <span class="text-muted">否</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ param.description or '-' }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if endpoint.request_example %}
+<div class="section-card">
+    <h5 class="mb-3">
+        <i class="fas fa-code text-primary me-2"></i>请求示例
+    </h5>
+    <div class="code-block">
+        <pre class="mb-0">{{ endpoint.request_example }}</pre>
+    </div>
+</div>
+{% endif %}
+
+{% if endpoint.response_example %}
+<div class="section-card">
+    <h5 class="mb-3">
+        <i class="fas fa-reply text-primary me-2"></i>响应示例
+    </h5>
+    <div class="code-block">
+        <pre class="mb-0">{{ endpoint.response_example }}</pre>
+    </div>
+</div>
+{% endif %}
+
+<div class="section-card">
+    <h5 class="mb-3">
+        <i class="fas fa-cog text-primary me-2"></i>其他信息
+    </h5>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="text-muted small mb-1">需要认证</div>
+            <div>
+                {% if endpoint.require_auth %}
+                <span class="badge bg-success">是</span>
+                {% else %}
+                <span class="badge bg-secondary">否</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="text-muted small mb-1">限流</div>
+            <div>
+                {% if endpoint.rate_limit %}
+                {{ endpoint.rate_limit }} 次/分钟
+                {% else %}
+                无限制
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="text-muted small mb-1">状态</div>
+            <div>
+                {% if endpoint.is_published %}
+                <span class="badge bg-success">已发布</span>
+                {% else %}
+                <span class="badge bg-warning">草稿</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
