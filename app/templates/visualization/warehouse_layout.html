@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}仓库平面图 - {{ warehouse.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-map me-2"></i>{{ warehouse.name }} - 平面布局图
+            </h2>
+            <p class="text-muted">可视化展示仓库库区、货架、库位分布及使用情况</p>
+        </div>
+    </div>
+
+    <!-- 控制按钮 -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-2">
+                    <button class="btn btn-primary btn-sm me-2" onclick="zoomIn()">
+                        <i class="fas fa-search-plus me-1"></i>放大
+                    </button>
+                    <button class="btn btn-primary btn-sm me-2" onclick="zoomOut()">
+                        <i class="fas fa-search-minus me-1"></i>缩小
+                    </button>
+                    <button class="btn btn-primary btn-sm me-2" onclick="resetZoom()">
+                        <i class="fas fa-compress-arrows-alt me-1"></i>重置
+                    </button>
+                    <div class="vr mx-2"></div>
+                    <span class="text-muted small">图例：</span>
+                    <span class="badge bg-secondary me-2"><i class="fas fa-square me-1"></i>空闲</span>
+                    <span class="badge bg-success me-2"><i class="fas fa-square me-1"></i>占用</span>
+                    <span class="badge bg-warning me-2"><i class="fas fa-square me-1"></i>锁定</span>
+                    <span class="badge bg-danger me-2"><i class="fas fa-square me-1"></i>损坏</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="row mb-4" id="statistics">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">总库区数</h6>
+                    <h3 class="mb-0" id="totalZones">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">总货架数</h6>
+                    <h3 class="mb-0" id="totalRacks">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">总库位数</h6>
+                    <h3 class="mb-0" id="totalLocations">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-primary text-white">
+                <div class="card-body text-center">
+                    <h6 class="small">使用率</h6>
+                    <h3 class="mb-0" id="usageRate">-</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓库平面图 -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0"><i class="fas fa-warehouse me-2"></i>仓库布局</h5>
+        </div>
+        <div class="card-body p-0">
+            <div id="warehouseCanvas" style="width: 100%; height: 600px; overflow: auto; position: relative;">
+                <!-- Canvas 将通过 JavaScript 动态绘制 -->
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-circle-notch fa-spin fa-3x mb-3"></i>
+                    <p>正在加载仓库布局...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库位详情模态框 -->
+    <div class="modal fade" id="locationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">库位详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="locationModalBody">
+                    <!-- 动态内容 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.location-item {
+    position: absolute;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.location-item:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.zone-section {
+    margin-bottom: 30px;
+    padding: 15px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.zone-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.rack-container {
+    display: inline-block;
+    margin: 10px;
+    padding: 10px;
+    background: #e9ecef;
+    border-radius: 6px;
+}
+
+.rack-title {
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.location-grid {
+    display: grid;
+    gap: 4px;
+}
+</style>
+
+<script>
+let currentZoom = 1;
+let warehouseData = null;
+
+// 加载仓库布局数据
+function loadWarehouseLayout() {
+    fetch('{{ url_for("visualization.get_warehouse_layout_data", warehouse_id=warehouse.id) }}')
+        .then(response => response.json())
+        .then(data => {
+            warehouseData = data;
+            renderWarehouseLayout(data);
+            updateStatistics(data.statistics);
+        })
+        .catch(error => {
+            console.error('加载失败:', error);
+            document.getElementById('warehouseCanvas').innerHTML = 
+                '<div class="alert alert-danger">加载仓库布局失败</div>';
+        });
+}
+
+// 渲染仓库布局
+function renderWarehouseLayout(data) {
+    const canvas = document.getElementById('warehouseCanvas');
+    let html = '<div id="warehouseContent" style="transform: scale(' + currentZoom + '); transform-origin: top left;">';
+    
+    // 按库区分组渲染
+    data.zones.forEach(zone => {
+        html += `
+            <div class="zone-section" style="border-left: 4px solid ${zone.color}">
+                <div class="zone-header" style="color: ${zone.color}">
+                    <i class="fas fa-th-large me-2"></i>${zone.name} (${zone.code})
+                    <span class="badge bg-secondary ms-2">使用率：${zone.usage_rate.toFixed(1)}%</span>
+                </div>
+                <div class="zone-content">
+        `;
+        
+        // 获取该库区的货架
+        const zoneRacks = data.racks.filter(r => r.zone_id === zone.id);
+        
+        zoneRacks.forEach(rack => {
+            // 获取该货架的库位
+            const rackLocations = data.locations.filter(l => l.rack_id === rack.id);
+            
+            if (rackLocations.length > 0) {
+                html += `
+                    <div class="rack-container">
+                        <div class="rack-title">${rack.code}</div>
+                        <div class="location-grid" style="grid-template-columns: repeat(${rack.columns}, 40px);">
+                `;
+                
+                // 渲染库位
+                rackLocations.forEach(loc => {
+                    html += `
+                        <div class="location-item" 
+                             style="width: 40px; height: 40px; background: ${loc.color};"
+                             onclick="showLocationDetail(${loc.id})"
+                             title="${loc.code} - ${loc.status}">
+                            ${loc.code}
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    canvas.innerHTML = html;
+}
+
+// 更新统计信息
+function updateStatistics(stats) {
+    document.getElementById('totalZones').textContent = stats.total_zones;
+    document.getElementById('totalRacks').textContent = stats.total_racks;
+    document.getElementById('totalLocations').textContent = stats.total_locations;
+    document.getElementById('usageRate').textContent = stats.usage_rate.toFixed(1) + '%';
+}
+
+// 显示库位详情
+function showLocationDetail(locationId) {
+    const location = warehouseData.locations.find(l => l.id === locationId);
+    if (!location) return;
+    
+    const modalBody = document.getElementById('locationModalBody');
+    modalBody.innerHTML = `
+        <div class="row">
+            <div class="col-md-12 mb-3">
+                <h6><i class="fas fa-map-marker-alt me-2"></i>库位信息</h6>
+                <table class="table table-sm table-bordered">
+                    <tr><td width="100">库位编码</td><td>${location.code}</td></tr>
+                    <tr><td>状态</td><td><span class="badge ${getStatusBadge(location.status)}">${location.status}</span></td></tr>
+                    <tr><td>是否占用</td><td>${location.is_occupied ? '是' : '否'}</td></tr>
+                </table>
+            </div>
+            ${location.quantity > 0 ? `
+            <div class="col-md-12">
+                <h6><i class="fas fa-box me-2"></i>库存信息</h6>
+                <table class="table table-sm table-bordered">
+                    <tr><td width="100">备件名称</td><td>${location.spare_part_name || '-'}</td></tr>
+                    <tr><td>数量</td><td><strong>${location.quantity}</strong></td></tr>
+                </table>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('locationModal'));
+    modal.show();
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'empty': 'bg-secondary',
+        'occupied': 'bg-success',
+        'locked': 'bg-warning',
+        'damaged': 'bg-danger',
+        'inactive': 'bg-light'
+    };
+    return badges[status] || 'bg-secondary';
+}
+
+// 缩放控制
+function zoomIn() {
+    currentZoom += 0.2;
+    updateZoom();
+}
+
+function zoomOut() {
+    if (currentZoom > 0.4) {
+        currentZoom -= 0.2;
+        updateZoom();
+    }
+}
+
+function resetZoom() {
+    currentZoom = 1;
+    updateZoom();
+}
+
+function updateZoom() {
+    const content = document.getElementById('warehouseContent');
+    if (content) {
+        content.style.transform = `scale(${currentZoom})`;
+    }
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', loadWarehouseLayout);
+</script>
+{% endblock %}

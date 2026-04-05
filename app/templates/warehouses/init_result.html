@@ -1,0 +1,224 @@
+
+{% extends "base.html" %}
+
+{% block title %}初始化完成 - {{ warehouse.name }} - 备件管理系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">仪表盘</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('warehouses.index') }}">仓库管理</a></li>
+            <li class="breadcrumb-item active">初始化完成</li>
+        </ol>
+    </nav>
+
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-check-circle text-success me-2"></i>仓库初始化完成
+        </h1>
+        <a href="{{ url_for('warehouses.index') }}" class="btn btn-primary">
+            <i class="fas fa-list me-2"></i>返回仓库列表
+        </a>
+    </div>
+
+    <!-- 结果概览 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow border-success">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-flag-checkered me-2"></i>执行结果
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>仓库：</strong>{{ warehouse.name }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>开始时间：</strong>{{ result.start_time }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>结束时间：</strong>{{ result.end_time }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>耗时：</strong>{{ result.duration_seconds }} 秒
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建统计 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar me-2"></i>创建统计
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="card border-left-primary shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">库区</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ result.statistics.zones_created }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-th-large fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="card border-left-success shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">货架</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ result.statistics.racks_created }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-columns fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="card border-left-info shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">货位</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ result.statistics.locations_created }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-map-marker-alt fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">备件分配</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ result.statistics.parts_assigned }}</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-cubes fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库区规划详情 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-list me-2"></i>库区规划详情
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>库区编码</th>
+                                    <th>库区名称</th>
+                                    <th>库区类型</th>
+                                    <th>货架数</th>
+                                    <th>货位数</th>
+                                    <th>说明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for zone in result.zone_plan.zones %}
+                                <tr>
+                                    <td><code>{{ zone.zone_code }}</code></td>
+                                    <td>{{ zone.zone_name }}</td>
+                                    <td>
+                                        {% if zone.zone_type == 'general' %}
+                                        <span class="badge bg-secondary">普通</span>
+                                        {% elif zone.zone_type == 'cold' %}
+                                        <span class="badge bg-info">冷藏</span>
+                                        {% elif zone.zone_type == 'hazardous' %}
+                                        <span class="badge bg-danger">危险品</span>
+                                        {% elif zone.zone_type == 'elevated' %}
+                                        <span class="badge bg-warning">高架</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ zone.zone_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ zone.rack_count }}</td>
+                                    <td>{{ zone.locations_per_rack * zone.rack_count }}</td>
+                                    <td>{{ zone.description or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt me-2"></i>快捷操作
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-lg-3 col-md-4 col-sm-6">
+                            <a href="{{ url_for('warehouses_advanced.zones') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-th-large me-2"></i>查看库区
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-4 col-sm-6">
+                            <a href="{{ url_for('warehouses_advanced.racks') }}" class="btn btn-success w-100">
+                                <i class="fas fa-columns me-2"></i>查看货架
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-4 col-sm-6">
+                            <a href="{{ url_for('warehouses.location_list') }}" class="btn btn-info w-100">
+                                <i class="fas fa-map-marker-alt me-2"></i>查看货位
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-4 col-sm-6">
+                            <a href="{{ url_for('warehouses.inventory_overview') }}" class="btn btn-warning w-100">
+                                <i class="fas fa-eye me-2"></i>库存概览
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

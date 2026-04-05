@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+
+{% block title %}入库动画 - {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-video me-2"></i>入库动画演示
+            </h2>
+            <p class="text-muted">入库单号：{{ order.order_number }}</p>
+        </div>
+    </div>
+
+    <!-- 控制按钮 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <button class="btn btn-primary me-2" onclick="playAnimation()">
+                        <i class="fas fa-play me-1"></i>播放动画
+                    </button>
+                    <button class="btn btn-warning me-2" onclick="pauseAnimation()">
+                        <i class="fas fa-pause me-1"></i>暂停
+                    </button>
+                    <button class="btn btn-secondary me-2" onclick="resetAnimation()">
+                        <i class="fas fa-redo me-1"></i>重置
+                    </button>
+                    <button class="btn btn-info me-2" onclick="toggleAutoPlay()">
+                        <i class="fas fa-sync me-1"></i><span id="autoPlayText">自动播放：关</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 动画区域 -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">动画演示</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="animationContainer" style="width: 100%; height: 500px; position: relative; background: #f8f9fa; overflow: hidden;">
+                        <!-- 动画将通过 JavaScript 动态渲染 -->
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-film fa-3x mb-3"></i>
+                            <p>点击"播放动画"开始演示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <!-- 入库项列表 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">入库项列表</h5>
+                </div>
+                <div class="card-body p-0" id="itemsList">
+                    <!-- 动态加载 -->
+                </div>
+            </div>
+            
+            <!-- 动画进度 -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">动画进度</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <div id="currentStep" class="text-muted small">
+                        准备播放...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 动画元素样式 */
+.animation-item {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: #4CAF50;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: all 0.5s ease;
+    z-index: 10;
+}
+
+.animation-label {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.zone-marker {
+    position: absolute;
+    border: 2px dashed #999;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.05);
+}
+
+.zone-label {
+    position: absolute;
+    top: -20px;
+    left: 10px;
+    font-weight: bold;
+    color: #666;
+}
+
+.location-highlight {
+    position: absolute;
+    border: 3px solid #FFD700;
+    border-radius: 8px;
+    background: rgba(255, 215, 0, 0.3);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.entrance-point {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: #2196F3;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+</style>
+
+<script>
+let animationData = null;
+let currentAnimation = null;
+let isPlaying = false;
+let isPaused = false;
+let autoPlay = false;
+let currentStepIndex = 0;
+let currentItemIndex = 0;
+
+// 加载动画数据
+function loadAnimationData() {
+    fetch('{{ url_for("visualization.get_inbound_animation_data", order_id=order.id) }}')
+        .then(response => response.json())
+        .then(data => {
+            animationData = data;
+            renderItemsList(data);
+            renderWarehouseLayout(data);
+        })
+        .catch(error => {
+            console.error('加载失败:', error);
+        });
+}
+
+// 渲染入库项列表
+function renderItemsList(data) {
+    const container = document.getElementById('itemsList');
+    let html = '<ul class="list-group list-group-flush">';
+    
+    data.items.forEach((item, index) => {
+        html += `
+            <li class="list-group-item d-flex justify-content-between align-items-center ${index === currentItemIndex ? 'active' : ''}" id="item-${index}">
+                <div>
+                    <strong>${item.spare_part_name}</strong>
+                    <br>
+                    <small class="text-muted">数量：${item.quantity}</small>
+                </div>
+                <span class="badge bg-primary rounded-pill">${item.target_location}</span>
+            </li>
+        `;
+    });
+    
+    html += '</ul>';
+    container.innerHTML = html;
+}
+
+// 渲染仓库布局（简化版）
+function renderWarehouseLayout(data) {
+    const container = document.getElementById('animationContainer');
+    
+    // 添加入库口
+    container.innerHTML = `
+        <div class="entrance-point" style="left: 20px; top: 50%; transform: translateY(-50%);">
+            <div>
+                <i class="fas fa-dolly fa-2x mb-1"></i>
+                <div>入库口</div>
+            </div>
+        </div>
+    `;
+}
+
+// 播放动画
+function playAnimation() {
+    if (!animationData || !animationData.can_play) {
+        alert('没有可播放的动画数据');
+        return;
+    }
+    
+    if (isPlaying && isPaused) {
+        // 继续播放
+        isPaused = false;
+        return;
+    }
+    
+    if (isPlaying) {
+        return; // 已经在播放
+    }
+    
+    isPlaying = true;
+    isPaused = false;
+    currentItemIndex = 0;
+    currentStepIndex = 0;
+    
+    playNextStep();
+}
+
+// 播放下一步
+function playNextStep() {
+    if (currentItemIndex >= animationData.items.length) {
+        // 所有物品动画完成
+        finishAnimation();
+        return;
+    }
+    
+    const item = animationData.items[currentItemIndex];
+    const stepData = animationData.animation_steps[currentItemIndex];
+    
+    if (currentStepIndex >= stepData.steps.length) {
+        // 当前物品动画完成，播放下一个
+        currentItemIndex++;
+        currentStepIndex = 0;
+        setTimeout(playNextStep, 1000);
+        return;
+    }
+    
+    const step = stepData.steps[currentStepIndex];
+    
+    // 执行动画步骤
+    executeStep(item, step);
+    
+    // 更新进度
+    updateProgress(stepData, currentStepIndex);
+    
+    currentStepIndex++;
+}
+
+// 执行单个步骤
+function executeStep(item, step) {
+    const container = document.getElementById('animationContainer');
+    
+    // 更新当前步骤说明
+    document.getElementById('currentStep').innerHTML = `
+        <i class="fas fa-info-circle me-1"></i>
+        <strong>${item.spare_part_name}</strong>: ${step.description}
+    `;
+    
+    // 根据步骤类型执行动画
+    switch(step.position) {
+        case 'entrance':
+            // 在入库口出现
+            showItemAtEntrance(item);
+            break;
+        case 'zone':
+        case 'zone_1': // 简化处理
+            // 移动到库区
+            moveItemToZone(item);
+            break;
+        case 'rack':
+            // 移动到货架
+            moveItemToRack(item);
+            break;
+        case 'location':
+            // 放入库位
+            placeItemAtLocation(item);
+            break;
+        default:
+            // 高亮显示
+            highlightLocation(item);
+            break;
+    }
+}
+
+// 显示物品在入库口
+function showItemAtEntrance(item) {
+    const container = document.getElementById('animationContainer');
+    
+    const element = document.createElement('div');
+    element.className = 'animation-item';
+    element.id = `anim-item-${item.item_id}`;
+    element.style.left = '20px';
+    element.style.top = '50%';
+    element.style.transform = 'translateY(-50%)';
+    element.innerHTML = `
+        <div>
+            <i class="fas fa-box fa-lg"></i>
+            <div class="animation-label">${item.quantity}件</div>
+        </div>
+    `;
+    
+    container.appendChild(element);
+}
+
+// 移动到库区
+function moveItemToZone(item) {
+    const element = document.getElementById(`anim-item-${item.item_id}`);
+    if (element) {
+        element.style.left = '200px';
+        element.style.top = '40%';
+    }
+}
+
+// 移动到货架
+function moveItemToRack(item) {
+    const element = document.getElementById(`anim-item-${item.item_id}`);
+    if (element) {
+        element.style.left = '400px';
+        element.style.top = '30%';
+    }
+}
+
+// 放入库位
+function placeItemAtLocation(item) {
+    const element = document.getElementById(`anim-item-${item.item_id}`);
+    if (element) {
+        element.style.left = '600px';
+        element.style.top = '20%';
+        element.style.background = '#FF9800';
+    }
+}
+
+// 高亮库位
+function highlightLocation(item) {
+    const element = document.getElementById(`anim-item-${item.item_id}`);
+    if (element) {
+        element.style.background = '#4CAF50';
+        element.innerHTML = `
+            <div>
+                <i class="fas fa-check-circle fa-2x"></i>
+                <div class="animation-label">入库完成</div>
+            </div>
+        `;
+        
+        // 添加高亮框
+        const highlight = document.createElement('div');
+        highlight.className = 'location-highlight';
+        highlight.style.width = '80px';
+        highlight.style.height = '80px';
+        highlight.style.left = '590px';
+        highlight.style.top = '10%';
+        document.getElementById('animationContainer').appendChild(highlight);
+        
+        setTimeout(() => highlight.remove(), 3000);
+    }
+}
+
+// 更新进度条
+function updateProgress(stepData, currentStep) {
+    const progress = ((currentStep + 1) / stepData.steps.length) * 100;
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = progress + '%';
+    progressBar.textContent = progress.toFixed(0) + '%';
+    
+    // 更新列表高亮
+    document.querySelectorAll('#itemsList li').forEach((li, index) => {
+        li.classList.toggle('active', index === currentItemIndex);
+    });
+}
+
+// 完成动画
+function finishAnimation() {
+    isPlaying = false;
+    isPaused = false;
+    document.getElementById('currentStep').innerHTML = '<i class="fas fa-check-circle me-1"></i>动画播放完成！';
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('progressBar').textContent = '100%';
+    
+    if (autoPlay) {
+        setTimeout(resetAnimation, 3000);
+    }
+}
+
+// 暂停动画
+function pauseAnimation() {
+    isPaused = true;
+    isPlaying = false;
+}
+
+// 重置动画
+function resetAnimation() {
+    isPlaying = false;
+    isPaused = false;
+    currentItemIndex = 0;
+    currentStepIndex = 0;
+    
+    // 清除所有动画元素
+    const container = document.getElementById('animationContainer');
+    container.querySelectorAll('.animation-item, .location-highlight').forEach(el => el.remove());
+    
+    // 重新渲染布局
+    renderWarehouseLayout(animationData);
+    
+    // 重置进度
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressBar').textContent = '0%';
+    document.getElementById('currentStep').textContent = '准备播放...';
+}
+
+// 切换自动播放
+function toggleAutoPlay() {
+    autoPlay = !autoPlay;
+    document.getElementById('autoPlayText').textContent = autoPlay ? '开' : '关';
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', loadAnimationData);
+</script>
+{% endblock %}

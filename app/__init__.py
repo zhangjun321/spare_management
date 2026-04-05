@@ -218,6 +218,28 @@ def register_blueprints(app):
     from app.routes.alerts import alerts_bp
     app.register_blueprint(alerts_bp, url_prefix='/alerts')
     
+    # 高级仓库管理模块
+    from app.routes.warehouses_advanced_routes import warehouses_advanced_bp
+    app.register_blueprint(warehouses_advanced_bp, url_prefix='/warehouses')
+    
+    # 智能仓库管理模块（百度千帆 AI）
+    from app.routes.intelligent_warehouse_routes import intelligent_warehouse_bp
+    app.register_blueprint(intelligent_warehouse_bp)
+    
+    # 库存管理模块（入库/出库/库存）
+    from app.routes.inventory_routes import inventory_bp
+    app.register_blueprint(inventory_bp)
+    
+    # 仓库可视化模块
+    from app.routes.visualization_routes import visualization_bp
+    app.register_blueprint(visualization_bp)
+    
+    # AI 图像生成模块
+    from app.routes.ai_image_routes import ai_image_bp
+    app.register_blueprint(ai_image_bp)
+    from app.extensions import csrf
+    csrf.exempt(ai_image_bp)
+    
     # API 模块
     from app.routes.api import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')

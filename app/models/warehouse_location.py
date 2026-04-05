@@ -26,4 +26,4 @@ class WarehouseLocation(db.Model):
     )
     
     def __repr__(self):
-        return f'<WarehouseLocation {self.location_code}>'
+        return '<WarehouseLocation {}>'.format(self.location_code)

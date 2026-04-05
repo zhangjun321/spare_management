@@ -1,0 +1,214 @@
+
+{% extends "base.html" %}
+
+{% block title %}盘点单详情 - 备件管理系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h1><i class="fas fa-clipboard-check"></i> 盘点单详情</h1>
+                <p class="text-muted">{{ check.check_code }} - {{ check.check_name }}</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{{ url_for('warehouses_advanced.inventory_check_list') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回列表
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="text-muted mb-1">总物料数</h6>
+                    <h2 class="mb-0">{{ check.total_items }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="text-muted mb-1">已盘点</h6>
+                    <h2 class="mb-0 text-success">{{ check.checked_items }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="text-muted mb-1">差异项数</h6>
+                    <h2 class="mb-0 text-danger">{{ check.discrepancy_items }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="text-muted mb-1">差异金额</h6>
+                    <h2 class="mb-0 text-warning">¥{{ '{:,.2f}'.format(check.discrepancy_value) if check.discrepancy_value else '0.00' }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-info-circle"></i> 基本信息</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">盘点单号</th>
+                            <td><code>{{ check.check_code }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>盘点名称</th>
+                            <td>{{ check.check_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>盘点类型</th>
+                            <td>
+                                {% if check.check_type == 'full' %}
+                                <span class="badge bg-info">全盘</span>
+                                {% elif check.check_type == 'cyclical' %}
+                                <span class="badge bg-success">循环盘点</span>
+                                {% elif check.check_type == 'abc' %}
+                                <span class="badge bg-warning text-dark">ABC分类</span>
+                                {% elif check.check_type == 'random' %}
+                                <span class="badge bg-danger">随机抽盘</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>仓库</th>
+                            <td>{{ check.warehouse.name if check.warehouse else '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">状态</th>
+                            <td>
+                                {% if check.status == 'draft' %}
+                                <span class="badge bg-secondary">草稿</span>
+                                {% elif check.status == 'in_progress' %}
+                                <span class="badge bg-primary">进行中</span>
+                                {% elif check.status == 'completed' %}
+                                <span class="badge bg-success">完成</span>
+                                {% elif check.status == 'cancelled' %}
+                                <span class="badge bg-danger">取消</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>开始日期</th>
+                            <td>{{ check.start_date.strftime('%Y-%m-%d') if check.start_date else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>结束日期</th>
+                            <td>{{ check.end_date.strftime('%Y-%m-%d') if check.end_date else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>创建时间</th>
+                            <td>{{ check.created_at.strftime('%Y-%m-%d %H:%M') if check.created_at else '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            {% if check.remark %}
+            <div class="mt-3">
+                <h6>备注</h6>
+                <p class="mb-0">{{ check.remark }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list"></i> 盘点明细</h5>
+            <span class="badge bg-info">共 {{ items|length }} 项</span>
+        </div>
+        <div class="card-body p-0">
+            {% if items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>备件</th>
+                            <th>库位</th>
+                            <th>系统数量</th>
+                            <th>盘点数量</th>
+                            <th>差异数量</th>
+                            <th>差异金额</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <div><strong>{{ item.spare_part.name if item.spare_part else '-' }}</strong></div>
+                                <small class="text-muted"><code>{{ item.spare_part.part_code if item.spare_part else '-' }}</code></small>
+                            </td>
+                            <td>{{ item.location.location_code if item.location else '-' }}</td>
+                            <td>{{ item.system_quantity }}</td>
+                            <td>
+                                {% if item.check_quantity is not none %}
+                                {{ item.check_quantity }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.difference_quantity is not none %}
+                                <span class="{% if item.difference_quantity > 0 %}text-success{% elif item.difference_quantity < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                    {{ '+' if item.difference_quantity > 0 else '' }}{{ item.difference_quantity }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.difference_value is not none %}
+                                <span class="{% if item.difference_value > 0 %}text-success{% elif item.difference_value < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                    ¥{{ '{:,.2f}'.format(item.difference_value) }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.status == 'pending' %}
+                                <span class="badge bg-secondary">待盘点</span>
+                                {% elif item.status == 'checked' %}
+                                <span class="badge bg-success">已盘点</span>
+                                {% elif item.status == 'difference' %}
+                                <span class="badge bg-danger">差异</span>
+                                {% elif item.status == 'resolved' %}
+                                <span class="badge bg-info">已处理</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="mb-0 text-muted">暂无盘点明细</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

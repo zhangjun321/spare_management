@@ -12,6 +12,8 @@ from app.services.operation_service import OperationService
 from app.services.report_service import ReportService
 from app.models.user import User
 from app.models.spare_part import SparePart
+from app.models import Warehouse
+from app.extensions import db
 from app.utils.decorators import permission_required
 
 warehouses_bp = Blueprint('warehouses', __name__, template_folder='../templates/warehouses')
@@ -21,7 +23,7 @@ warehouses_bp = Blueprint('warehouses', __name__, template_folder='../templates/
 @login_required
 @permission_required('warehouse', 'read')
 def index():
-    """仓库列表"""
+    """仓库列表 - 整合智能仓库功能"""
     # 获取筛选条件
     filters = {
         'name': request.args.get('name'),
@@ -40,10 +42,36 @@ def index():
     # 获取统计信息
     statistics = WarehouseService.get_warehouse_statistics()
     
-    return render_template('warehouses/list.html', 
+    # 获取所有启用的仓库（用于智能管理）
+    warehouses = Warehouse.query.filter_by(is_active=True).all()
+    
+    return render_template('warehouses/index.html', 
                          pagination=pagination,
                          filters=filters,
-                         statistics=statistics)
+                         statistics=statistics,
+                         warehouses=warehouses or [])
+
+
+@warehouses_bp.route('/dashboard')
+@login_required
+@permission_required('warehouse', 'read')
+def dashboard():
+    """仓库看板"""
+    from app.services.warehouse_advanced_service_v2 import WarehouseAdvancedService
+    
+    warehouse_id = request.args.get('warehouse_id', type=int)
+    period_days = request.args.get('period_days', 30, type=int)
+    
+    kpis = WarehouseAdvancedService.calculate_kpis(warehouse_id, period_days)
+    
+    from app.models.warehouse import Warehouse
+    warehouses = Warehouse.query.filter_by(is_active=True).all()
+    
+    return render_template('warehouses/dashboard.html', 
+                         kpis=kpis,
+                         warehouses=warehouses,
+                         selected_warehouse_id=warehouse_id,
+                         period_days=period_days)
 
 @warehouses_bp.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -537,3 +565,101 @@ def api_spare_parts(location_id):
         'part_code': sp.part_code,
         'name': sp.name
     } for sp in spare_parts])
+
+
+@warehouses_bp.route('/quick-create-warehouses/')
+@login_required
+def quick_create_warehouses():
+    """快速创建6个示例仓库"""
+    
+    # 先删除已有的不完整仓库
+    Warehouse.query.delete()
+    db.session.commit()
+    
+    # 获取当前用户作为管理员
+    manager_id = current_user.id
+    
+    # 要创建的6个仓库数据
+    warehouses_data = [
+        {
+            'name': '主仓库',
+            'code': 'WH-MAIN',
+            'type': 'general',
+            'manager_id': manager_id,
+            'address': '上海市浦东新区张江高科技园区科苑路88号',
+            'area': 1000.0,
+            'capacity': 5000,
+            'phone': '021-55550001',
+            'description': '主要仓储中心，存放常用备件',
+            'is_active': True
+        },
+        {
+            'name': '冷藏仓库',
+            'code': 'WH-COLD',
+            'type': 'cold',
+            'manager_id': manager_id,
+            'address': '上海市浦东新区张江高科技园区科苑路88号B区',
+            'area': 500.0,
+            'capacity': 1000,
+            'phone': '021-55550002',
+            'description': '冷藏仓库，存放需低温保存的备件',
+            'is_active': True
+        },
+        {
+            'name': '危险品仓库',
+            'code': 'WH-HAZARD',
+            'type': 'hazardous',
+            'manager_id': manager_id,
+            'address': '上海市浦东新区化工园区危险物品管理区',
+            'area': 300.0,
+            'capacity': 500,
+            'phone': '021-55550003',
+            'description': '危险品专用仓库',
+            'is_active': True
+        },
+        {
+            'name': '贵重物品仓库',
+            'code': 'WH-VALUABLE',
+            'type': 'valuable',
+            'manager_id': manager_id,
+            'address': '上海市浦东新区陆家嘴金融区保险库',
+            'area': 200.0,
+            'capacity': 200,
+            'phone': '021-55550004',
+            'description': '贵重物品专用仓库，安保级别高',
+            'is_active': True
+        },
+        {
+            'name': '备件分拨中心',
+            'code': 'WH-DISTRIBUTION',
+            'type': 'general',
+            'manager_id': manager_id,
+            'address': '上海市青浦区物流园区',
+            'area': 2000.0,
+            'capacity': 10000,
+            'phone': '021-55550005',
+            'description': '区域分拨中心，负责周边地区备件配送',
+            'is_active': True
+        },
+        {
+            'name': '备用仓库',
+            'code': 'WH-BACKUP',
+            'type': 'general',
+            'manager_id': manager_id,
+            'address': '江苏省苏州市工业园区',
+            'area': 800.0,
+            'capacity': 3000,
+            'phone': '0512-55550001',
+            'description': '备用仓库，应急使用',
+            'is_active': True
+        }
+    ]
+    
+    # 创建仓库
+    created_count = 0
+    for data in warehouses_data:
+        WarehouseService.create_warehouse(data)
+        created_count += 1
+    
+    flash('成功创建 ' + str(created_count) + ' 个仓库！', 'success')
+    return redirect(url_for('warehouses.index'))

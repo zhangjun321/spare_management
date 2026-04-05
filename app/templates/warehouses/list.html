@@ -60,6 +60,129 @@
         </div>
     </div>
 
+    <!-- 新功能快捷入口 -->
+    <div class="row mb-4">
+        <!-- 库位管理 -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-layer-group me-2"></i>三级库位管理
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">精细化管理库区、货架、货位</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('warehouses_advanced.zones') }}" class="btn btn-primary">
+                            <i class="fas fa-th-large me-2"></i>库区管理
+                        </a>
+                        <a href="{{ url_for('warehouses_advanced.racks') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-columns me-2"></i>货架管理
+                        </a>
+                        <a href="{{ url_for('warehouses.location_list') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-map-marker-alt me-2"></i>货位管理
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 库存管理 -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-gradient-success text-white py-3">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-cubes me-2"></i>库存管理
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">库存概览、盘点、调拨、调整</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('warehouses.inventory_overview') }}" class="btn btn-success">
+                            <i class="fas fa-eye me-2"></i>库存概览
+                        </a>
+                        <a href="{{ url_for('warehouses_advanced.inventory_check_list') }}" class="btn btn-outline-success">
+                            <i class="fas fa-clipboard-check me-2"></i>库存盘点
+                        </a>
+                        <a href="{{ url_for('warehouses.inventory_transfer') }}" class="btn btn-outline-success">
+                            <i class="fas fa-exchange-alt me-2"></i>库存调拨
+                        </a>
+                        <a href="{{ url_for('warehouses.inventory_adjust') }}" class="btn btn-outline-success">
+                            <i class="fas fa-sliders-h me-2"></i>库存调整
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 智能分析 -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-gradient-info text-white py-3">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-chart-line me-2"></i>智能分析
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">库龄分析、ABC分类、呆滞库存</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('warehouses_advanced.stock_age_analysis') }}" class="btn btn-info">
+                            <i class="fas fa-hourglass-half me-2"></i>库龄分析
+                        </a>
+                        <a href="{{ url_for('warehouses_advanced.abc_classification') }}" class="btn btn-outline-info">
+                            <i class="fas fa-sort-amount-down me-2"></i>ABC分类
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 报表统计 -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-gradient-secondary text-white py-3">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-chart-bar me-2"></i>报表统计
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <a href="{{ url_for('warehouses.operations_list') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-history me-1"></i><br>操作日志
+                            </a>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <a href="{{ url_for('warehouses.report_inventory_flow') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-water me-1"></i><br>库存流水
+                            </a>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <a href="{{ url_for('warehouses.report_inventory_turnover') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-sync-alt me-1"></i><br>库存周转
+                            </a>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <a href="{{ url_for('warehouses.report_inventory_value') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-coins me-1"></i><br>库存价值
+                            </a>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <a href="{{ url_for('warehouses.report_warehouse_utilization') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-chart-pie me-1"></i><br>仓库利用率
+                            </a>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <a href="{{ url_for('warehouses.dashboard') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-tachometer-alt me-1"></i><br>仓库看板
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 筛选和操作 -->
     <div class="row mb-4">
         <div class="col-12">
@@ -94,7 +217,10 @@
                         </div>
                         <button type="submit" class="btn btn-primary mr-2">筛选</button>
                         <a href="{{ url_for('warehouses.index') }}" class="btn btn-secondary mr-2">重置</a>
-                        <a href="{{ url_for('warehouses.create') }}" class="btn btn-success">创建仓库</a>
+                        <a href="{{ url_for('warehouses.create') }}" class="btn btn-success mr-2">创建仓库</a>
+                        <a href="{{ url_for('warehouses.quick_create_warehouses') }}" class="btn btn-warning">
+                            <i class="fas fa-bolt me-1"></i>快速创建6个仓库
+                        </a>
                     </form>
                 </div>
             </div>

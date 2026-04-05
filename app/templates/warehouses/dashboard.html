@@ -1,0 +1,248 @@
+
+{% extends "base.html" %}
+
+{% block title %}仓库看板 - 备件管理系统{% endblock %}
+
+{% block content %}
+&lt;div class="container-fluid"&gt;
+    &lt;!-- 页面标题和筛选 --&gt;
+    &lt;div class="row mb-4"&gt;
+        &lt;div class="col-12"&gt;
+            &lt;div class="card"&gt;
+                &lt;div class="card-body"&gt;
+                    &lt;div class="d-flex justify-content-between align-items-center flex-wrap gap-3"&gt;
+                        &lt;h4 class="mb-0"&gt;
+                            &lt;i class="fas fa-chart-line text-primary"&gt;&lt;/i&gt; 仓库看板
+                        &lt;/h4&gt;
+                        &lt;div class="d-flex gap-2"&gt;
+                            &lt;select class="form-select" style="width: 200px;" id="warehouseSelect" onchange="updateDashboard()"&gt;
+                                &lt;option value=""&gt;全部仓库&lt;/option&gt;
+                                {% for w in warehouses %}
+                                &lt;option value="{{ w.id }}" {% if selected_warehouse_id == w.id %}selected{% endif %}&gt;{{ w.name }}&lt;/option&gt;
+                                {% endfor %}
+                            &lt;/select&gt;
+                            &lt;select class="form-select" style="width: 150px;" id="periodSelect" onchange="updateDashboard()"&gt;
+                                &lt;option value="7" {% if period_days == 7 %}selected{% endif %}&gt;7天&lt;/option&gt;
+                                &lt;option value="30" {% if period_days == 30 %}selected{% endif %}&gt;30天&lt;/option&gt;
+                                &lt;option value="90" {% if period_days == 90 %}selected{% endif %}&gt;90天&lt;/option&gt;
+                            &lt;/select&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 核心KPI指标 --&gt;
+    &lt;div class="row mb-4"&gt;
+        &lt;div class="col-xl-3 col-md-6 mb-4"&gt;
+            &lt;div class="card border-left-primary h-100 py-2" style="border-left: 0.25rem solid #4e73df;"&gt;
+                &lt;div class="card-body"&gt;
+                    &lt;div class="row no-gutters align-items-center"&gt;
+                        &lt;div class="col mr-2"&gt;
+                            &lt;div class="text-xs font-weight-bold text-primary text-uppercase mb-1"&gt;仓库数量&lt;/div&gt;
+                            &lt;div class="h5 mb-0 font-weight-bold text-gray-800"&gt;{{ kpis.total_warehouses }}&lt;/div&gt;
+                        &lt;/div&gt;
+                        &lt;div class="col-auto"&gt;
+                            &lt;i class="fas fa-warehouse fa-2x text-gray-300"&gt;&lt;/i&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class="col-xl-3 col-md-6 mb-4"&gt;
+            &lt;div class="card border-left-success h-100 py-2" style="border-left: 0.25rem solid #1cc88a;"&gt;
+                &lt;div class="card-body"&gt;
+                    &lt;div class="row no-gutters align-items-center"&gt;
+                        &lt;div class="col mr-2"&gt;
+                            &lt;div class="text-xs font-weight-bold text-success text-uppercase mb-1"&gt;平均库位利用率&lt;/div&gt;
+                            &lt;div class="h5 mb-0 font-weight-bold text-gray-800"&gt;
+                                {% if kpis.warehouses %}
+                                    {{ (kpis.warehouses|map(attribute='location_utilization')|sum / kpis.warehouses|length)|round(2) }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                        &lt;div class="col-auto"&gt;
+                            &lt;i class="fas fa-percentage fa-2x text-gray-300"&gt;&lt;/i&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class="col-xl-3 col-md-6 mb-4"&gt;
+            &lt;div class="card border-left-info h-100 py-2" style="border-left: 0.25rem solid #36b9cc;"&gt;
+                &lt;div class="card-body"&gt;
+                    &lt;div class="row no-gutters align-items-center"&gt;
+                        &lt;div class="col mr-2"&gt;
+                            &lt;div class="text-xs font-weight-bold text-info text-uppercase mb-1"&gt;库存周转率&lt;/div&gt;
+                            &lt;div class="h5 mb-0 font-weight-bold text-gray-800"&gt;
+                                {% if kpis.warehouses %}
+                                    {{ (kpis.warehouses|map(attribute='inventory_turnover')|sum / kpis.warehouses|length)|round(2) }}次
+                                {% else %}
+                                    0次
+                                {% endif %}
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                        &lt;div class="col-auto"&gt;
+                            &lt;i class="fas fa-sync-alt fa-2x text-gray-300"&gt;&lt;/i&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class="col-xl-3 col-md-6 mb-4"&gt;
+            &lt;div class="card border-left-warning h-100 py-2" style="border-left: 0.25rem solid #f6c23e;"&gt;
+                &lt;div class="card-body"&gt;
+                    &lt;div class="row no-gutters align-items-center"&gt;
+                        &lt;div class="col mr-2"&gt;
+                            &lt;div class="text-xs font-weight-bold text-warning text-uppercase mb-1"&gt;总库存价值&lt;/div&gt;
+                            &lt;div class="h5 mb-0 font-weight-bold text-gray-800"&gt;
+                                ¥{{ (kpis.warehouses|map(attribute='total_inventory_value')|sum)|round(2) if kpis.warehouses else 0 }}
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                        &lt;div class="col-auto"&gt;
+                            &lt;i class="fas fa-dollar-sign fa-2x text-gray-300"&gt;&lt;/i&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 各仓库详细KPI --&gt;
+    {% if kpis.warehouses %}
+    &lt;div class="row mb-4"&gt;
+        &lt;div class="col-12"&gt;
+            &lt;div class="card"&gt;
+                &lt;div class="card-header bg-white"&gt;
+                    &lt;h6 class="m-0 font-weight-bold text-primary"&gt;各仓库KPI详情&lt;/h6&gt;
+                &lt;/div&gt;
+                &lt;div class="card-body"&gt;
+                    &lt;div class="table-responsive"&gt;
+                        &lt;table class="table table-bordered table-hover"&gt;
+                            &lt;thead class="table-light"&gt;
+                                &lt;tr&gt;
+                                    &lt;th&gt;仓库&lt;/th&gt;
+                                    &lt;th&gt;库位利用率&lt;/th&gt;
+                                    &lt;th&gt;库存周转率&lt;/th&gt;
+                                    &lt;th&gt;订单履约率&lt;/th&gt;
+                                    &lt;th&gt;库存准确率&lt;/th&gt;
+                                    &lt;th&gt;入库量&lt;/th&gt;
+                                    &lt;th&gt;出库量&lt;/th&gt;
+                                    &lt;th&gt;库存价值&lt;/th&gt;
+                                &lt;/tr&gt;
+                            &lt;/thead&gt;
+                            &lt;tbody&gt;
+                                {% for wk in kpis.warehouses %}
+                                &lt;tr&gt;
+                                    &lt;td&gt;
+                                        &lt;strong&gt;{{ wk.warehouse_name }}&lt;/strong&gt;
+                                        &lt;br&gt;&lt;small class="text-muted"&gt;{{ wk.warehouse_code }}&lt;/small&gt;
+                                    &lt;/td&gt;
+                                    &lt;td&gt;
+                                        &lt;div class="progress" style="height: 20px;"&gt;
+                                            {% set color = 'bg-success' if wk.location_utilization &gt;= 80 else ('bg-warning' if wk.location_utilization &gt;= 50 else 'bg-info') %}
+                                            &lt;div class="progress-bar {{ color }}" role="progressbar" 
+                                                 style="width: {{ wk.location_utilization }}%" 
+                                                 aria-valuenow="{{ wk.location_utilization }}" 
+                                                 aria-valuemin="0" aria-valuemax="100"&gt;
+                                                {{ wk.location_utilization }}%
+                                            &lt;/div&gt;
+                                        &lt;/div&gt;
+                                        &lt;small class="text-muted"&gt;{{ wk.occupied_locations }}/{{ wk.total_locations }} 库位&lt;/small&gt;
+                                    &lt;/td&gt;
+                                    &lt;td&gt;
+                                        &lt;span class="badge {% if wk.inventory_turnover &gt;= 4 %}bg-success{% elif wk.inventory_turnover &gt;= 2 %}bg-warning{% else %}bg-danger{% endif %}"&gt;
+                                            {{ wk.inventory_turnover }}次
+                                        &lt;/span&gt;
+                                    &lt;/td&gt;
+                                    &lt;td&gt;
+                                        &lt;span class="badge {% if wk.order_fulfillment_rate &gt;= 95 %}bg-success{% elif wk.order_fulfillment_rate &gt;= 90 %}bg-warning{% else %}bg-danger{% endif %}"&gt;
+                                            {{ wk.order_fulfillment_rate }}%
+                                        &lt;/span&gt;
+                                    &lt;/td&gt;
+                                    &lt;td&gt;
+                                        &lt;span class="badge {% if wk.accuracy_rate &gt;= 99 %}bg-success{% elif wk.accuracy_rate &gt;= 95 %}bg-warning{% else %}bg-danger{% endif %}"&gt;
+                                            {{ wk.accuracy_rate }}%
+                                        &lt;/span&gt;
+                                    &lt;/td&gt;
+                                    &lt;td&gt;&lt;span class="text-success"&gt;+{{ wk.inbound_count }}&lt;/span&gt;&lt;/td&gt;
+                                    &lt;td&gt;&lt;span class="text-danger"&gt;-{{ wk.outbound_count }}&lt;/span&gt;&lt;/td&gt;
+                                    &lt;td&gt;&lt;strong&gt;¥{{ wk.total_inventory_value|round(2) }}&lt;/strong&gt;&lt;/td&gt;
+                                &lt;/tr&gt;
+                                {% endfor %}
+                            &lt;/tbody&gt;
+                        &lt;/table&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    {% endif %}
+
+    &lt;!-- 快捷操作 --&gt;
+    &lt;div class="row mb-4"&gt;
+        &lt;div class="col-12"&gt;
+            &lt;div class="card"&gt;
+                &lt;div class="card-header bg-white"&gt;
+                    &lt;h6 class="m-0 font-weight-bold text-primary"&gt;快捷操作&lt;/h6&gt;
+                &lt;/div&gt;
+                &lt;div class="card-body"&gt;
+                    &lt;div class="row"&gt;
+                        &lt;div class="col-md-3 mb-3"&gt;
+                            &lt;a href="{{ url_for('warehouses_advanced.inventory_check_list') }}" class="btn btn-outline-primary btn-block w-100"&gt;
+                                &lt;i class="fas fa-clipboard-check"&gt;&lt;/i&gt;&lt;br&gt;
+                                库存盘点
+                            &lt;/a&gt;
+                        &lt;/div&gt;
+                        &lt;div class="col-md-3 mb-3"&gt;
+                            &lt;a href="{{ url_for('warehouses_advanced.stock_age_analysis') }}" class="btn btn-outline-info btn-block w-100"&gt;
+                                &lt;i class="fas fa-hourglass-half"&gt;&lt;/i&gt;&lt;br&gt;
+                                库龄分析
+                            &lt;/a&gt;
+                        &lt;/div&gt;
+                        &lt;div class="col-md-3 mb-3"&gt;
+                            &lt;a href="{{ url_for('warehouses_advanced.abc_classification') }}" class="btn btn-outline-warning btn-block w-100"&gt;
+                                &lt;i class="fas fa-sort-amount-down"&gt;&lt;/i&gt;&lt;br&gt;
+                                ABC分类
+                            &lt;/a&gt;
+                        &lt;/div&gt;
+                        &lt;div class="col-md-3 mb-3"&gt;
+                            &lt;a href="{{ url_for('warehouses.inventory_overview') }}" class="btn btn-outline-success btn-block w-100"&gt;
+                                &lt;i class="fas fa-boxes"&gt;&lt;/i&gt;&lt;br&gt;
+                                库存概览
+                            &lt;/a&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+{% endblock %}
+
+{% block extra_js %}
+&lt;script&gt;
+function updateDashboard() {
+    const warehouseId = document.getElementById('warehouseSelect').value;
+    const periodDays = document.getElementById('periodSelect').value;
+    
+    let url = '{{ url_for("warehouses_advanced.dashboard") }}';
+    const params = [];
+    if (warehouseId) params.push(`warehouse_id=${warehouseId}`);
+    if (periodDays) params.push(`period_days=${periodDays}`);
+    
+    if (params.length &gt; 0) {
+        url += '?' + params.join('&amp;');
+    }
+    
+    window.location.href = url;
+}
+&lt;/script&gt;
+{% endblock %}
+

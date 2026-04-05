@@ -13,6 +13,13 @@ from app.models.category import Category
 from app.models.supplier import Supplier
 from app.models.warehouse import Warehouse
 from app.models.warehouse_location import WarehouseLocation
+from app.models.warehouse_advanced import (
+    WarehouseZone, 
+    WarehouseRack, 
+    InventoryCheck, 
+    InventoryCheckItem, 
+    StockAgeAnalysis
+)
 from app.models.spare_part import SparePart
 from app.models.batch import Batch
 from app.models.serial_number import SerialNumber
@@ -40,6 +47,11 @@ __all__ = [
     'Supplier',
     'Warehouse',
     'WarehouseLocation',
+    'WarehouseZone',
+    'WarehouseRack',
+    'InventoryCheck',
+    'InventoryCheckItem',
+    'StockAgeAnalysis',
     'SparePart',
     'Batch',
     'SerialNumber',

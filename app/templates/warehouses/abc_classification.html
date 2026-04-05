@@ -1,0 +1,202 @@
+
+{% extends "base.html" %}
+
+{% block title %}ABC分类 - 备件管理系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h1><i class="fas fa-sort-amount-down"></i> ABC分类管理</h1>
+                <p class="text-muted">基于价值的库存分类，优化管理资源</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <form method="GET" class="row g-2">
+                    <div class="col-auto">
+                        <select name="warehouse_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部仓库</option>
+                            {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}" {% if selected_warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">A类物料</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>物料数量:</strong></p>
+                            <h3 class="mb-0">{{ statistics.A.count }}</h3>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>价值占比:</strong></p>
+                            <h3 class="mb-0">80%</h3>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="mb-2"><strong>库存数量:</strong> {{ statistics.A.quantity }} 件</p>
+                    <p class="mb-0"><strong>库存价值:</strong> ¥{{ '{:,.2f}'.format(statistics.A.value) }}</p>
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">管理策略：重点管理，高频盘点，精细控制</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">B类物料</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>物料数量:</strong></p>
+                            <h3 class="mb-0">{{ statistics.B.count }}</h3>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>价值占比:</strong></p>
+                            <h3 class="mb-0">15%</h3>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="mb-2"><strong>库存数量:</strong> {{ statistics.B.quantity }} 件</p>
+                    <p class="mb-0"><strong>库存价值:</strong> ¥{{ '{:,.2f}'.format(statistics.B.value) }}</p>
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">管理策略：常规管理，标准流程，季度盘点</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">C类物料</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>物料数量:</strong></p>
+                            <h3 class="mb-0">{{ statistics.C.count }}</h3>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>价值占比:</strong></p>
+                            <h3 class="mb-0">5%</h3>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="mb-2"><strong>库存数量:</strong> {{ statistics.C.quantity }} 件</p>
+                    <p class="mb-0"><strong>库存价值:</strong> ¥{{ '{:,.2f}'.format(statistics.C.value) }}</p>
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">管理策略：简化管理，批量处理，年度盘点</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list"></i> 备件列表（按价值排序）</h5>
+            <span class="badge bg-info">共 {{ parts.total }} 件</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ABC分类</th>
+                            <th>备件代码</th>
+                            <th>备件名称</th>
+                            <th>规格型号</th>
+                            <th>库存数量</th>
+                            <th>单价</th>
+                            <th>库存价值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for spare_part, quantity, value in parts.items %}
+                        <tr>
+                            <td>
+                                {% if spare_part.abc_class == 'A' %}
+                                <span class="badge bg-primary">A类</span>
+                                {% elif spare_part.abc_class == 'B' %}
+                                <span class="badge bg-warning text-dark">B类</span>
+                                {% elif spare_part.abc_class == 'C' %}
+                                <span class="badge bg-success">C类</span>
+                                {% else %}
+                                <span class="badge bg-secondary">未分类</span>
+                                {% endif %}
+                            </td>
+                            <td><code>{{ spare_part.part_code }}</code></td>
+                            <td>
+                                <a href="{{ url_for('spare_parts.detail', id=spare_part.id) }}">
+                                    {{ spare_part.name }}
+                                </a>
+                            </td>
+                            <td>{{ spare_part.specification or '-' }}</td>
+                            <td>{{ quantity }}</td>
+                            <td>¥{{ '{:,.2f}'.format(spare_part.unit_price) if spare_part.unit_price else '0.00' }}</td>
+                            <td>
+                                <strong>¥{{ '{:,.2f}'.format(value) if value else '0.00' }}</strong>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="mb-0 text-muted">暂无备件数据</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        {% if parts.pages > 1 %}
+        <div class="card-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if parts.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('warehouses_advanced.abc_classification', warehouse_id=selected_warehouse_id, page=parts.prev_num) }}">上一页</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">上一页</span>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ parts.page }} / {{ parts.pages }}</span>
+                    </li>
+                    
+                    {% if parts.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('warehouses_advanced.abc_classification', warehouse_id=selected_warehouse_id, page=parts.next_num) }}">下一页</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">下一页</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

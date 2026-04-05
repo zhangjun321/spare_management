@@ -37,6 +37,10 @@ sentry-sdk[flask]==1.31.0
 python-dotenv==1.0.0
 python-dateutil==2.8.2
 
+# 条形码
+python-barcode==0.15.1
+Pillow==10.0.0
+
 # 测试
 pytest==7.4.0
 pytest-cov==4.1.0

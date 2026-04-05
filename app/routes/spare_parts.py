@@ -16,6 +16,8 @@ from app.utils.decorators import permission_required
 from app.utils.helpers import paginate_query
 from app.services.cache_service import cache, clear_cache
 from app.services.image_generation_service import ImageGenerationService
+from app.services.ai_info_fill_service import AIInfoFillService
+from app.services.barcode_service import generate_barcode_for_spare_part, save_barcode_to_file
 import io
 import os
 import csv
@@ -116,7 +118,7 @@ def new():
             unit_price=form.unit_price.data,
             location=form.location.data,
             brand=form.brand.data,
-            barcode=form.barcode.data,
+            barcode=form.barcode.data if form.barcode.data and form.barcode.data.strip() else None,
             safety_stock=form.safety_stock.data or 0,
             reorder_point=form.reorder_point.data,
             last_purchase_price=form.last_purchase_price.data,
@@ -177,7 +179,7 @@ def edit(id):
         spare_part.unit_price = form.unit_price.data
         spare_part.location = form.location.data
         spare_part.brand = form.brand.data
-        spare_part.barcode = form.barcode.data
+        spare_part.barcode = form.barcode.data if form.barcode.data and form.barcode.data.strip() else None
         spare_part.safety_stock = form.safety_stock.data or 0
         spare_part.reorder_point = form.reorder_point.data
         spare_part.last_purchase_price = form.last_purchase_price.data
@@ -406,13 +408,23 @@ def generate_images(id):
             supplier_name=supplier_name
         )
         
+        # 更新所有图片类型的URL
+        if results.get('images'):
+            images = results['images']
+            if images.get('front'):
+                spare_part.image_url = images['front']
+            if images.get('side'):
+                spare_part.side_image_url = images['side']
+            if images.get('detail'):
+                spare_part.detail_image_url = images['detail']
+            if images.get('circuit'):
+                spare_part.circuit_image_url = images['circuit']
+            if images.get('perspective'):
+                spare_part.perspective_image_url = images['perspective']
+        
         # 更新备件的缩略图
         if results.get('thumbnail_url'):
             spare_part.thumbnail_url = results['thumbnail_url']
-        
-        # 更新图片URL（使用正面图）
-        if results.get('images', {}).get('front'):
-            spare_part.image_url = results['images']['front']
         
         db.session.commit()
         
@@ -473,6 +485,14 @@ def generate_single_image(id):
                 spare_part.thumbnail_url = result['image_url']
             elif image_type == 'front':
                 spare_part.image_url = result['image_url']
+            elif image_type == 'side':
+                spare_part.side_image_url = result['image_url']
+            elif image_type == 'detail':
+                spare_part.detail_image_url = result['image_url']
+            elif image_type == 'circuit':
+                spare_part.circuit_image_url = result['image_url']
+            elif image_type == 'perspective':
+                spare_part.perspective_image_url = result['image_url']
             
             db.session.commit()
         
@@ -855,10 +875,19 @@ def auto_upload_image_by_code(part_code):
         
         # 检查是否已经有图片
         current_url = None
-        if image_type == 'front':
-            current_url = spare_part.image_url
-        elif image_type == 'thumbnail':
-            current_url = spare_part.thumbnail_url
+        field_map = {
+            'front': 'image_url',
+            'thumbnail': 'thumbnail_url',
+            'side': 'side_image_url',
+            'detail': 'detail_image_url',
+            'circuit': 'circuit_image_url',
+            'perspective': 'perspective_image_url'
+        }
+        
+        # 获取当前 URL
+        field_name = field_map.get(image_type)
+        if field_name:
+            current_url = getattr(spare_part, field_name, None)
         
         action = 'uploaded'
         
@@ -872,12 +901,9 @@ def auto_upload_image_by_code(part_code):
                 action = 'updated'
         
         # 更新数据库
-        if action != 'skipped':
-            if image_type == 'front':
-                spare_part.image_url = f'/uploads/images/{part_code}/{image_type}.jpg'
-            elif image_type == 'thumbnail':
-                spare_part.thumbnail_url = f'/uploads/images/{part_code}/{image_type}.jpg'
-            
+        if action != 'skipped' and field_name:
+            expected_url = f'/uploads/images/{part_code}/{image_type}.jpg'
+            setattr(spare_part, field_name, expected_url)
             db.session.commit()
         
         return jsonify({
@@ -895,5 +921,193 @@ def auto_upload_image_by_code(part_code):
         }), 500
 
 
-# �����Զ��ϴ� API �� CSRF ����
+# 自动上传 API 的 CSRF 豁免
 csrf.exempt(auto_upload_image_by_code)
+
+
+@spare_parts_bp.route('/<int:id>/barcode')
+@login_required
+def get_barcode(id):
+    """获取备件的条形码图片"""
+    spare_part = SparePart.query.get_or_404(id)
+    
+    try:
+        barcode_data, barcode_bytes = generate_barcode_for_spare_part(spare_part)
+        
+        if barcode_bytes:
+            return Response(barcode_bytes, mimetype='image/png')
+        else:
+            return jsonify({'success': False, 'message': '生成条形码失败'}), 500
+    except Exception as e:
+        current_app.logger.error(f'获取条形码失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'获取条形码失败: {str(e)}'}), 500
+
+
+@spare_parts_bp.route('/<int:id>/generate-barcode', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def generate_and_save_barcode(id):
+    """生成并保存备件的条形码"""
+    spare_part = SparePart.query.get_or_404(id)
+    
+    try:
+        barcode_data, barcode_bytes = generate_barcode_for_spare_part(spare_part)
+        
+        if barcode_bytes:
+            # 保存条形码数据到数据库
+            if not spare_part.barcode:
+                spare_part.barcode = barcode_data
+                db.session.commit()
+            
+            # 保存条形码图片到文件
+            upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+            barcode_folder = os.path.join(upload_folder, 'barcodes')
+            filename = f'{spare_part.part_code or spare_part.id}.png'
+            file_path = os.path.join(barcode_folder, filename)
+            
+            if save_barcode_to_file(barcode_data, file_path):
+                barcode_url = f'/uploads/barcodes/{filename}'
+                return jsonify({
+                    'success': True,
+                    'barcode': barcode_data,
+                    'barcode_url': barcode_url
+                })
+            else:
+                return jsonify({'success': False, 'message': '保存条形码图片失败'}), 500
+        else:
+            return jsonify({'success': False, 'message': '生成条形码失败'}), 500
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'生成条形码失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'生成条形码失败: {str(e)}'}), 500
+
+
+@spare_parts_bp.route('/search-by-barcode', methods=['GET'])
+@login_required
+def search_by_barcode():
+    """通过条形码搜索备件"""
+    barcode = request.args.get('barcode', '').strip()
+    
+    if not barcode:
+        return jsonify({'success': False, 'message': '请提供条形码'}), 400
+    
+    try:
+        spare_part = SparePart.query.filter_by(barcode=barcode).first()
+        
+        if spare_part:
+            return jsonify({
+                'success': True,
+                'spare_part': {
+                    'id': spare_part.id,
+                    'part_code': spare_part.part_code,
+                    'name': spare_part.name,
+                    'barcode': spare_part.barcode
+                }
+            })
+        else:
+            # 尝试通过备件代码查找
+            spare_part = SparePart.query.filter_by(part_code=barcode).first()
+            if spare_part:
+                return jsonify({
+                    'success': True,
+                    'spare_part': {
+                        'id': spare_part.id,
+                        'part_code': spare_part.part_code,
+                        'name': spare_part.name,
+                        'barcode': spare_part.barcode or spare_part.part_code
+                    }
+                })
+            else:
+                return jsonify({'success': False, 'message': '未找到对应的备件'}), 404
+    except Exception as e:
+        current_app.logger.error(f'搜索备件失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'搜索失败: {str(e)}'}), 500
+
+
+@spare_parts_bp.route('/<int:id>/ai-fill', methods=['GET', 'POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def ai_fill_info(id):
+    """使用AI智能填充备件信息"""
+    spare_part = SparePart.query.get_or_404(id)
+    
+    try:
+        # 准备备件数据
+        part_data = {
+            'part_code': spare_part.part_code,
+            'name': spare_part.name,
+            'specification': spare_part.specification,
+            'brand': spare_part.brand,
+            'current_stock': spare_part.current_stock,
+            'unit': spare_part.unit,
+            'unit_price': float(spare_part.unit_price) if spare_part.unit_price else None,
+            'category_name': spare_part.category.name if spare_part.category else None,
+            'supplier_name': spare_part.supplier.name if spare_part.supplier else None
+        }
+        
+        # 调用AI填充服务
+        ai_service = AIInfoFillService()
+        result = ai_service.fill_spare_part_info(part_data)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'AI填充失败: {str(e)}'
+        }), 500
+
+
+@spare_parts_bp.route('/<int:id>/apply-ai-fill', methods=['POST'])
+@login_required
+@permission_required('spare_part', 'update')
+def apply_ai_fill(id):
+    """应用AI填充的信息到备件"""
+    spare_part = SparePart.query.get_or_404(id)
+    
+    try:
+        data = request.get_json()
+        filled_data = data.get('filled_data', {})
+        
+        # 应用填充的数据
+        if 'specification' in filled_data and filled_data['specification']:
+            spare_part.specification = filled_data['specification']
+        
+        if 'description' in filled_data and filled_data['description']:
+            spare_part.remark = filled_data['description']
+        
+        if 'technical_params' in filled_data and filled_data['technical_params']:
+            spare_part.technical_params = filled_data['technical_params']
+        
+        if 'safety_stock' in filled_data and filled_data['safety_stock'] is not None:
+            spare_part.safety_stock = filled_data['safety_stock']
+        
+        if 'min_stock' in filled_data and filled_data['min_stock'] is not None:
+            spare_part.min_stock = filled_data['min_stock']
+        
+        if 'max_stock' in filled_data:
+            spare_part.max_stock = filled_data['max_stock']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'AI填充信息已应用'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'应用AI填充失败: {str(e)}'
+        }), 500
+
+
+# 豁免 CSRF 保护
+csrf.exempt(ai_fill_info)
+csrf.exempt(apply_ai_fill)

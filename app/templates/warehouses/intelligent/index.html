@@ -1,0 +1,250 @@
+
+{% extends "base.html" %}
+
+{% block title %}智能仓库管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-brain me-2"></i>智能仓库管理
+            </h2>
+            <p class="text-muted">基于百度千帆 AI 的智能化仓库管理解决方案</p>
+        </div>
+    </div>
+
+    <!-- 功能对比卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-12 mb-3">
+            <div class="alert alert-primary d-flex align-items-center">
+                <i class="fas fa-lightbulb fa-2x me-3"></i>
+                <div>
+                    <strong>智能管理入口：</strong>所有仓库已整合到 
+                    <a href="{{ url_for('warehouses.index') }}" class="alert-link">
+                        <i class="fas fa-external-link-alt me-1"></i>仓库管理首页
+                    </a>
+                    ，在那里您可以同时使用传统管理功能和 AI 智能管理功能。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 功能卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x mb-3 text-success"></i>
+                    <h5 class="card-title">AI 智能分析</h5>
+                    <p class="card-text text-muted">备件数据深度分析</p>
+                    <button class="btn btn-outline-success btn-sm" onclick="showAIFeature('analyze')">
+                        <i class="fas fa-info-circle me-1"></i>了解详情
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-th fa-3x mb-3 text-info"></i>
+                    <h5 class="card-title">AI 布局规划</h5>
+                    <p class="card-text text-muted">智能仓库布局设计</p>
+                    <button class="btn btn-outline-info btn-sm" onclick="showAIFeature('layout')">
+                        <i class="fas fa-info-circle me-1"></i>了解详情
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-magic fa-3x mb-3 text-warning"></i>
+                    <h5 class="card-title">AI 库存优化</h5>
+                    <p class="card-text text-muted">库存控制与优化建议</p>
+                    <button class="btn btn-outline-warning btn-sm" onclick="showAIFeature('optimize')">
+                        <i class="fas fa-info-circle me-1"></i>了解详情
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-brain fa-3x mb-3"></i>
+                    <h5 class="card-title">百度千帆 AI</h5>
+                    <p class="card-text">文心一言大模型</p>
+                    <small>智能驱动 数据决策</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓库列表 -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0">选择仓库进行智能管理</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>仓库名称</th>
+                            <th>仓库编码</th>
+                            <th>类型</th>
+                            <th>面积 (㎡)</th>
+                            <th>容量 (m³)</th>
+                            <th>备件数量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for warehouse in warehouses %}
+                        <tr>
+                            <td>
+                                <strong>{{ warehouse.name }}</strong>
+                            </td>
+                            <td>{{ warehouse.code }}</td>
+                            <td>
+                                {% if warehouse.type == 'general' %}
+                                    <span class="badge bg-primary">普通仓库</span>
+                                {% elif warehouse.type == 'cold' %}
+                                    <span class="badge bg-info">冷藏仓库</span>
+                                {% elif warehouse.type == 'hazardous' %}
+                                    <span class="badge bg-warning">危险品仓库</span>
+                                {% elif warehouse.type == 'valuable' %}
+                                    <span class="badge bg-danger">贵重物品仓库</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ warehouse.type }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ warehouse.area or 0 }}</td>
+                            <td>{{ warehouse.capacity or 0 }}</td>
+                            <td>{{ warehouse.spare_parts.count() if warehouse.spare_parts else 0 }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('intelligent_warehouse.visualization', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-info" title="可视化看板">
+                                        <i class="fas fa-chart-pie"></i>
+                                    </a>
+                                    <a href="{{ url_for('intelligent_warehouse.analyze_warehouse', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-success" title="AI 分析">
+                                        <i class="fas fa-brain"></i>
+                                    </a>
+                                    <a href="{{ url_for('intelligent_warehouse.generate_layout', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-primary" title="布局规划">
+                                        <i class="fas fa-th"></i>
+                                    </a>
+                                    <a href="{{ url_for('intelligent_warehouse.optimize_inventory', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-warning" title="库存优化">
+                                        <i class="fas fa-magic"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                <p>暂无仓库数据，请先创建仓库</p>
+                                <a href="{{ url_for('warehouses.create') }}" class="btn btn-primary btn-sm">
+                                    创建仓库
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI 功能模态框 -->
+<div class="modal fade" id="aiFeatureModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aiFeatureTitle">AI 智能功能</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aiFeatureContent">
+                    <!-- 动态内容 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAIFeature(feature) {
+    const modal = new bootstrap.Modal(document.getElementById('aiFeatureModal'));
+    const title = document.getElementById('aiFeatureTitle');
+    const content = document.getElementById('aiFeatureContent');
+    
+    if (feature === 'analyze') {
+        title.textContent = 'AI 智能分析';
+        content.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-chart-line fa-4x text-success mb-3"></i>
+                <h5>备件数据深度分析</h5>
+                <p class="text-muted">使用百度千帆 AI 分析备件数据，提供 ABC 分类、周转率分析、库位需求预测等</p>
+                <p><strong>功能特点：</strong></p>
+                <ul class="text-start">
+                    <li>ABC 分类分析（按价值自动分类）</li>
+                    <li>库存周转率分析</li>
+                    <li>库位需求智能预测</li>
+                    <li>存储环境要求识别</li>
+                    <li>拣货路径优化建议</li>
+                </ul>
+            </div>
+        `;
+    } else if (feature === 'layout') {
+        title.textContent = 'AI 布局规划';
+        content.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-th fa-4x text-info mb-3"></i>
+                <h5>智能仓库布局设计</h5>
+                <p class="text-muted">基于备件特性和行业标准，自动生成最优仓库布局方案</p>
+                <p><strong>设计原则：</strong></p>
+                <ul class="text-start">
+                    <li>ABC 分类分区（A 类靠近出入口）</li>
+                    <li>重物下层、轻物上层</li>
+                    <li>相似物品集中存放</li>
+                    <li>特殊存储要求（冷藏、危险品）</li>
+                    <li>拣货路径优化</li>
+                </ul>
+            </div>
+        `;
+    } else if (feature === 'optimize') {
+        title.textContent = 'AI 库存优化';
+        content.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-magic fa-4x text-warning mb-3"></i>
+                <h5>库存控制与优化</h5>
+                <p class="text-muted">智能识别库存问题，提供专业优化建议</p>
+                <p><strong>优化内容：</strong></p>
+                <ul class="text-start">
+                    <li>呆滞库存识别</li>
+                    <li>缺货风险预警</li>
+                    <li>超储库存分析</li>
+                    <li>库存周转率提升</li>
+                    <li>智能补货建议</li>
+                </ul>
+            </div>
+        `;
+    }
+    
+    modal.show();
+}
+</script>
+{% endblock %}

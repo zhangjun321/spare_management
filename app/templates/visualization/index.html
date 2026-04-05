@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}仓库可视化{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-chart-area me-2"></i>仓库可视化中心
+            </h2>
+            <p class="text-muted">提供仓库平面图、库存热力图、入库动画等可视化功能</p>
+        </div>
+    </div>
+
+    <!-- 仓库选择 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">选择仓库</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for warehouse in warehouses %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-warehouse fa-3x mb-3 text-primary"></i>
+                                    <h5 class="card-title">{{ warehouse.name }}</h5>
+                                    <p class="card-text text-muted small">{{ warehouse.code }}</p>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('visualization.warehouse_layout', warehouse_id=warehouse.id) }}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-map me-1"></i>平面图
+                                        </a>
+                                        <a href="{{ url_for('visualization.warehouse_heatmap', warehouse_id=warehouse.id) }}" 
+                                           class="btn btn-outline-info btn-sm">
+                                            <i class="fas fa-fire-alt me-1"></i>热力图
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <div class="alert alert-info text-center">
+                                <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                <p>暂无可用仓库，请先创建仓库</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能说明 -->
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-map fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title text-center">仓库平面图</h5>
+                    <p class="card-text text-muted small">
+                        可视化展示仓库的库区、货架、库位布局，支持缩放、平移，点击库位可查看详情。
+                        实时显示库位状态（空闲/占用/锁定/损坏）。
+                    </p>
+                    <ul class="small text-muted">
+                        <li>库区、货架、库位三级展示</li>
+                        <li>支持缩放和平移操作</li>
+                        <li>库位状态颜色区分</li>
+                        <li>点击查看详细信息</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-fire-alt fa-3x text-warning"></i>
+                    </div>
+                    <h5 class="card-title text-center">库存热力图</h5>
+                    <p class="card-text text-muted small">
+                        多维度展示库存分布情况，包括库存密度、周转率、库龄等，
+                        帮助快速识别库存热点和异常情况。
+                    </p>
+                    <ul class="small text-muted">
+                        <li>库存密度热力图</li>
+                        <li>周转率分析</li>
+                        <li>库龄分布</li>
+                        <li>多维度切换</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-video fa-3x text-success"></i>
+                    </div>
+                    <h5 class="card-title text-center">入库动画</h5>
+                    <p class="card-text text-muted small">
+                        生动展示备件入库过程，从入库口到目标库位的完整路径动画，
+                        让入库操作更加直观易懂。
+                    </p>
+                    <ul class="small text-muted">
+                        <li>完整入库流程演示</li>
+                        <li>支持播放/暂停/重置</li>
+                        <li>实时进度显示</li>
+                        <li>自动播放选项</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -13,6 +13,9 @@
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">{{ spare_part.name }}</h5>
         <div>
+            <button id="aiFillBtn" class="btn btn-info" onclick="aiFillInfo({{ spare_part.id }})" {% if not current_user.has_permission('spare_part', 'update') %}disabled{% endif %}>
+                <i class="fas fa-robot"></i> AI智能填充
+            </button>
             <a href="{{ url_for('spare_parts.edit', id=spare_part.id) }}" class="btn btn-success" {% if not current_user.has_permission('spare_part', 'update') %}disabled{% endif %}>
                 <i class="fas fa-edit"></i> 编辑
             </a>
@@ -189,6 +192,526 @@
                 </table>
             </div>
         </div>
+        
+        <!-- 条形码区域 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h6 class="border-bottom pb-2 mb-3"><i class="fas fa-barcode"></i> 条形码</h6>
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div id="barcodeContainer" style="min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            {% if spare_part.barcode %}
+                            <div id="barcodeDisplay">
+                                <img id="barcodeImage" src="{{ url_for('spare_parts.get_barcode', id=spare_part.id) }}" alt="条形码" style="max-width: 300px;">
+                                <p class="mt-2 mb-0 text-muted">{{ spare_part.barcode }}</p>
+                            </div>
+                            {% else %}
+                            <div id="barcodePlaceholder" class="text-muted">
+                                <i class="fas fa-barcode fa-3x"></i>
+                                <p class="mt-2 mb-0">暂无条形码</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mt-3">
+                            {% if not spare_part.barcode %}
+                            <button class="btn btn-primary" id="generateBarcodeBtn" onclick="generateBarcode({{ spare_part.id }})">
+                                <i class="fas fa-magic"></i> 生成条形码
+                            </button>
+                            {% endif %}
+                            {% if spare_part.barcode %}
+                            <button class="btn btn-success" id="printBarcodeBtn" onclick="printBarcode()">
+                                <i class="fas fa-print"></i> 打印条形码
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- AI智能填充结果区域 -->
+<div class="modal fade" id="aiFillModal" tabindex="-1" aria-labelledby="aiFillModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aiFillModalLabel">
+                    <i class="fas fa-robot"></i> AI智能填充建议
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aiFillLoading" class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+                    <p class="mt-3">AI正在分析备件信息，请稍候...</p>
+                </div>
+                <div id="aiFillContent" style="display: none;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" id="applyAiFillBtn" class="btn btn-primary" onclick="applyAiFill()" style="display: none;">
+                    <i class="fas fa-check"></i> 应用建议
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 条形码打印样式 -->
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #barcodePrintArea, #barcodePrintArea * {
+        visibility: visible;
+    }
+    #barcodePrintArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 20px;
+        background: white;
+    }
+}
+</style>
+
+<!-- 条形码打印区域 -->
+<div id="barcodePrintArea" style="display: none;">
+    <div style="text-align: center; padding: 20px; border: 2px dashed #ccc;">
+        <h3 style="margin-bottom: 10px;">{{ spare_part.name }}</h3>
+        <p style="margin-bottom: 10px;">备件代码: {{ spare_part.part_code }}</p>
+        {% if spare_part.barcode %}
+        <img src="{{ url_for('spare_parts.get_barcode', id=spare_part.id) }}" alt="条形码" style="max-width: 300px;">
+        <p style="margin-top: 10px; font-weight: bold;">{{ spare_part.barcode }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+let currentAiFillResult = null;
+let currentPartId = null;
+
+async function aiFillInfo(partId) {
+    currentPartId = partId;
+    const modal = new bootstrap.Modal(document.getElementById('aiFillModal'));
+    modal.show();
+    
+    // 重置状态
+    document.getElementById('aiFillLoading').style.display = 'block';
+    document.getElementById('aiFillContent').style.display = 'none';
+    document.getElementById('applyAiFillBtn').style.display = 'none';
+    currentAiFillResult = null;
+    
+    try {
+        console.log('请求AI填充，备件ID:', partId);
+        const response = await fetch(`/spare_parts/${partId}/ai-fill`, {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+        
+        console.log('响应状态:', response.status);
+        const text = await response.text();
+        console.log('响应内容:', text);
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('JSON解析失败:', e);
+            throw new Error('服务器返回无效的JSON');
+        }
+        
+        if (data.success) {
+            currentAiFillResult = data;
+            displayAiFillResult(data);
+            document.getElementById('aiFillLoading').style.display = 'none';
+            document.getElementById('aiFillContent').style.display = 'block';
+            document.getElementById('applyAiFillBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('aiFillLoading').innerHTML = `
+                <div class="text-danger">
+                    <i class="fas fa-exclamation-triangle fa-3x"></i>
+                    <p class="mt-3">AI填充失败: ${data.error || data.message || '未知错误'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('aiFillLoading').innerHTML = `
+            <div class="text-danger">
+                <i class="fas fa-exclamation-triangle fa-3x"></i>
+                <p class="mt-3">请求失败: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function displayAiFillResult(data) {
+    const content = document.getElementById('aiFillContent');
+    const filled = data.filled_data || {};
+    
+    let html = `
+        <div class="alert alert-info">
+            <h6><i class="fas fa-info-circle"></i> AI分析结果</h6>
+            <p class="mb-0">信心分: <strong>${data.confidence || 'N/A'}</strong>/100</p>
+            <p class="mb-0">${data.summary || ''}</p>
+        </div>
+        
+        <div class="row">
+    `;
+    
+    // 规格型号
+    if (filled.specification) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>规格型号</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">${filled.specification}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 价格建议
+    if (filled.unit_price_suggest !== undefined && filled.unit_price_suggest !== null) {
+        const price = parseFloat(filled.unit_price_suggest) || 0;
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>价格建议</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">参考价格: <strong>¥${price.toFixed(2)}</strong></p>
+                        ${filled.price_reason ? `<small class="text-muted">${filled.price_reason}</small>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 库存建议
+    html += `
+        <div class="col-md-12 mb-3">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <strong>库存建议</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        ${filled.safety_stock !== null && filled.safety_stock !== undefined ? `
+                            <div class="col-md-4">
+                                <small class="text-muted">安全库存</small>
+                                <p class="mb-0"><strong>${filled.safety_stock}</strong></p>
+                            </div>
+                        ` : ''}
+                        ${filled.min_stock !== null && filled.min_stock !== undefined ? `
+                            <div class="col-md-4">
+                                <small class="text-muted">最低库存</small>
+                                <p class="mb-0"><strong>${filled.min_stock}</strong></p>
+                            </div>
+                        ` : ''}
+                        ${filled.max_stock !== null && filled.max_stock !== undefined ? `
+                            <div class="col-md-4">
+                                <small class="text-muted">最高库存</small>
+                                <p class="mb-0"><strong>${filled.max_stock || '不设限'}</strong></p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 描述/备注
+    if (filled.description) {
+        html += `
+            <div class="col-md-12 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>描述/备注</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">${filled.description}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 技术参数
+    if (filled.technical_params && Object.keys(filled.technical_params).length > 0) {
+        html += `
+            <div class="col-md-12 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>技术参数</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+        `;
+        for (const [key, value] of Object.entries(filled.technical_params)) {
+            html += `
+                <div class="col-md-4 mb-2">
+                    <small class="text-muted">${key}</small>
+                    <p class="mb-0"><strong>${value}</strong></p>
+                </div>
+            `;
+        }
+        html += `
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 品牌信息
+    if (filled.brand_info) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>品牌信息</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">${filled.brand_info}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 分类建议
+    if (filled.category_suggest) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>分类建议</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">${filled.category_suggest}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 使用场景
+    if (filled.usage_scenario) {
+        html += `
+            <div class="col-md-12 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>使用场景</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">${filled.usage_scenario}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 兼容型号
+    if (filled.compatible_models && filled.compatible_models.length > 0) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>兼容型号</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            ${filled.compatible_models.map(m => `<li>${m}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 维护建议
+    if (filled.maintenance_tips) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>维护建议</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">${filled.maintenance_tips}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    content.innerHTML = html;
+}
+
+async function applyAiFill() {
+    if (!currentAiFillResult || !currentPartId) return;
+    
+    const btn = document.getElementById('applyAiFillBtn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 应用中...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`/spare_parts/${currentPartId}/apply-ai-fill`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                filled_data: currentAiFillResult.filled_data
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('AI填充信息已应用！', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast('应用失败：' + data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('应用失败：' + error.message, 'danger');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
+
+async function generateBarcode(partId) {
+    const btn = document.getElementById('generateBarcodeBtn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`/spare_parts/${partId}/generate-barcode`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // 更新显示
+            const container = document.getElementById('barcodeContainer');
+            container.innerHTML = `
+                <div id="barcodeDisplay">
+                    <img id="barcodeImage" src="${data.barcode_url}" alt="条形码" style="max-width: 300px;">
+                    <p class="mt-2 mb-0 text-muted">${data.barcode}</p>
+                </div>
+            `;
+            
+            // 更新按钮
+            const btnContainer = btn.parentElement;
+            btnContainer.innerHTML = `
+                <button class="btn btn-success" id="printBarcodeBtn" onclick="printBarcode()">
+                    <i class="fas fa-print"></i> 打印条形码
+                </button>
+            `;
+            
+            // 更新打印区域
+            document.getElementById('barcodePrintArea').innerHTML = `
+                <div style="text-align: center; padding: 20px; border: 2px dashed #ccc;">
+                    <h3 style="margin-bottom: 10px;">{{ spare_part.name }}</h3>
+                    <p style="margin-bottom: 10px;">备件代码: {{ spare_part.part_code }}</p>
+                    <img src="${data.barcode_url}" alt="条形码" style="max-width: 300px;">
+                    <p style="margin-top: 10px; font-weight: bold;">${data.barcode}</p>
+                </div>
+            `;
+            
+            // 显示成功提示（使用Bootstrap Toast而不是alert）
+            showToast('条形码生成成功！', 'success');
+        } else {
+            showToast('生成失败：' + data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('生成失败：' + error.message, 'danger');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
+
+// 显示Toast提示
+function showToast(message, type = 'info') {
+    // 检查是否已存在toast容器
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // 创建toast元素
+    const toastId = 'toast_' + Date.now();
+    const bgClass = {
+        'success': 'bg-success',
+        'danger': 'bg-danger',
+        'warning': 'bg-warning',
+        'info': 'bg-info'
+    }[type] || 'bg-info';
+    
+    const toastHtml = `
+        <div id="${toastId}" class="toast text-white ${bgClass}" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">提示</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // 初始化并显示toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        delay: 3000
+    });
+    toast.show();
+    
+    // 自动移除toast元素
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+function printBarcode() {
+    const printArea = document.getElementById('barcodePrintArea');
+    printArea.style.display = 'block';
+    window.print();
+    printArea.style.display = 'none';
+}
+</script>
 {% endblock %}

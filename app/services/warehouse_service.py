@@ -75,8 +75,10 @@ class WarehouseService:
                 query = query.filter(Warehouse.code.like(f"%{filters['code']}%"))
             if filters.get('type'):
                 query = query.filter(Warehouse.type == filters['type'])
-            if filters.get('is_active') is not None:
-                query = query.filter(Warehouse.is_active == filters['is_active'])
+            if filters.get('is_active') is True:
+                query = query.filter(Warehouse.is_active == True)
+            elif filters.get('is_active') is False:
+                query = query.filter(Warehouse.is_active == False)
         
         pagination = query.order_by(Warehouse.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False

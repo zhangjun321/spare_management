@@ -437,12 +437,52 @@
                 </div>
             </div>
             
+            <!-- 条形码区域 -->
+            {% if spare_part %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-0 bg-light">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-barcode"></i> 条形码</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="barcodeContainer" class="text-center" style="min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                {% if spare_part.barcode %}
+                                <div id="barcodeDisplay">
+                                    <img id="barcodeImage" src="{{ url_for('spare_parts.get_barcode', id=spare_part.id) }}" alt="条形码" style="max-width: 300px;">
+                                    <p class="mt-2 mb-0 text-muted">{{ spare_part.barcode }}</p>
+                                </div>
+                                {% else %}
+                                <div id="barcodePlaceholder" class="text-muted">
+                                    <i class="fas fa-barcode fa-3x"></i>
+                                    <p class="mt-2 mb-0">暂无条形码</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="mt-3 text-center">
+                                {% if not spare_part.barcode %}
+                                <button type="button" class="btn btn-primary" id="generateBarcodeBtn" onclick="generateBarcode()">
+                                    <i class="fas fa-magic"></i> 生成条形码
+                                </button>
+                                {% endif %}
+                                {% if spare_part.barcode %}
+                                <button type="button" class="btn btn-success" id="printBarcodeBtn" onclick="printBarcode()">
+                                    <i class="fas fa-print"></i> 打印条形码
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
             <!-- 隐藏的图片字段（用于存储所有图片类型的 URL） -->
-            <input type="hidden" id="thumbnail_url_hidden" name="thumbnail_url_hidden" value="{{ form.thumbnail_url.data if form.thumbnail_url.data else '' }}">
-            <input type="hidden" id="side_image_url_hidden" name="side_image_url_hidden" value="{{ form.side_image_url.data if form.side_image_url.data else '' }}">
-            <input type="hidden" id="detail_image_url_hidden" name="detail_image_url_hidden" value="{{ form.detail_image_url.data if form.detail_image_url.data else '' }}">
-            <input type="hidden" id="circuit_image_url_hidden" name="circuit_image_url_hidden" value="{{ form.circuit_image_url.data if form.circuit_image_url.data else '' }}">
-            <input type="hidden" id="perspective_image_url_hidden" name="perspective_image_url_hidden" value="{{ form.perspective_image_url.data if form.perspective_image_url.data else '' }}">
+            <input type="hidden" id="thumbnail_url_hidden" name="thumbnail_url" value="{{ form.thumbnail_url.data if form.thumbnail_url.data else '' }}">
+            <input type="hidden" id="side_image_url_hidden" name="side_image_url" value="{{ form.side_image_url.data if form.side_image_url.data else '' }}">
+            <input type="hidden" id="detail_image_url_hidden" name="detail_image_url" value="{{ form.detail_image_url.data if form.detail_image_url.data else '' }}">
+            <input type="hidden" id="circuit_image_url_hidden" name="circuit_image_url" value="{{ form.circuit_image_url.data if form.circuit_image_url.data else '' }}">
+            <input type="hidden" id="perspective_image_url_hidden" name="perspective_image_url" value="{{ form.perspective_image_url.data if form.perspective_image_url.data else '' }}">
             
             <div class="d-flex justify-content-between mt-4">
                 <a href="{{ url_for('spare_parts.index') }}" class="btn btn-secondary">
@@ -480,6 +520,55 @@
 <script>
 let currentImageType = null;
 const partId = {{ spare_part.id if spare_part else 'null' }};
+
+// 显示Toast提示
+function showToast(message, type = 'info') {
+    // 检查是否已存在toast容器
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // 创建toast元素
+    const toastId = 'toast_' + Date.now();
+    const bgClass = {
+        'success': 'bg-success',
+        'danger': 'bg-danger',
+        'warning': 'bg-warning',
+        'info': 'bg-info'
+    }[type] || 'bg-info';
+    
+    const toastHtml = `
+        <div id="${toastId}" class="toast text-white ${bgClass}" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">提示</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // 初始化并显示toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        delay: 3000
+    });
+    toast.show();
+    
+    // 自动移除toast元素
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
 
 // 立即执行图片加载
 console.log('脚本加载，partId =', partId);
@@ -753,11 +842,13 @@ async function autoUploadImages() {
         const checkResponse = await fetch(`/spare_parts/code/${partCode}/check-ai-images`);
         const checkData = await checkResponse.json();
         
+        console.log('检查AI图片结果:', checkData);
+        
         if (!checkData.success) {
             statusText.textContent = '错误';
             progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
             progressBar.classList.add('bg-danger');
-            alert(checkData.message || '检查 AI 图片失败');
+            showToast(checkData.message || '检查 AI 图片失败', 'danger');
             setTimeout(() => {
                 modal.hide();
             }, 2000);
@@ -768,39 +859,58 @@ async function autoUploadImages() {
             statusText.textContent = '没有 AI 图片';
             progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
             progressBar.classList.add('bg-warning');
-            alert('还没有 AI 生成的图片，请先生成 AI 图片！');
+            showToast('还没有 AI 生成的图片，请先生成 AI 图片！', 'warning');
             setTimeout(() => {
                 modal.hide();
             }, 2000);
             return;
         }
         
-        // 获取当前已有图片
+        // 获取当前已有图片（从隐藏字段获取，而不是从 img.src）
         const currentImages = {};
         const imageTypes = ['front', 'side', 'detail', 'circuit', 'perspective', 'thumbnail'];
+        const fieldMap = {
+            'front': 'image_url',
+            'thumbnail': 'thumbnail_url_hidden',
+            'side': 'side_image_url_hidden',
+            'detail': 'detail_image_url_hidden',
+            'circuit': 'circuit_image_url_hidden',
+            'perspective': 'perspective_image_url_hidden'
+        };
         
         imageTypes.forEach(type => {
-            const img = document.getElementById(`preview-${type}`);
-            if (img && img.style.display !== 'none' && img.src) {
-                currentImages[type] = img.src;
+            const fieldName = fieldMap[type];
+            const field = document.getElementById(fieldName);
+            if (field && field.value && field.value.trim() !== '') {
+                currentImages[type] = field.value;
             }
         });
+        
+        console.log('当前图片:', currentImages);
         
         // 比对图片是否需要更新
         const imagesToUpdate = [];
         const unchangedImages = [];
         
+        console.log('开始比对图片...');
         checkData.images.forEach(imgType => {
             const aiImagePath = `/uploads/images/${partCode}/${imgType}.jpg`;
             const currentImage = currentImages[imgType];
             
+            console.log(`图片类型: ${imgType}, AI图片路径: ${aiImagePath}, 当前图片: ${currentImage}`);
+            
             // 如果当前没有图片或图片路径不同，则需要更新
-            if (!currentImage || !currentImage.includes(aiImagePath)) {
+            if (!currentImage || currentImage !== aiImagePath) {
+                console.log(`  → 需要更新`);
                 imagesToUpdate.push(imgType);
             } else {
+                console.log(`  → 已是最新`);
                 unchangedImages.push(imgType);
             }
         });
+        
+        console.log('需要更新的图片:', imagesToUpdate);
+        console.log('已是最新的图片:', unchangedImages);
         
         // 如果所有图片都不需要更新
         if (imagesToUpdate.length === 0 && unchangedImages.length > 0) {
@@ -959,8 +1069,144 @@ async function autoUploadImages() {
         progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
         progressBar.classList.add('bg-danger');
         closeBtn.disabled = false;
-        alert('自动上传失败：' + error.message);
+        showToast('自动上传失败：' + error.message, 'danger');
     }
+}
+
+// 条形码功能
+async function generateBarcode() {
+    if (!partId) {
+        showToast('请先保存备件信息！', 'warning');
+        return;
+    }
+    
+    const btn = document.getElementById('generateBarcodeBtn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`/spare_parts/${partId}/generate-barcode`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // 更新显示
+            const container = document.getElementById('barcodeContainer');
+            container.innerHTML = `
+                <div id="barcodeDisplay">
+                    <img id="barcodeImage" src="${data.barcode_url}" alt="条形码" style="max-width: 300px;">
+                    <p class="mt-2 mb-0 text-muted">${data.barcode}</p>
+                </div>
+            `;
+            
+            // 更新按钮
+            const btnContainer = btn.parentElement;
+            btnContainer.innerHTML = `
+                <button type="button" class="btn btn-success" id="printBarcodeBtn" onclick="printBarcode()">
+                    <i class="fas fa-print"></i> 打印条形码
+                </button>
+            `;
+            
+            // 更新条形码输入框
+            const barcodeInput = document.getElementById('barcode');
+            if (barcodeInput) {
+                barcodeInput.value = data.barcode;
+            }
+            
+            // 显示成功提示
+            showToast('条形码生成成功！', 'success');
+        } else {
+            showToast('生成失败：' + data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('生成失败：' + error.message, 'danger');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
+
+function printBarcode() {
+    // 创建打印窗口
+    const printWindow = window.open('', '_blank');
+    const barcodeImage = document.getElementById('barcodeImage');
+    const barcodeText = document.querySelector('#barcodeDisplay p')?.textContent || '';
+    
+    if (!barcodeImage) {
+        showToast('请先生成条形码！', 'warning');
+        return;
+    }
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>打印条形码</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 20px;
+                }
+                .barcode-label {
+                    border: 2px dashed #ccc;
+                    padding: 20px;
+                    display: inline-block;
+                }
+                .part-name {
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                }
+                .part-code {
+                    font-size: 14px;
+                    margin-bottom: 15px;
+                }
+                img {
+                    max-width: 300px;
+                }
+                .barcode-text {
+                    font-size: 16px;
+                    font-weight: bold;
+                    margin-top: 10px;
+                }
+                @media print {
+                    body {
+                        padding: 0;
+                    }
+                    .barcode-label {
+                        border: none;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="barcode-label">
+                <div class="part-name">{{ spare_part.name if spare_part else '' }}</div>
+                <div class="part-code">备件代码: {{ spare_part.part_code if spare_part else '' }}</div>
+                <img src="${barcodeImage.src}" alt="条形码">
+                <div class="barcode-text">${barcodeText}</div>
+            </div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                    window.onafterprint = function() {
+                        window.close();
+                    };
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
 </script>
 {% endblock %}

@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}仓库管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-warehouse me-2"></i>仓库管理
+            </h2>
+            <p class="text-muted">统一管理传统仓库和 AI 智能仓库功能</p>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-muted small mb-1">总仓库数</div>
+                            <div class="h3 mb-0 fw-bold">{{ statistics.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-warehouse fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-muted small mb-1">启用仓库</div>
+                            <div class="h3 mb-0 fw-bold text-success">{{ statistics.active }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-muted small mb-1">禁用仓库</div>
+                            <div class="h3 mb-0 fw-bold text-secondary">{{ statistics.inactive }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-times-circle fa-2x text-secondary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="small mb-1">AI 智能管理</div>
+                            <div class="h3 mb-0 fw-bold">{{ warehouses|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-brain fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 功能快捷入口 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0"><i class="fas fa-bolt text-warning me-2"></i>AI 智能功能</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('intelligent_warehouse.index') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-brain me-2"></i>智能看板
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('warehouses_advanced.inventory_check_list') }}" class="btn btn-outline-success">
+                                    <i class="fas fa-clipboard-check me-2"></i>库存盘点
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('warehouses_advanced.stock_age_analysis') }}" class="btn btn-outline-info">
+                                    <i class="fas fa-hourglass-half me-2"></i>库龄分析
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('warehouses_advanced.abc_classification') }}" class="btn btn-outline-warning">
+                                    <i class="fas fa-chart-pie me-2"></i>ABC 分类
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓库列表 -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>仓库列表</h5>
+            <a href="{{ url_for('warehouses.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>创建仓库
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>仓库名称</th>
+                            <th>仓库编码</th>
+                            <th>类型</th>
+                            <th>面积 (㎡)</th>
+                            <th>容量 (m³)</th>
+                            <th>备件数量</th>
+                            <th>传统管理</th>
+                            <th>AI 智能管理</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for warehouse in warehouses %}
+                        <tr>
+                            <td>
+                                <strong>{{ warehouse.name }}</strong>
+                            </td>
+                            <td>{{ warehouse.code }}</td>
+                            <td>
+                                {% if warehouse.type == 'general' %}
+                                    <span class="badge bg-primary">普通仓库</span>
+                                {% elif warehouse.type == 'cold' %}
+                                    <span class="badge bg-info">冷藏仓库</span>
+                                {% elif warehouse.type == 'hazardous' %}
+                                    <span class="badge bg-warning">危险品仓库</span>
+                                {% elif warehouse.type == 'valuable' %}
+                                    <span class="badge bg-danger">贵重物品仓库</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ warehouse.type }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ warehouse.area or 0 }}</td>
+                            <td>{{ warehouse.capacity or 0 }}</td>
+                            <td>{{ warehouse.spare_parts.count() if warehouse.spare_parts else 0 }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('warehouses_advanced.zones') }}" 
+                                       class="btn btn-outline-secondary" title="库区管理">
+                                        <i class="fas fa-th"></i>
+                                    </a>
+                                    <a href="{{ url_for('warehouses_advanced.racks') }}" 
+                                       class="btn btn-outline-secondary" title="货架管理">
+                                        <i class="fas fa-columns"></i>
+                                    </a>
+                                    <a href="{{ url_for('warehouses.location_list') }}" 
+                                       class="btn btn-outline-secondary" title="货位管理">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('intelligent_warehouse.visualization', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-info" title="可视化看板">
+                                        <i class="fas fa-chart-pie"></i>
+                                    </a>
+                                    <a href="{{ url_for('intelligent_warehouse.analyze_warehouse', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-success" title="AI 分析">
+                                        <i class="fas fa-brain"></i>
+                                    </a>
+                                    <a href="{{ url_for('intelligent_warehouse.generate_layout', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-primary" title="布局规划">
+                                        <i class="fas fa-th"></i>
+                                    </a>
+                                    <a href="{{ url_for('intelligent_warehouse.optimize_inventory', warehouse_id=warehouse.id) }}" 
+                                       class="btn btn-warning" title="库存优化">
+                                        <i class="fas fa-magic"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <h5>暂无仓库数据</h5>
+                                <p>请先创建仓库，然后使用 AI 功能进行智能管理</p>
+                                <a href="{{ url_for('warehouses.create') }}" class="btn btn-primary">
+                                    <i class="fas fa-plus me-2"></i>创建仓库
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        {% if pagination and pagination.pages > 1 %}
+        <div class="card-footer bg-white border-0 py-3">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('warehouses.index', page=pagination.prev_num, **filters) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            {% if pagination.page == page_num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('warehouses.index', page=page_num, **filters) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('warehouses.index', page=pagination.next_num, **filters) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

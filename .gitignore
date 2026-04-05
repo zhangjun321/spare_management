@@ -86,3 +86,30 @@ docs/_build/
 *.pid
 *.seed
 *.pid.lock
+
+# 测试脚本和临时文件
+test_*.py
+test_*.html
+ultimate_test.html
+diagnosis_*.py
+comprehensive_*.py
+start_*.py
+check_*.py
+create_*.py
+fix_*.py
+init_*.py
+migrate_*.py
+quick_*.py
+simple_*.py
+verify_*.py
+auto_login.py
+launch.bat
+start_server.bat
+
+# 上传的图片（可选，如果不想上传）
+# uploads/
+
+# 临时文件
+*.txt
+server_*.txt
+debug_*.txt

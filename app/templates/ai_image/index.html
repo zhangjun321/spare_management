@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}AI 仓库图像生成{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-magic me-2"></i>AI 仓库图像生成
+            </h2>
+            <p class="text-muted">基于百度文心一格，自动生成仓库实景图</p>
+        </div>
+    </div>
+
+    <!-- 功能说明 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-info d-flex align-items-center">
+                <i class="fas fa-info-circle fa-2x me-3"></i>
+                <div>
+                    <strong>功能说明：</strong>
+                    本功能使用百度文心一格大模型，根据仓库实际布局数据自动生成高质量的仓库实景图。
+                    支持多种视角、多种风格，并可实时动态更新。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：配置面板 -->
+        <div class="col-md-4">
+            <!-- 仓库选择 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">选择仓库</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">仓库列表</label>
+                        <select class="form-select" id="warehouseSelect">
+                            {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}">{{ warehouse.name }} ({{ warehouse.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 生成参数 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">生成参数</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">图像风格</label>
+                        <select class="form-select" id="styleSelect">
+                            <option value="photorealistic">写实风格</option>
+                            <option value="artistic">艺术风格</option>
+                            <option value="anime">动漫风格</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">视角焦点</label>
+                        <select class="form-select" id="focusSelect">
+                            <option value="">自动选择</option>
+                            <option value="entrance">入口处视角</option>
+                            <option value="center">中心全景</option>
+                            <option value="shelves">货架近景</option>
+                            <option value="path">通道视角</option>
+                            <option value="aerial">俯视角度</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">分辨率</label>
+                        <select class="form-select" id="resolutionSelect">
+                            <option value="512x512">512x512 (快速)</option>
+                            <option value="1024x768" selected>1024x768 (标准)</option>
+                            <option value="1024x1024">1024x1024 (高清)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <button class="btn btn-primary w-100 mb-2" onclick="generateImage()">
+                        <i class="fas fa-magic me-2"></i>生成图像
+                    </button>
+                    <button class="btn btn-outline-primary w-100 mb-2" onclick="generateBatch()">
+                        <i class="fas fa-images me-2"></i>批量生成（5 个视角）
+                    </button>
+                    <button class="btn btn-outline-info w-100" onclick="testAPI()">
+                        <i class="fas fa-vial me-2"></i>测试 API 连接
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：结果展示 -->
+        <div class="col-md-8">
+            <!-- 进度条 -->
+            <div id="progressCard" class="card border-0 shadow-sm mb-4" style="display: none;">
+                <div class="card-body">
+                    <h6 class="mb-3">
+                        <i class="fas fa-spinner fa-spin me-2"></i>正在生成图像...
+                    </h6>
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%;" 
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            <span id="progressText">0%</span>
+                        </div>
+                    </div>
+                    <p class="text-muted text-center" id="progressMessage">正在连接 API...</p>
+                </div>
+            </div>
+
+            <!-- 错误提示 -->
+            <div id="errorCard" class="alert alert-danger mb-4" style="display: none;">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span id="errorMessage"></span>
+            </div>
+
+            <!-- 图像展示 -->
+            <div id="resultCard" class="card border-0 shadow-sm mb-4" style="display: none;">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">生成结果</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="downloadImage()">
+                            <i class="fas fa-download me-1"></i>下载
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <img id="generatedImage" src="" alt="生成的仓库图像" class="img-fluid w-100" style="display: none;">
+                    <div id="imagePlaceholder" class="text-center py-5">
+                        <i class="fas fa-image fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">图像将在这里显示</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提示词显示 -->
+            <div id="promptCard" class="card border-0 shadow-sm" style="display: none;">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-align-left me-2"></i>生成的提示词
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">正向提示词</label>
+                        <textarea class="form-control" id="promptText" rows="4" readonly></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">负向提示词</label>
+                        <textarea class="form-control" id="negativePromptText" rows="2" readonly></textarea>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="copyPrompt()">
+                        <i class="fas fa-copy me-1"></i>复制提示词
+                    </button>
+                </div>
+            </div>
+
+            <!-- 初始状态 -->
+            <div id="initialState" class="card border-0 shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-warehouse fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">选择仓库并点击"生成图像"开始</h5>
+                    <p class="text-muted small">AI 将根据仓库的实际布局数据生成实景图</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentImageBase64 = null;
+
+// 更新进度条
+function updateProgress(progress, message) {
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const progressMessage = document.getElementById('progressMessage');
+    
+    if (progressBar) {
+        progressBar.style.width = progress + '%';
+        progressBar.setAttribute('aria-valuenow', progress);
+    }
+    if (progressText) {
+        progressText.textContent = progress + '%';
+    }
+    if (progressMessage) {
+        progressMessage.textContent = message;
+    }
+}
+
+// 显示错误
+function showError(message) {
+    const errorCard = document.getElementById('errorCard');
+    const errorMessage = document.getElementById('errorMessage');
+    if (errorMessage) {
+        errorMessage.textContent = message;
+    }
+    if (errorCard) {
+        errorCard.style.display = 'block';
+        
+        // 5 秒后自动隐藏
+        setTimeout(() => {
+            errorCard.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// 隐藏所有状态卡片
+function hideAllStatus() {
+    const progressCard = document.getElementById('progressCard');
+    const errorCard = document.getElementById('errorCard');
+    const resultCard = document.getElementById('resultCard');
+    const promptCard = document.getElementById('promptCard');
+    
+    if (progressCard) progressCard.style.display = 'none';
+    if (errorCard) errorCard.style.display = 'none';
+    if (resultCard) resultCard.style.display = 'none';
+    if (promptCard) promptCard.style.display = 'none';
+}
+
+// 生成单张图像
+function generateImage() {
+    const warehouseSelect = document.getElementById('warehouseSelect');
+    const styleSelect = document.getElementById('styleSelect');
+    const focusSelect = document.getElementById('focusSelect');
+    const resolutionSelect = document.getElementById('resolutionSelect');
+    
+    if (!warehouseSelect) {
+        showError('页面元素未加载完成，请刷新页面');
+        return;
+    }
+    
+    const warehouseId = warehouseSelect.value;
+    const style = styleSelect ? styleSelect.value : 'photorealistic';
+    const focus = focusSelect ? focusSelect.value : '';
+    const resolution = resolutionSelect ? resolutionSelect.value : '1024x1024';
+    
+    if (!warehouseId || warehouseId === '' || warehouseId === 'null' || warehouseId === 'undefined') {
+        showError('请先选择一个有效的仓库');
+        console.error('无效的仓库 ID:', warehouseId);
+        return;
+    }
+    
+    // 确保 warehouseId 是数字
+    const warehouseIdNum = parseInt(warehouseId);
+    if (isNaN(warehouseIdNum)) {
+        showError('仓库 ID 格式错误');
+        console.error('仓库 ID 不是数字:', warehouseId);
+        return;
+    }
+    
+    // 隐藏初始状态和错误
+    hideAllStatus();
+    const initialState = document.getElementById('initialState');
+    if (initialState) {
+        initialState.style.display = 'none';
+    }
+    
+    // 显示进度条
+    const progressCard = document.getElementById('progressCard');
+    if (progressCard) {
+        progressCard.style.display = 'block';
+        updateProgress(10, '正在准备生成参数...');
+    }
+    
+    // 模拟进度更新（因为 API 是同步返回）
+    let progress = 10;
+    const progressInterval = setInterval(() => {
+        if (progress < 90) {
+            progress += 5;
+            updateProgress(progress, '正在生成图像，请稍候...');
+        }
+    }, 1000);
+    
+    fetch(`/ai-image/generate-super-simple/${warehouseIdNum}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            style: style,
+            resolution: resolution
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('HTTP error! status: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        clearInterval(progressInterval);
+        updateProgress(100, '生成完成！');
+        
+        // 短暂延迟后显示结果
+        setTimeout(() => {
+            const progCard = document.getElementById('progressCard');
+            if (progCard) {
+                progCard.style.display = 'none';
+            }
+            
+            if (data.success) {
+                displayResult(data);
+            } else {
+                showError('生成失败：' + (data.error || '未知错误'));
+                const initState = document.getElementById('initialState');
+                if (initState) {
+                    initState.style.display = 'block';
+                }
+            }
+        }, 500);
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        const progCard = document.getElementById('progressCard');
+        if (progCard) {
+            progCard.style.display = 'none';
+        }
+        showError('请求失败：' + error);
+        const initState = document.getElementById('initialState');
+        if (initState) {
+            initState.style.display = 'block';
+        }
+    });
+}
+
+// 批量生成
+function generateBatch() {
+    const warehouseId = document.getElementById('warehouseSelect').value;
+    
+    if (!warehouseId) {
+        showError('请选择仓库');
+        return;
+    }
+    
+    // 显示进度条
+    hideAllStatus();
+    document.getElementById('initialState').style.display = 'none';
+    document.getElementById('progressCard').style.display = 'block';
+    updateProgress(10, '准备批量生成...');
+    
+    // 模拟进度
+    let progress = 10;
+    const progressInterval = setInterval(() => {
+        if (progress < 80) {
+            progress += 5;
+            updateProgress(progress, '正在生成第 ' + Math.ceil((progress - 10) / 18) + ' / 5 张图像...');
+        }
+    }, 1500);
+    
+    fetch(`/ai-image/generate-batch`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            warehouse_id: warehouseId
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('HTTP error! status: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        clearInterval(progressInterval);
+        updateProgress(100, '批量生成完成！');
+        
+        setTimeout(() => {
+            document.getElementById('progressCard').style.display = 'none';
+            
+            if (data.success) {
+                // 显示第一个成功的图像
+                const successfulResult = data.results.find(r => r.success && r.images.length > 0);
+                if (successfulResult) {
+                    displayResult({
+                        images: successfulResult.images,
+                        prompt: successfulResult.prompt
+                    });
+                } else {
+                    showError('批量生成失败：没有成功的图像');
+                    document.getElementById('initialState').style.display = 'block';
+                }
+            } else {
+                showError('批量生成失败：' + (data.error || '未知错误'));
+                document.getElementById('initialState').style.display = 'block';
+            }
+        }, 500);
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        document.getElementById('progressCard').style.display = 'none';
+        showError('请求失败：' + error);
+        document.getElementById('initialState').style.display = 'block';
+    });
+}
+
+// 测试 API
+function testAPI() {
+    // 显示进度条
+    hideAllStatus();
+    document.getElementById('progressCard').style.display = 'block';
+    updateProgress(10, '正在测试 API 连接...');
+    
+    fetch('/ai-image/api/test')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP error! status: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            updateProgress(100, '测试完成！');
+            
+            setTimeout(() => {
+                document.getElementById('progressCard').style.display = 'none';
+                
+                if (data.success) {
+                    // 显示测试图像
+                    displayResult({
+                        images: data.images,
+                        prompt: '测试成功 - API 连接正常'
+                    });
+                } else {
+                    showError('API 连接失败：' + (data.error || '未知错误'));
+                }
+            }, 500);
+        })
+        .catch(error => {
+            document.getElementById('progressCard').style.display = 'none';
+            showError('API 连接异常：' + error);
+        });
+}
+
+// 显示结果
+function displayResult(data) {
+    const resultCard = document.getElementById('resultCard');
+    const promptCard = document.getElementById('promptCard');
+    
+    if (resultCard) {
+        resultCard.style.display = 'block';
+    }
+    if (promptCard) {
+        promptCard.style.display = 'block';
+    }
+    
+    // 显示图像 - 优先使用本地保存的图片
+    let imageUrl = null;
+    if (data.local_images && data.local_images.length > 0) {
+        imageUrl = data.local_images[0];
+        console.log('使用本地图片:', imageUrl);
+    } else if (data.images && data.images.length > 0) {
+        imageUrl = data.images[0];
+        console.log('使用百度URL:', imageUrl);
+    }
+    
+    if (imageUrl) {
+        const img = document.getElementById('generatedImage');
+        const placeholder = document.getElementById('imagePlaceholder');
+        
+        if (img && placeholder) {
+            // 保存图片URL用于下载
+            currentImageBase64 = imageUrl;
+            
+            // 显示图片
+            img.src = imageUrl;
+            img.style.display = 'block';
+            placeholder.style.display = 'none';
+        }
+    }
+    
+    // 显示提示词
+    const promptText = document.getElementById('promptText');
+    const negativePromptText = document.getElementById('negativePromptText');
+    if (promptText) {
+        promptText.value = data.prompt || '';
+    }
+    if (negativePromptText) {
+        negativePromptText.value = data.record?.negative_prompt || '';
+    }
+}
+
+// 下载图像
+async function downloadImage() {
+    if (!currentImageBase64) {
+        alert('没有可下载的图像');
+        return;
+    }
+    
+    try {
+        // 如果是URL，先下载再保存
+        if (currentImageBase64.startsWith('http')) {
+            const response = await fetch(currentImageBase64);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'warehouse_' + new Date().getTime() + '.png';
+            link.click();
+            window.URL.revokeObjectURL(url);
+        } else {
+            // 如果是base64
+            const link = document.createElement('a');
+            link.href = currentImageBase64;
+            link.download = 'warehouse_' + new Date().getTime() + '.png';
+            link.click();
+        }
+    } catch (error) {
+        console.error('下载失败:', error);
+        alert('下载失败: ' + error.message);
+    }
+}
+
+// 复制提示词
+function copyPrompt() {
+    const promptText = document.getElementById('promptText').value;
+    navigator.clipboard.writeText(promptText).then(() => {
+        alert('提示词已复制到剪贴板');
+    }).catch(() => {
+        alert('复制失败');
+    });
+}
+</script>
+{% endblock %}

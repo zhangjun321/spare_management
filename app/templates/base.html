@@ -244,13 +244,55 @@
             display: none;
         }
         
+        /* 子菜单样式 */
+        .submenu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin-top: 0.25rem;
+        }
+        
+        .submenu.show {
+            max-height: 500px;
+        }
+        
+        .submenu li {
+            margin: 0;
+        }
+        
+        .submenu li a {
+            padding: 0.6rem 1rem 0.6rem 3rem;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .submenu li a:hover,
+        .submenu li a.active {
+            color: #fff;
+            background: rgba(78, 115, 223, 0.2);
+        }
+        
+        .has-submenu > a .fa-chevron-down {
+            transition: transform 0.3s;
+        }
+        
+        .has-submenu.open > a .fa-chevron-down {
+            transform: rotate(180deg);
+        }
+        
         /* 主内容区域 */
         .main-content {
             margin-left: var(--sidebar-width);
             padding: var(--spacing-md);
+            padding-bottom: var(--spacing-lg);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             flex: 1;
-            min-height: 100vh;
+            min-height: calc(100vh - 200px);
         }
         
         .main-content.collapsed {
@@ -634,8 +676,15 @@
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
             color: #2c3e50;
             padding: var(--spacing-lg) 0 var(--spacing-sm);
-            margin-top: 0;
+            margin-top: auto;
             border-top: 1px solid rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+            width: 100%;
+        }
+        
+        .footer .container {
+            padding-left: var(--spacing-md);
+            padding-right: var(--spacing-md);
         }
         
         .footer h5 {
@@ -824,11 +873,54 @@
                     <span class="menu-text">备件管理</span>
                 </a>
             </li>
-            <li>
-                <a href="{{ url_for('warehouses.index') }}" data-tooltip="仓库管理">
+            <li class="has-submenu">
+                <a href="#" class="{% if request.endpoint and (request.endpoint.startswith('warehouses') or request.endpoint.startswith('intelligent_warehouse')) %}active{% endif %}" data-tooltip="仓库管理">
                     <i class="fas fa-warehouse"></i>
                     <span class="menu-text">仓库管理</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
+                <ul class="submenu">
+                    <li>
+                        <a href="{{ url_for('warehouses.index') }}" class="{% if request.endpoint == 'warehouses.index' %}active{% endif %}">
+                            <i class="fas fa-list"></i>仓库列表
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('warehouses.create') }}" class="{% if request.endpoint == 'warehouses.create' %}active{% endif %}">
+                            <i class="fas fa-plus"></i>创建仓库
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('warehouses_advanced.zones') }}" class="{% if request.endpoint and request.endpoint.startswith('warehouses_advanced') %}active{% endif %}">
+                            <i class="fas fa-th"></i>库区管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('intelligent_warehouse.index') }}" class="{% if request.endpoint and request.endpoint.startswith('intelligent_warehouse') %}active{% endif %}">
+                            <i class="fas fa-brain"></i>智能仓库 (AI)
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('visualization.index') }}" class="{% if request.endpoint and request.endpoint.startswith('visualization') %}active{% endif %}">
+                            <i class="fas fa-chart-area"></i>仓库可视化
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('ai_image.index') }}" class="{% if request.endpoint and request.endpoint.startswith('ai_image') %}active{% endif %}">
+                            <i class="fas fa-magic"></i>AI 图像生成
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('warehouses.index') }}" class="{% if request.endpoint and request.endpoint.startswith('warehouses') and 'intelligent' not in request.endpoint %}active{% endif %}">
+                            <i class="fas fa-chart-bar"></i>库存管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('reports.index') }}" class="{% if request.endpoint and request.endpoint.startswith('reports') %}active{% endif %}">
+                            <i class="fas fa-file-alt"></i>报表统计
+                        </a>
+                    </li>
+                </ul>
             </li>
             <li>
                 <a href="{{ url_for('transactions.index') }}" data-tooltip="交易管理">
@@ -1104,13 +1196,43 @@
                     sidebar.classList.remove('show');
                 }
             });
+            
+            // 子菜单展开/折叠功能
+            const hasSubmenuItems = document.querySelectorAll('.has-submenu > a');
+            hasSubmenuItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const parent = this.parentElement;
+                    const submenu = parent.querySelector('.submenu');
+                    
+                    if (submenu) {
+                        // 切换当前菜单的展开状态
+                        parent.classList.toggle('open');
+                        submenu.classList.toggle('show');
+                        
+                        // 如果当前菜单被展开，关闭其他已展开的菜单（手风琴效果）
+                        if (parent.classList.contains('open')) {
+                            hasSubmenuItems.forEach(otherItem => {
+                                if (otherItem !== this) {
+                                    const otherParent = otherItem.parentElement;
+                                    const otherSubmenu = otherParent.querySelector('.submenu');
+                                    if (otherSubmenu && otherParent.classList.contains('open')) {
+                                        otherParent.classList.remove('open');
+                                        otherSubmenu.classList.remove('show');
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            });
         });
     </script>
     
     <script>
-        // 自动隐藏消息提示
+        // 自动隐藏消息提示（不关闭永久性的 alert）
         setTimeout(function() {
-            var alerts = document.querySelectorAll('.alert');
+            var alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
             alerts.forEach(function(alert) {
                 var bsAlert = new bootstrap.Alert(alert);
                 bsAlert.close();

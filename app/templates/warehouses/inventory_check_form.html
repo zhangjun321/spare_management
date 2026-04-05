@@ -1,0 +1,151 @@
+
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - 备件管理系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h1><i class="fas fa-clipboard-check"></i> {{ title }}</h1>
+                <p class="text-muted">创建新的库存盘点任务</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{{ url_for('warehouses_advanced.inventory_check_list') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回列表
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-info-circle"></i> 盘点信息</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="check_name" class="form-label">盘点名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="check_name" name="check_name" required>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="check_type" class="form-label">盘点类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="check_type" name="check_type" required>
+                            <option value="">请选择盘点类型</option>
+                            <option value="full">全盘 - 全仓库全面盘点</option>
+                            <option value="cyclical">循环盘点 - 按周期轮流盘点</option>
+                            <option value="abc">ABC分类盘点 - 按价值分类</option>
+                            <option value="random">随机抽盘 - 随机抽查20%</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="warehouse_id" class="form-label">仓库 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="warehouse_id" name="warehouse_id" required>
+                            <option value="">请选择仓库</option>
+                            {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="category_id" class="form-label">分类（可选）</label>
+                        <select class="form-select" id="category_id" name="category_id">
+                            <option value="">全部分类</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="abc_class" class="form-label">ABC分类（可选）</label>
+                        <select class="form-select" id="abc_class" name="abc_class">
+                            <option value="">全部</option>
+                            <option value="A">A类 - 高价值（前80%）</option>
+                            <option value="B">B类 - 中价值（80%-95%）</option>
+                            <option value="C">C类 - 低价值（95%+）</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="location_id" class="form-label">库位（可选）</label>
+                        <select class="form-select" id="location_id" name="location_id">
+                            <option value="">全部库位</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="start_date" class="form-label">开始日期</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date">
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="end_date" class="form-label">结束日期</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="remark" class="form-label">备注</label>
+                    <textarea class="form-control" id="remark" name="remark" rows="3"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 创建盘点单
+                    </button>
+                    <a href="{{ url_for('warehouses_advanced.inventory_check_list') }}" class="btn btn-secondary">
+                        取消
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-lightbulb"></i> 盘点类型说明</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="alert alert-info mb-0">
+                        <h6><i class="fas fa-check-double"></i> 全盘</h6>
+                        <p class="mb-0 small">全仓库所有物料全面盘点，适用于年终/季度大盘点</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="alert alert-success mb-0">
+                        <h6><i class="fas fa-sync"></i> 循环盘点</h6>
+                        <p class="mb-0 small">按周期轮流盘点，上次盘点超过30天的物料，减少停产时间</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="alert alert-warning mb-0">
+                        <h6><i class="fas fa-sort-amount-down"></i> ABC分类</h6>
+                        <p class="mb-0 small">按ABC分类分别盘点，A类高频，重点物料精准管理</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="alert alert-danger mb-0">
+                        <h6><i class="fas fa-random"></i> 随机抽盘</h6>
+                        <p class="mb-0 small">随机抽取20%物料盘点，快速抽查验证准确性</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

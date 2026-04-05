@@ -1,0 +1,135 @@
+
+{% extends "base.html" %}
+
+{% block title %}库龄分析 - 备件管理系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h1><i class="fas fa-hourglass-half"></i> 库龄分析</h1>
+                <p class="text-muted">分析库存库龄，识别呆滞库存</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <form method="GET" class="row g-2">
+                    <div class="col-auto">
+                        <select name="warehouse_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部仓库</option>
+                            {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}" {% if selected_warehouse_id == warehouse.id %}selected{% endif %}>{{ warehouse.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{{ url_for('warehouses_advanced.stock_age_analysis') }}" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i> 重新分析
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">正常库存</h5>
+                    <h2 class="card-text">{{ statistics.normal.count }}</h2>
+                    <p class="card-text">{{ statistics.normal.quantity }} 件 / ¥{{ '{:,.2f}'.format(statistics.normal.value) }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">警告库存</h5>
+                    <h2 class="card-text">{{ statistics.warning.count }}</h2>
+                    <p class="card-text">{{ statistics.warning.quantity }} 件 / ¥{{ '{:,.2f}'.format(statistics.warning.value) }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">危险库存</h5>
+                    <h2 class="card-text">{{ statistics.danger.count }}</h2>
+                    <p class="card-text">{{ statistics.danger.quantity }} 件 / ¥{{ '{:,.2f}'.format(statistics.danger.value) }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-secondary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">严重库存</h5>
+                    <h2 class="card-text">{{ statistics.critical.count }}</h2>
+                    <p class="card-text">{{ statistics.critical.quantity }} 件 / ¥{{ '{:,.2f}'.format(statistics.critical.value) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-info-circle"></i> 库龄说明</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <span class="badge bg-success">正常</span>
+                    <p class="mt-2 mb-0">库龄 ≤ 30天</p>
+                    <p class="text-muted small mb-0">健康库存</p>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-warning">警告</span>
+                    <p class="mt-2 mb-0">31天 ≤ 库龄 ≤ 90天</p>
+                    <p class="text-muted small mb-0">需要关注</p>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-danger">危险</span>
+                    <p class="mt-2 mb-0">91天 ≤ 库龄 ≤ 180天</p>
+                    <p class="text-muted small mb-0">呆滞风险</p>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-secondary">严重</span>
+                    <p class="mt-2 mb-0">库龄 > 180天</p>
+                    <p class="text-muted small mb-0">严重呆滞</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> 处理建议</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="alert alert-info alert-permanent">
+                        <h6><i class="fas fa-bullhorn"></i> 促销处理</h6>
+                        <p class="mb-0 small">适用于 90-180 天的库存，可通过降价促销加速周转</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-warning alert-permanent">
+                        <h6><i class="fas fa-truck"></i> 调拨处理</h6>
+                        <p class="mb-0 small">适用于 180 天以上的库存，可考虑调拨至其他仓库</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-danger alert-permanent">
+                        <h6><i class="fas fa-trash"></i> 报废处理</h6>
+                        <p class="mb-0 small">适用于 365 天以上的库存，考虑报废处理</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -92,6 +92,7 @@
 #partsTable.card-view td:nth-child(10)::before { content: '单价：'; }
 #partsTable.card-view td:nth-child(11)::before { content: '单位：'; }
 #partsTable.card-view td:nth-child(12)::before { content: '启用：'; }
+#partsTable.card-view td:nth-child(13)::before { content: '条形码：'; }
 
 #partsTable.card-view td:last-child {
     justify-content: flex-end;
@@ -111,9 +112,14 @@
 
 <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">备件列表</h5>
-        <div>
-            <div class="dropdown d-inline-block me-2">
+            <h5 class="mb-0">备件列表</h5>
+            <div>
+                <div class="input-group d-inline-block me-2" style="width: 250px;">
+                    <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                    <input type="text" class="form-control" id="barcodeInput" placeholder="扫码或输入条形码搜索..." 
+                           onkeypress="handleBarcodeKeypress(event)">
+                </div>
+                <div class="dropdown d-inline-block me-2">
                 <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="columnSelector" data-bs-toggle="dropdown" aria-expanded="false" data-bs-toggle="tooltip" title="列显示配置">
                     <i class="fas fa-columns"></i> 列显示
                 </button>
@@ -263,6 +269,16 @@
                     <li>
                         <div class="dropdown-item">
                             <div class="form-check">
+                                <input class="form-check-input column-toggle" type="checkbox" value="barcode" id="column-barcode">
+                                <label class="form-check-label" for="column-barcode">
+                                    条形码
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
                                 <input class="form-check-input column-toggle" type="checkbox" value="action" id="column-action" checked>
                                 <label class="form-check-label" for="column-action">
                                     操作
@@ -391,7 +407,7 @@
         {% endif %}
 
         <!-- 备件列表 -->
-        <div class="table-responsive">
+        <div class="table-responsive" style="overflow-x: auto; max-width: 100%;">
             <table class="table table-hover" id="partsTable">
                 <thead class="table-light">
                     <tr>
@@ -411,6 +427,7 @@
                         <th data-column="warehouse">仓库</th>
                         <th data-column="location">货位</th>
                         <th data-column="is_active">状态</th>
+                        <th data-column="barcode">条形码</th>
                         <th data-column="action">操作</th>
                     </tr>
                 </thead>
@@ -484,6 +501,13 @@
                             <span class="badge bg-success">启用</span>
                             {% else %}
                             <span class="badge bg-secondary">停用</span>
+                            {% endif %}
+                        </td>
+                        <td data-column="barcode">
+                            {% if part.barcode %}
+                            <span class="badge bg-info">{{ part.barcode }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
                             {% endif %}
                         </td>
                         <td data-column="action">
@@ -563,6 +587,16 @@
 </div>
 
 <script>
+// 图片类型定义
+const imageTypes = [
+    { type: 'front', name: '正面图' },
+    { type: 'side', name: '侧面图' },
+    { type: 'detail', name: '详细图' },
+    { type: 'circuit', name: '电路图' },
+    { type: 'perspective', name: '透视图' },
+    { type: 'thumbnail', name: '缩略图' }
+];
+
 // 全选/取消全选功能
 document.getElementById('selectAll')?.addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.part-checkbox');
@@ -642,6 +676,78 @@ document.getElementById('applyColumnSettings')?.addEventListener('click', functi
     }
 });
 
+// 重试失败的图片
+async function retryFailedImages(partId, failedImages, progressBar, statusText, listGroup) {
+    const total = failedImages.length;
+    let successCount = 0;
+    
+    statusText.textContent = `正在重试 ${total} 张失败的图片...`;
+    
+    // 清空列表，只显示失败的图片
+    listGroup.innerHTML = '';
+    failedImages.forEach((imgType, index) => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        item.id = `retry-item-${imgType.type}`;
+        item.innerHTML = `
+            <span>${imgType.name} (重试)</span>
+            <span id="retry-status-${imgType.type}" class="badge bg-secondary">待重试</span>
+        `;
+        listGroup.appendChild(item);
+    });
+    
+    for (let i = 0; i < failedImages.length; i++) {
+        const imgType = failedImages[i];
+        const statusBadge = document.getElementById(`retry-status-${imgType.type}`);
+        
+        statusBadge.className = 'badge bg-warning';
+        statusBadge.textContent = '重试中...';
+        
+        const response = await fetch(`/spare_parts/${partId}/generate-single-image`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ image_type: imgType.type })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = '✓ 成功';
+            successCount++;
+        } else {
+            statusBadge.className = 'badge bg-danger';
+            statusBadge.textContent = '✗ 失败';
+        }
+        
+        // 更新进度条
+        const progress = Math.round(((i + 1) / total) * 100);
+        progressBar.style.width = `${progress}%`;
+        progressBar.setAttribute('aria-valuenow', progress);
+        progressBar.textContent = `${progress}%`;
+    }
+    
+    if (successCount === total) {
+        statusText.textContent = '重试全部成功！';
+        progressBar.classList.remove('bg-warning');
+        progressBar.classList.add('bg-success');
+        
+        // 延迟刷新页面
+        setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('imageGenerationModal'));
+            modal.hide();
+            window.location.reload();
+        }, 1500);
+    } else {
+        statusText.textContent = `重试完成，成功 ${successCount}/${total} 张`;
+        progressBar.classList.remove('bg-warning');
+        progressBar.classList.add('bg-danger');
+    }
+}
+
 // 重置列设置
 document.getElementById('resetColumnSettings')?.addEventListener('click', function() {
     // 重置所有复选框为选中状态
@@ -667,6 +773,9 @@ document.getElementById('resetColumnSettings')?.addEventListener('click', functi
 
 // 从 localStorage 恢复列设置
 function restoreColumnSettings() {
+    const columnToggles = document.querySelectorAll('.column-toggle');
+    const selectAllColumnsCheckbox = document.getElementById('selectAllColumns');
+    
     const savedColumns = localStorage.getItem('sparePartsColumns');
     if (savedColumns) {
         const visibleColumns = JSON.parse(savedColumns);
@@ -767,16 +876,6 @@ function changePerPage(value) {
     window.location.href = window.location.pathname + '?' + urlParams.toString();
 }
 
-// 图片类型列表
-const imageTypes = [
-    { type: 'front', name: '正面图' },
-    { type: 'side', name: '侧面图' },
-    { type: 'detail', name: '详细图' },
-    { type: 'circuit', name: '电路图' },
-    { type: 'perspective', name: '透视图' },
-    { type: 'thumbnail', name: '缩略图' }
-];
-
 // 生成图片功能 - 带进度显示
 async function generateImages(partId, btn) {
     console.log('开始生成图片，partId:', partId);
@@ -796,6 +895,7 @@ async function generateImages(partId, btn) {
     progressBar.style.width = '0%';
     progressBar.setAttribute('aria-valuenow', '0');
     progressBar.textContent = '0%';
+    progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
     statusText.textContent = '准备中...';
     listGroup.innerHTML = '';
     
@@ -815,6 +915,7 @@ async function generateImages(partId, btn) {
     modal.show();
     
     let successCount = 0;
+    let failedImages = [];
     const total = imageTypes.length;
     
     try {
@@ -844,6 +945,7 @@ async function generateImages(partId, btn) {
             } else {
                 statusBadge.className = 'badge bg-danger';
                 statusBadge.textContent = '✗ 失败';
+                failedImages.push(imgType);
             }
             
             // 更新进度条
@@ -858,19 +960,31 @@ async function generateImages(partId, btn) {
         
         if (successCount === total) {
             progressBar.classList.add('bg-success');
+            // 全部成功，延迟刷新
+            setTimeout(() => {
+                modal.hide();
+                window.location.reload();
+            }, 1500);
         } else if (successCount > 0) {
             progressBar.classList.add('bg-warning');
+            // 有部分失败，询问是否重试
+            const retryBtn = document.createElement('button');
+            retryBtn.type = 'button';
+            retryBtn.className = 'btn btn-primary';
+            retryBtn.innerHTML = '<i class="fas fa-redo"></i> 重新生成失败的图片';
+            retryBtn.onclick = async function() {
+                retryBtn.remove();
+                await retryFailedImages(partId, failedImages, progressBar, statusText, listGroup);
+            };
+            const modalFooter = document.querySelector('#imageGenerationModal .modal-footer');
+            if (modalFooter) {
+                modalFooter.insertBefore(retryBtn, closeBtn);
+            }
         } else {
             progressBar.classList.add('bg-danger');
         }
         
         closeBtn.disabled = false;
-        
-        // 延迟刷新页面
-        setTimeout(() => {
-            modal.hide();
-            window.location.reload();
-        }, 1500);
         
     } catch (error) {
         console.error('Error:', error);
@@ -883,7 +997,73 @@ async function generateImages(partId, btn) {
     }
 }
 
-// 图片预览功能
+// 扫码枪监听功能
+let barcodeBuffer = '';
+let lastInputTime = 0;
+const BARCODE_TIMEOUT = 50; // 扫码枪输入间隔（毫秒）
+
+// 全局监听键盘事件（扫码枪模拟键盘输入）
+document.addEventListener('keypress', function(e) {
+    const currentTime = Date.now();
+    
+    // 如果两次输入间隔超过超时时间，认为是新的条码
+    if (currentTime - lastInputTime > BARCODE_TIMEOUT) {
+        barcodeBuffer = '';
+    }
+    
+    lastInputTime = currentTime;
+    
+    // 如果是 Enter 键，认为条码输入完成
+    if (e.key === 'Enter' && barcodeBuffer.length > 0) {
+        searchByBarcode(barcodeBuffer);
+        barcodeBuffer = '';
+        return;
+    }
+    
+    // 如果是可打印字符，添加到缓冲区
+    if (e.key.length === 1 && e.key !== 'Enter') {
+        barcodeBuffer += e.key;
+    }
+});
+
+// 处理条形码输入框的按键事件
+function handleBarcodeKeypress(event) {
+    if (event.key === 'Enter') {
+        const barcodeInput = document.getElementById('barcodeInput');
+        const barcode = barcodeInput.value.trim();
+        if (barcode) {
+            searchByBarcode(barcode);
+        }
+    }
+}
+
+// 通过条形码搜索备件
+async function searchByBarcode(barcode) {
+    if (!barcode) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/spare_parts/search-by-barcode?barcode=${encodeURIComponent(barcode)}`);
+        const data = await response.json();
+        
+        if (data.success && data.spare_part) {
+            // 跳转到备件详情页
+            window.location.href = `/spare_parts/${data.spare_part.id}`;
+        } else {
+            alert('未找到对应的备件！');
+            // 清空输入框
+            const barcodeInput = document.getElementById('barcodeInput');
+            if (barcodeInput) {
+                barcodeInput.value = '';
+            }
+        }
+    } catch (error) {
+        console.error('搜索失败:', error);
+        alert('搜索失败：' + error.message);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const thumbnails = document.querySelectorAll('.thumbnail-preview');
     

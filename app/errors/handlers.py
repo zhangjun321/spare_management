@@ -9,8 +9,8 @@ errors_bp = Blueprint('errors', __name__)
 
 def is_api_request():
     """判断是否是 API 请求"""
-    # 检查路径是否包含 /api/ 或者 Accept 头是否包含 application/json
-    return '/api/' in request.path or 'application/json' in request.headers.get('Accept', '')
+    # 检查路径是否包含 /api/、/ai-image/ 或者 Accept 头是否包含 application/json
+    return '/api/' in request.path or '/ai-image/' in request.path or '/test/' in request.path or 'application/json' in request.headers.get('Accept', '')
 
 
 @errors_bp.app_errorhandler(400)

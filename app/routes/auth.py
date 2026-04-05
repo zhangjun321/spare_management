@@ -23,7 +23,7 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        remember = request.form.get('remember', False)
+        remember = request.form.get('remember') == 'on'  # checkbox 选中时为 'on'
         
         if not username or not password:
             flash('请输入用户名和密码', 'warning')
