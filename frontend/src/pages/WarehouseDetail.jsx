@@ -51,6 +51,7 @@ const WarehouseDetail = () => {
   const [healthReport, setHealthReport] = useState(null);
   const [inventoryRecords, setInventoryRecords] = useState([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryPagination, setInventoryPagination] = useState({ page: 1, per_page: 20, total: 0 });
   const [healthLoading, setHealthLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -87,13 +88,15 @@ const WarehouseDetail = () => {
     }
   };
 
-  // 加载库存记录
-  const loadInventoryRecords = async () => {
+  // 加载库存记录（后端分页）
+  const loadInventoryRecords = async (page = 1, per_page = 20) => {
     setInventoryLoading(true);
     try {
-      const response = await WarehouseService.getWarehouseInventory(id, { page: 1, per_page: 100 });
+      const response = await WarehouseService.getWarehouseInventory(id, { page, per_page });
       if (response.success) {
         setInventoryRecords(response.data || []);
+        const pg = response.pagination || {};
+        setInventoryPagination({ page: pg.page || page, per_page: pg.per_page || per_page, total: pg.total || 0 });
       }
     } catch (error) {
       console.error('加载库存记录失败:', error);
@@ -373,7 +376,7 @@ const WarehouseDetail = () => {
           }
           key="inventory"
         >
-          <Card title={`库存记录（共${inventoryRecords.length}条）`} bordered={false}>
+          <Card title={`库存记录（共 ${inventoryPagination.total} 条）`} bordered={false}>
             {inventoryLoading ? (
               <div style={{ padding: 40, textAlign: 'center' }}>
                 <Spin size="large" tip="加载库存数据..." />
@@ -389,10 +392,14 @@ const WarehouseDetail = () => {
               <Table
                 rowKey="id"
                 dataSource={inventoryRecords}
+                loading={inventoryLoading}
                 pagination={{
-                  pageSize: 20,
+                  current: inventoryPagination.page,
+                  pageSize: inventoryPagination.per_page,
+                  total: inventoryPagination.total,
                   showSizeChanger: true,
-                  showTotal: (total) => `共 ${total} 条`
+                  showTotal: (total) => `共 ${total} 条`,
+                  onChange: (page, pageSize) => loadInventoryRecords(page, pageSize)
                 }}
                 scroll={{ x: 1200 }}
               >

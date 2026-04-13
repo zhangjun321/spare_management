@@ -143,8 +143,6 @@ class Warehouse(db.Model):
         self.total_inventory = total_inventory
         self.total_spare_parts = total_spare_parts
         self.utilization_rate = utilization_rate
-        
-        db.session.commit()
     
     def __repr__(self):
         return f'<Warehouse {self.name}>'

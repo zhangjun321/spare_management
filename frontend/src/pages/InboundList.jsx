@@ -8,6 +8,7 @@ import { inboundOrderService } from '@/services/warehouse'
 import MainLayout from '@/layouts/MainLayout'
 import Footer from '@/components/Footer'
 import InboundCarousel from '@/components/InboundCarousel'
+import { Modal, message as antMessage } from 'antd'
 
 const InboundList = () => {
   const navigate = useNavigate()
@@ -77,37 +78,50 @@ const InboundList = () => {
   }
 
   const handleComplete = async (row) => {
-    if (!window.confirm('确定要完成入库吗？')) return
-    
-    try {
-      const response = await inboundOrderService.complete(row.id)
-      if (response.success) {
-        alert('入库完成')
-        loadInboundOrders()
-      } else {
-        alert(response.error || '操作失败')
+    Modal.confirm({
+      title: '确认完成入库',
+      content: '确定要完成该入库单吗？',
+      okText: '确认',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const response = await inboundOrderService.complete(row.id)
+          if (response.success) {
+            antMessage.success('入库完成')
+            loadInboundOrders()
+          } else {
+            antMessage.error(response.error || '操作失败')
+          }
+        } catch (error) {
+          console.error('完成入库失败:', error)
+          antMessage.error('操作失败')
+        }
       }
-    } catch (error) {
-      console.error('完成入库失败:', error)
-      alert('操作失败')
-    }
+    })
   }
 
   const handleCancel = async (row) => {
-    if (!window.confirm('确定要取消入库单吗？')) return
-    
-    try {
-      const response = await inboundOrderService.cancel(row.id)
-      if (response.success) {
-        alert('已取消')
-        loadInboundOrders()
-      } else {
-        alert(response.error || '操作失败')
+    Modal.confirm({
+      title: '确认取消',
+      content: '确定要取消该入库单吗？',
+      okText: '确认取消',
+      okType: 'danger',
+      cancelText: '返回',
+      onOk: async () => {
+        try {
+          const response = await inboundOrderService.cancel(row.id)
+          if (response.success) {
+            antMessage.success('已取消')
+            loadInboundOrders()
+          } else {
+            antMessage.error(response.error || '操作失败')
+          }
+        } catch (error) {
+          console.error('取消入库失败:', error)
+          antMessage.error('操作失败')
+        }
       }
-    } catch (error) {
-      console.error('取消入库失败:', error)
-      alert('操作失败')
-    }
+    })
   }
 
   const getTypeLabel = (type) => {

@@ -17,7 +17,16 @@ transactions_bp = Blueprint('transactions', __name__, template_folder='../templa
 @login_required
 def index():
     """交易列表"""
-    return render_template('transactions/index.html')
+    from app.models.transaction import Transaction
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = Transaction.query.order_by(Transaction.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    transactions = pagination.items
+    return render_template('transactions/index.html',
+                           transactions=transactions,
+                           pagination=pagination)
 
 
 @transactions_bp.route('/transfer', methods=['GET', 'POST'])

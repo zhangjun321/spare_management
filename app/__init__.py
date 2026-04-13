@@ -111,17 +111,22 @@ def create_app(config_name=None):
     def make_shell_context():
         return {'db': db, 'app': app}
     
-    # 请求日志中间件 - 记录所有请求
+    # 请求日志中间件 - 记录所有请求（不打印敏感请求头，不记录静态文件）
+    _SENSITIVE_HEADERS = {'authorization', 'cookie', 'x-api-key', 'x-auth-token'}
+    _STATIC_EXTS = ('.js', '.css', '.png', '.jpg', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.map')
+
     @app.before_request
     def log_request_info():
-        app.logger.info(f"=== 请求开始 ===")
-        app.logger.info(f"方法：{request.method}")
-        app.logger.info(f"路径：{request.path}")
-        app.logger.info(f"请求头：{dict(request.headers)}")
-        if request.data:
-            app.logger.info(f"请求体：{request.data.decode('utf-8', errors='ignore')[:500]}")
-        app.logger.info(f"远程地址：{request.remote_addr}")
-        app.logger.info(f"用户：{request.remote_user if request.remote_user else '匿名'}")
+        # 静态文件请求不记录日志，避免噪音
+        if request.path.startswith('/static/') or request.path.endswith(_STATIC_EXTS):
+            return
+        safe_headers = {
+            k: v for k, v in request.headers
+            if k.lower() not in _SENSITIVE_HEADERS
+        }
+        app.logger.debug(f"[{request.method}] {request.path} from {request.remote_addr} headers={safe_headers}")
+        if request.data and app.debug:
+            app.logger.debug(f"请求体：{request.data.decode('utf-8', errors='ignore')[:500]}")
         
         # 特殊处理备份 API 请求
         if '/backup/api/' in request.path:
@@ -130,9 +135,8 @@ def create_app(config_name=None):
     # 响应日志中间件
     @app.after_request
     def log_response_info(response):
-        app.logger.info(f"响应状态：{response.status_code}")
-        app.logger.info(f"响应头：{dict(response.headers)}")
-        app.logger.info(f"=== 请求结束 ===")
+        if not (request.path.startswith('/static/') or request.path.endswith(_STATIC_EXTS)):
+            app.logger.debug(f"响应状态：{response.status_code} [{request.method}] {request.path}")
         return response
     
     # 添加响应头部中间件
@@ -144,12 +148,51 @@ def create_app(config_name=None):
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         # 内容安全策略 - 允许 CDN 资源和内联样式
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.staticfile.org; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://jsdelivr.net https://unpkg.com https://cdn.staticfile.org; img-src 'self' data: https: blob:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.staticfile.org; connect-src 'self' http://localhost:* http://127.0.0.1:* https://* 'unsafe-inline'"
-        # 缓存控制
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        # 静态资源（带哈希文件名）可长期缓存；其余接口禁止缓存
+        if request.path.startswith('/static/') and (
+            request.path.endswith(('.js', '.css', '.woff', '.woff2', '.ttf'))
+        ):
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            response.headers.pop('Pragma', None)
+            response.headers.pop('Expires', None)
+        else:
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
         return response
-    
+
+    # ── 健康检查端点（Docker healthcheck / LB 探针） ────────
+    @app.route('/health')
+    def health_check():
+        """
+        轻量健康检查：验证应用进程存活 + 数据库可达性
+        返回 200 表示健康，503 表示不健康
+        """
+        status = {'status': 'ok', 'services': {}}
+        http_status = 200
+
+        # 检查数据库
+        try:
+            db.session.execute(db.text('SELECT 1'))
+            status['services']['database'] = 'ok'
+        except Exception as e:
+            status['services']['database'] = f'error: {str(e)}'
+            status['status'] = 'degraded'
+            http_status = 503
+
+        # 检查 Redis（可选，不影响主服务）
+        try:
+            cache = app.extensions.get('cache')
+            if cache and hasattr(cache, 'redis_client') and cache.redis_client:
+                cache.redis_client.ping()
+                status['services']['redis'] = 'ok'
+            else:
+                status['services']['redis'] = 'unavailable (using sqlite cache)'
+        except Exception:
+            status['services']['redis'] = 'unavailable'
+
+        return jsonify(status), http_status
+
     return app
 
 
@@ -376,6 +419,15 @@ def register_blueprints(app):
     # API 模块
     from app.routes.api import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # 库存记录 API
+    from app.routes.api_warehouses import api_inventory_bp
+    app.register_blueprint(api_inventory_bp)
+    
+    # 入库单 / 出库单 API
+    from app.routes.api_inbound_outbound import api_inbound_bp, api_outbound_bp
+    app.register_blueprint(api_inbound_bp)
+    app.register_blueprint(api_outbound_bp)
     
     # 提供uploads目录的静态文件访问
     @app.route('/uploads/<path:filename>')

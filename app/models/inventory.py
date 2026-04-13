@@ -171,28 +171,77 @@ class OperationLog(db.Model):
 
 # ==================== 数据联动事件监听器 ====================
 
-from sqlalchemy import event
+from sqlalchemy import event, text
+
+
+def _sync_spare_part_stock(connection, spare_part_id):
+    """
+    用原生 SQL 重新计算并更新 spare_part.current_stock
+    使用 SUM(quantity) over all inventory_record rows for this spare_part
+    """
+    connection.execute(text("""
+        UPDATE spare_part
+        SET current_stock = COALESCE(
+            (SELECT SUM(ir.quantity)
+             FROM inventory_record ir
+             WHERE ir.spare_part_id = :part_id),
+            0
+        )
+        WHERE id = :part_id
+    """), {"part_id": spare_part_id})
+
+
+def _sync_warehouse_statistics(connection, warehouse_id):
+    """
+    用原生 SQL 重新计算并更新 warehouse 统计字段
+    (total_inventory, total_spare_parts, utilization_rate)
+    """
+    connection.execute(text("""
+        UPDATE warehouse w
+        SET
+            w.total_inventory = COALESCE(
+                (SELECT SUM(ir.quantity)
+                 FROM inventory_record ir
+                 WHERE ir.warehouse_id = :wh_id),
+                0
+            ),
+            w.total_spare_parts = COALESCE(
+                (SELECT COUNT(DISTINCT ir.spare_part_id)
+                 FROM inventory_record ir
+                 WHERE ir.warehouse_id = :wh_id),
+                0
+            ),
+            w.utilization_rate = CASE
+                WHEN w.capacity IS NULL OR w.capacity = 0 THEN 0
+                ELSE LEAST(100, ROUND(
+                    COALESCE(
+                        (SELECT SUM(ir.quantity)
+                         FROM inventory_record ir
+                         WHERE ir.warehouse_id = :wh_id),
+                        0
+                    ) * 100.0 / w.capacity, 2
+                ))
+            END
+        WHERE w.id = :wh_id
+    """), {"wh_id": warehouse_id})
+
 
 @event.listens_for(InventoryRecord, 'after_insert')
 def on_inventory_insert(mapper, connection, target):
-    """库存记录插入后的联动处理"""
-    # 更新仓库统计信息
-    # 更新备件库存总量
-    pass
+    """库存记录插入后：同步备件库存总量和仓库统计"""
+    _sync_spare_part_stock(connection, target.spare_part_id)
+    _sync_warehouse_statistics(connection, target.warehouse_id)
 
 
 @event.listens_for(InventoryRecord, 'after_update')
 def on_inventory_update(mapper, connection, target):
-    """库存记录更新后的联动处理"""
-    # 更新仓库统计信息
-    # 更新备件库存总量
-    # 触发 AI 分析（如需要）
-    pass
+    """库存记录更新后：同步备件库存总量和仓库统计"""
+    _sync_spare_part_stock(connection, target.spare_part_id)
+    _sync_warehouse_statistics(connection, target.warehouse_id)
 
 
 @event.listens_for(InventoryRecord, 'after_delete')
 def on_inventory_delete(mapper, connection, target):
-    """库存记录删除后的联动处理"""
-    # 更新仓库统计信息
-    # 更新备件库存总量
-    pass
+    """库存记录删除后：同步备件库存总量和仓库统计"""
+    _sync_spare_part_stock(connection, target.spare_part_id)
+    _sync_warehouse_statistics(connection, target.warehouse_id)

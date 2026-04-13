@@ -21,6 +21,7 @@ import {
 } from 'antd';
 import { ArrowLeftOutlined, UploadOutlined } from '@ant-design/icons';
 import WarehouseService from '../services/warehouse';
+import axios from 'axios';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -41,6 +42,7 @@ const WarehouseForm = () => {
   const [loading, setLoading] = useState(false);
   const [warehouse, setWarehouse] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [userOptions, setUserOptions] = useState([]);
 
   const isEditMode = !!id;
 
@@ -48,7 +50,22 @@ const WarehouseForm = () => {
     if (isEditMode) {
       loadWarehouse();
     }
+    loadUsers();
   }, [id]);
+
+  // 加载用户列表（供管理员选择）
+  const loadUsers = async () => {
+    try {
+      const response = await axios.get('/api/users?per_page=200');
+      const items = response.data?.data?.items || response.data?.items || [];
+      setUserOptions(items.map(u => ({
+        value: u.id,
+        label: u.real_name ? `${u.real_name}（${u.username}）` : u.username
+      })));
+    } catch {
+      // 获取用户列表失败时静默处理，不影响表单使用
+    }
+  };
 
   // 加载仓库数据（编辑模式）
   const loadWarehouse = async () => {
@@ -209,7 +226,6 @@ const WarehouseForm = () => {
               <Form.Item
                 label="仓库状态"
                 name="is_active"
-                valuePropName="checked"
               >
                 <Select>
                   <Option value={true}>启用</Option>
@@ -220,13 +236,15 @@ const WarehouseForm = () => {
 
             <Col span={8}>
               <Form.Item
-                label="仓库管理员 ID"
+                label="仓库管理员"
                 name="manager_id"
               >
-                <InputNumber
-                  placeholder="管理员用户 ID"
-                  style={{ width: '100%' }}
-                  min={1}
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="请选择管理员"
+                  optionFilterProp="label"
+                  options={userOptions}
                 />
               </Form.Item>
             </Col>
@@ -333,7 +351,6 @@ const WarehouseForm = () => {
               <Form.Item
                 label="自动预警"
                 name="enable_auto_alert"
-                valuePropName="checked"
               >
                 <Select>
                   <Option value={true}>启用</Option>
@@ -344,13 +361,12 @@ const WarehouseForm = () => {
           </Row>
 
           <Divider orientation="left">图片管理（可选）</Divider>
-
           <Row gutter={24}>
             <Col span={12}>
               <Form.Item label="仓库主图">
-                <Upload {...uploadProps('image_url')}>
-                  <Button icon={<UploadOutlined />} loading={uploading}>
-                    上传图片
+                <Upload {...uploadProps('image_url')} disabled>
+                  <Button icon={<UploadOutlined />} disabled>
+                    上传图片（功能开发中）
                   </Button>
                 </Upload>
                 {warehouse?.image_url && (
@@ -367,9 +383,9 @@ const WarehouseForm = () => {
 
             <Col span={12}>
               <Form.Item label="仓库内部图">
-                <Upload {...uploadProps('interior_image_url')}>
-                  <Button icon={<UploadOutlined />} loading={uploading}>
-                    上传图片
+                <Upload {...uploadProps('interior_image_url')} disabled>
+                  <Button icon={<UploadOutlined />} disabled>
+                    上传图片（功能开发中）
                   </Button>
                 </Upload>
                 {warehouse?.interior_image_url && (

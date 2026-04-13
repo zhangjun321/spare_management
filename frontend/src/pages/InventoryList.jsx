@@ -9,6 +9,7 @@ import { FaBox, FaExclamationTriangle, FaCheckCircle, FaWarehouse } from 'react-
 import MainLayout from '@/layouts/MainLayout'
 import Footer from '@/components/Footer'
 import InventoryCarousel from '@/components/InventoryCarousel'
+import { message as antMessage } from 'antd'
 
 const InventoryList = () => {
   const navigate = useNavigate()
@@ -67,18 +68,15 @@ const InventoryList = () => {
 
   const loadStats = useCallback(async () => {
     try {
-      const [lowRes, outRes, normalRes] = await Promise.all([
-        inventoryService.getList({ page: 1, per_page: 1, stock_status: 'low' }),
-        inventoryService.getList({ page: 1, per_page: 1, stock_status: 'out' }),
-        inventoryService.getList({ page: 1, per_page: 1, stock_status: 'normal' })
-      ])
-      
-      setStats(prev => ({
-        ...prev,
-        lowStock: lowRes.data.total || 0,
-        outOfStock: outRes.data.total || 0,
-        normal: normalRes.data.total || 0
-      }))
+      const res = await inventoryService.getStats()
+      if (res.success && res.data) {
+        setStats(prev => ({
+          ...prev,
+          lowStock: res.data.low_stock || 0,
+          outOfStock: res.data.out_of_stock || 0,
+          normal: res.data.normal || 0
+        }))
+      }
     } catch (error) {
       console.error('加载统计失败:', error)
     }
@@ -102,7 +100,7 @@ const InventoryList = () => {
   const handleRefresh = () => {
     loadInventory()
     loadStats()
-    alert('数据已刷新')
+    antMessage.success('数据已刷新')
   }
 
   const handleViewDetail = (row) => {

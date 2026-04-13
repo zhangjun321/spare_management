@@ -58,10 +58,8 @@ def create_backup():
     try:
         logger.info(f"用户 {current_user.username} 请求创建备份")
         
-        # 打印请求详情
+        # 打印请求详情（不含敏感请求头）
         logger.info(f"请求方法：{request.method}")
-        logger.info(f"请求头：{dict(request.headers)}")
-        logger.info(f"请求数据：{request.get_data(as_text=True)}")
         
         # 获取 JSON 数据
         data = request.get_json(silent=True)

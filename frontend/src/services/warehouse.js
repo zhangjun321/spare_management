@@ -6,13 +6,30 @@ import axios from 'axios';
 
 const API_BASE_URL = '/api';
 
+/**
+ * 带 CSRF Token 自动注入的内部 axios 实例
+ * 注意：不使用 apiClient，因为 apiClient 的响应拦截器直接返回 response.data，
+ * 而本文件中所有方法已自行处理 response.data，保持兼容性。
+ */
+const _http = axios.create({ baseURL: API_BASE_URL });
+_http.interceptors.request.use((config) => {
+  const csrfToken = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('csrf_token='))
+    ?.split('=')[1];
+  if (csrfToken) {
+    config.headers['X-CSRFToken'] = csrfToken;
+  }
+  return config;
+});
+
 class WarehouseService {
   /**
    * 获取仓库列表
    */
   static async getWarehouses(params = {}) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses`, { params });
+      const response = await _http.get('/warehouses', { params });
       return response.data;
     } catch (error) {
       console.error('获取仓库列表失败:', error);
@@ -28,7 +45,7 @@ class WarehouseService {
    */
   static async getWarehouse(warehouseId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/${warehouseId}`);
+      const response = await _http.get(`/warehouses/${warehouseId}`);
       return response.data;
     } catch (error) {
       console.error('获取仓库详情失败:', error);
@@ -44,7 +61,7 @@ class WarehouseService {
    */
   static async createWarehouse(data) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/warehouses`, data);
+      const response = await _http.post('/warehouses', data);
       return response.data;
     } catch (error) {
       console.error('创建仓库失败:', error);
@@ -60,7 +77,7 @@ class WarehouseService {
    */
   static async updateWarehouse(warehouseId, data) {
     try {
-      const response = await axios.put(`${API_BASE_URL}/warehouses/${warehouseId}`, data);
+      const response = await _http.put(`/warehouses/${warehouseId}`, data);
       return response.data;
     } catch (error) {
       console.error('更新仓库失败:', error);
@@ -76,7 +93,7 @@ class WarehouseService {
    */
   static async deleteWarehouse(warehouseId) {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/warehouses/${warehouseId}`);
+      const response = await _http.delete(`/warehouses/${warehouseId}`);
       return response.data;
     } catch (error) {
       console.error('删除仓库失败:', error);
@@ -92,7 +109,7 @@ class WarehouseService {
    */
   static async getWarehouseStatistics(warehouseId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/${warehouseId}/statistics`);
+      const response = await _http.get(`/warehouses/${warehouseId}/statistics`);
       return response.data;
     } catch (error) {
       console.error('获取仓库统计失败:', error);
@@ -108,7 +125,7 @@ class WarehouseService {
    */
   static async getWarehouseInventory(warehouseId, params = {}) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/${warehouseId}/inventory`, { params });
+      const response = await _http.get(`/warehouses/${warehouseId}/inventory`, { params });
       return response.data;
     } catch (error) {
       console.error('获取仓库库存失败:', error);
@@ -124,7 +141,7 @@ class WarehouseService {
    */
   static async getWarehouseLocations(warehouseId, params = {}) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/${warehouseId}/locations`, { params });
+      const response = await _http.get(`/warehouses/${warehouseId}/locations`, { params });
       return response.data;
     } catch (error) {
       console.error('获取库位列表失败:', error);
@@ -140,7 +157,7 @@ class WarehouseService {
    */
   static async getAllWarehouses() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/all`);
+      const response = await _http.get('/warehouses/all');
       return response.data;
     } catch (error) {
       console.error('获取所有仓库失败:', error);
@@ -156,7 +173,7 @@ class WarehouseService {
    */
   static async batchDeleteWarehouses(ids) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/warehouses/batch/delete`, { ids });
+      const response = await _http.post('/warehouses/batch/delete', { ids });
       return response.data;
     } catch (error) {
       console.error('批量删除失败:', error);
@@ -173,11 +190,11 @@ class WarehouseService {
   static async batchExportWarehouses(ids = []) {
     try {
       const params = ids.length > 0 ? { ids: ids.join(',') } : {};
-      const response = await axios.get(`${API_BASE_URL}/warehouses/batch/export`, {
+      const response = await _http.get('/warehouses/batch/export', {
         params,
         responseType: 'blob' // 重要：设置为 blob 以接收文件
       });
-      
+
       // 创建下载链接
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -186,7 +203,7 @@ class WarehouseService {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      
+
       return { success: true };
     } catch (error) {
       console.error('批量导出失败:', error);
@@ -204,8 +221,8 @@ class WarehouseService {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      const response = await axios.post(`${API_BASE_URL}/warehouses/batch/import`, formData, {
+
+      const response = await _http.post('/warehouses/batch/import', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -225,7 +242,7 @@ class WarehouseService {
    */
   static async batchUpdateWarehouses(ids, field, value) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/warehouses/batch/update`, {
+      const response = await _http.post('/warehouses/batch/update', {
         ids,
         field,
         value
@@ -245,7 +262,7 @@ class WarehouseService {
    */
   static async getWarehouseHealth(warehouseId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/${warehouseId}/health`);
+      const response = await _http.get(`/warehouses/${warehouseId}/health`);
       return response.data;
     } catch (error) {
       console.error('获取仓库健康分析失败:', error);
@@ -261,7 +278,7 @@ class WarehouseService {
    */
   static async recommendLocation(sparePartData) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/locations/recommend`, sparePartData);
+      const response = await _http.post('/locations/recommend', sparePartData);
       return response.data;
     } catch (error) {
       console.error('AI 推荐失败:', error);
@@ -277,7 +294,7 @@ class WarehouseService {
    */
   static async getLocations(params = {}) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/locations`, { params });
+      const response = await _http.get('/locations', { params });
       return response.data;
     } catch (error) {
       console.error('获取货位列表失败:', error);
@@ -293,7 +310,7 @@ class WarehouseService {
    */
   static async getLocation(locationId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/locations/${locationId}`);
+      const response = await _http.get(`/locations/${locationId}`);
       return response.data;
     } catch (error) {
       console.error('获取货位详情失败:', error);
@@ -309,7 +326,7 @@ class WarehouseService {
 const warehouseStatsService = {
   async getAllStats() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/stats/overview`);
+      const response = await _http.get('/warehouses/stats/overview');
       return response.data;
     } catch (error) {
       console.error('获取统计失败:', error);
@@ -326,7 +343,7 @@ const warehouseStatsService = {
 
   async getWarehouseStats(warehouseId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/${warehouseId}/statistics`);
+      const response = await _http.get(`/warehouses/${warehouseId}/statistics`);
       return response.data;
     } catch (error) {
       console.error('获取仓库统计失败:', error);
@@ -339,7 +356,7 @@ const warehouseStatsService = {
 const aiAnalysisService = {
   async getInsights() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/ai/insights`);
+      const response = await _http.get('/warehouses/ai/insights');
       return response.data;
     } catch (error) {
       console.error('获取 AI 洞察失败:', error);
@@ -349,7 +366,7 @@ const aiAnalysisService = {
 
   async getInventoryAnalysis(days = 30) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/ai/inventory-analysis`, {
+      const response = await _http.get('/warehouses/ai/inventory-analysis', {
         params: { days }
       });
       return {
@@ -367,7 +384,7 @@ const aiAnalysisService = {
 
   async getWarehouseHealth(warehouseId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/warehouses/${warehouseId}/health`);
+      const response = await _http.get(`/warehouses/${warehouseId}/health`);
       return response.data;
     } catch (error) {
       console.error('获取健康分析失败:', error);
@@ -380,7 +397,7 @@ const aiAnalysisService = {
 const inboundOrderService = {
   async getList(params = {}) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/inbound/orders`, { params });
+      const response = await _http.get('/inbound/orders', { params });
       return response.data;
     } catch (error) {
       console.error('获取入库单列表失败:', error);
@@ -390,7 +407,7 @@ const inboundOrderService = {
 
   async create(data) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/inbound/orders`, data);
+      const response = await _http.post('/inbound/orders', data);
       return response.data;
     } catch (error) {
       console.error('创建入库单失败:', error);
@@ -400,11 +417,31 @@ const inboundOrderService = {
 
   async getPendingOrders() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/inbound/orders/pending`);
+      const response = await _http.get('/inbound/orders/pending');
       return response.data.items || [];
     } catch (error) {
       console.error('获取待处理入库单失败:', error);
       return [];
+    }
+  },
+
+  async complete(orderId) {
+    try {
+      const response = await _http.post(`/inbound/orders/${orderId}/complete`);
+      return response.data;
+    } catch (error) {
+      console.error('完成入库单失败:', error);
+      return { success: false, error: error.response?.data?.error || '操作失败' };
+    }
+  },
+
+  async cancel(orderId) {
+    try {
+      const response = await _http.post(`/inbound/orders/${orderId}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('取消入库单失败:', error);
+      return { success: false, error: error.response?.data?.error || '操作失败' };
     }
   }
 };
@@ -413,7 +450,7 @@ const inboundOrderService = {
 const outboundOrderService = {
   async getList(params = {}) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/outbound/orders`, { params });
+      const response = await _http.get('/outbound/orders', { params });
       return response.data;
     } catch (error) {
       console.error('获取出库单列表失败:', error);
@@ -423,7 +460,7 @@ const outboundOrderService = {
 
   async create(data) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/outbound/orders`, data);
+      const response = await _http.post('/outbound/orders', data);
       return response.data;
     } catch (error) {
       console.error('创建出库单失败:', error);
@@ -433,11 +470,31 @@ const outboundOrderService = {
 
   async getPendingOrders() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/outbound/orders/pending`);
+      const response = await _http.get('/outbound/orders/pending');
       return response.data.items || [];
     } catch (error) {
       console.error('获取待处理出库单失败:', error);
       return [];
+    }
+  },
+
+  async complete(orderId) {
+    try {
+      const response = await _http.post(`/outbound/orders/${orderId}/complete`);
+      return response.data;
+    } catch (error) {
+      console.error('完成出库单失败:', error);
+      return { success: false, error: error.response?.data?.error || '操作失败' };
+    }
+  },
+
+  async cancel(orderId) {
+    try {
+      const response = await _http.post(`/outbound/orders/${orderId}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('取消出库单失败:', error);
+      return { success: false, error: error.response?.data?.error || '操作失败' };
     }
   }
 };
@@ -446,17 +503,27 @@ const outboundOrderService = {
 const inventoryService = {
   async getList(params = {}) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/inventory/records`, { params });
+      const response = await _http.get('/inventory/records', { params });
       return response.data;
     } catch (error) {
       console.error('获取库存列表失败:', error);
-      return { items: [], total: 0 };
+      return { success: false, data: { items: [], total: 0 } };
+    }
+  },
+
+  async getStats(params = {}) {
+    try {
+      const response = await _http.get('/inventory/stats', { params });
+      return response.data;
+    } catch (error) {
+      console.error('获取库存统计失败:', error);
+      return { success: false, data: { total: 0, low_stock: 0, out_of_stock: 0, normal: 0 } };
     }
   },
 
   async update(id, data) {
     try {
-      const response = await axios.put(`${API_BASE_URL}/inventory/records/${id}`, data);
+      const response = await _http.put(`/inventory/records/${id}`, data);
       return response.data;
     } catch (error) {
       console.error('更新库存失败:', error);

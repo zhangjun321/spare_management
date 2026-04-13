@@ -1,0 +1,38 @@
+# ============================================================
+# 备件管理系统 - Nginx 静态资源服务 Dockerfile
+# 使用 nginx:alpine，将 React 构建产物打包进镜像
+# ============================================================
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+RUN npm ci --prefer-offline
+
+COPY frontend/ ./
+# 构建产物输出到 dist/（注意：vite.config.js 中 outDir 为 ../app/static/react）
+# 这里覆盖输出目录，让产物留在 /frontend/dist 供 COPY 使用
+RUN npx vite build --outDir dist
+
+# ---------- Stage 2: Nginx 服务 ----------
+FROM nginx:1.25-alpine
+
+# 删除默认配置
+RUN rm /etc/nginx/conf.d/default.conf
+
+# 拷贝 Nginx 主配置
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/conf.d/ /etc/nginx/conf.d/
+
+# 拷贝 React 静态产物
+COPY --from=frontend-builder /frontend/dist /usr/share/nginx/html/static/react
+
+# 创建 pid 目录
+RUN mkdir -p /var/run/nginx
+
+EXPOSE 80 443
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+    CMD wget -qO- http://localhost/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -33,3 +33,18 @@ def init_extensions(app):
     login_manager.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
+
+    # 对 /api/ 前缀的请求，未登录时返回 JSON 401 而非 302 重定向 HTML
+    # 避免 React axios 收到 HTML 页面导致数据静默失败
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        from flask import request, jsonify, redirect, url_for
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'success': False,
+                'error': '未登录或登录已过期，请重新登录',
+                'code': 401,
+                'redirect': '/login'
+            }), 401
+        # 非 API 请求保持原有重定向行为
+        return redirect(url_for('auth.login'))

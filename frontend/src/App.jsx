@@ -24,8 +24,8 @@ function App() {
           
           {/* 仓库管理路由 */}
           <Route path="/warehouse/warehouses" element={<WarehouseList />} />
-          <Route path="/warehouse/warehouses/:id" element={<WarehouseDetail />} />
           <Route path="/warehouse/warehouses/new" element={<WarehouseForm />} />
+          <Route path="/warehouse/warehouses/:id" element={<WarehouseDetail />} />
           <Route path="/warehouse/warehouses/:id/edit" element={<WarehouseForm />} />
         </Routes>
       </MainLayout>

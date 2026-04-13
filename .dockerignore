@@ -1,0 +1,58 @@
+# ============================================================
+# .dockerignore - 排除不需要打包进 Docker 镜像的文件
+# 减小构建上下文体积，加速 CI 构建
+# ============================================================
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Python 缓存和虚拟环境
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.venv/
+venv/
+env/
+.env.local
+.env.test
+
+# 敏感文件（生产镜像通过环境变量注入）
+.env
+
+# 前端开发文件（生产镜像不需要源码，只需构建产物）
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 测试文件
+app/tests/
+scripts/
+reports/
+
+# 文档
+docs/
+*.md
+
+# 数据文件（挂载卷替代）
+data/
+uploads/
+logs/
+instance/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 临时脚本
+add_*.py
+check_*.py
+fix_*.py
+quick_test.py

@@ -468,31 +468,35 @@ def batch_delete_warehouses():
     
     success_count = 0
     failed = []
-    
+    to_delete = []
+
+    # 第一阶段：校验所有仓库（只读，不修改 session）
     for warehouse_id in ids:
         warehouse = Warehouse.query.get(warehouse_id)
         if not warehouse:
             failed.append({'id': warehouse_id, 'error': '仓库不存在'})
             continue
-        
-        try:
-            # 检查是否可以删除
-            if warehouse.locations.count() > 0:
-                failed.append({'id': warehouse_id, 'error': '仓库下有库位'})
-                continue
-            
-            if warehouse.inventory_records.count() > 0:
-                failed.append({'id': warehouse_id, 'error': '仓库下有库存记录'})
-                continue
-            
+        if warehouse.locations.count() > 0:
+            failed.append({'id': warehouse_id, 'error': '仓库下有库位'})
+            continue
+        if warehouse.inventory_records.count() > 0:
+            failed.append({'id': warehouse_id, 'error': '仓库下有库存记录'})
+            continue
+        to_delete.append(warehouse)
+
+    # 第二阶段：在同一事务中删除所有合法仓库
+    try:
+        for warehouse in to_delete:
             db.session.delete(warehouse)
-            success_count += 1
-            
-        except Exception as e:
-            failed.append({'id': warehouse_id, 'error': str(e)})
-    
-    db.session.commit()
-    
+        db.session.commit()
+        success_count = len(to_delete)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'批量删除事务失败：{str(e)}'
+        }), 500
+
     return jsonify({
         'success': True,
         'data': {
@@ -950,4 +954,129 @@ def get_all_warehouses():
     return jsonify({
         'success': True,
         'data': warehouse_list
+    })
+
+
+# ==================== 库存记录 API 蓝图 ====================
+
+from app.extensions import csrf as _csrf
+
+api_inventory_bp = Blueprint('api_inventory', __name__, url_prefix='/api/inventory')
+_csrf.exempt(api_inventory_bp)
+
+
+@api_inventory_bp.route('/records', methods=['GET'])
+@login_required
+def list_inventory_records():
+    """
+    获取全局库存记录列表（支持分页、筛选）
+
+    Query Parameters:
+        page (int): 页码，默认 1
+        per_page (int): 每页数量，默认 20
+        warehouse_id (int): 仓库 ID 筛选
+        stock_status (str): 库存状态 (low/out/normal)
+        has_stock (str): 是否有库存 ('1'=有库存, '0'=无库存)
+        keyword (str): 备件名称/编码关键词
+    """
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 20, type=int), 200)
+    warehouse_id = request.args.get('warehouse_id', type=int)
+    stock_status = request.args.get('stock_status', '')
+    has_stock = request.args.get('has_stock', '')
+    keyword = request.args.get('keyword', '')
+
+    query = InventoryRecord.query.options(
+        joinedload(InventoryRecord.spare_part),
+        joinedload(InventoryRecord.warehouse)
+    )
+
+    if warehouse_id:
+        query = query.filter(InventoryRecord.warehouse_id == warehouse_id)
+
+    if stock_status:
+        query = query.filter(InventoryRecord.stock_status == stock_status)
+
+    if has_stock == '1':
+        query = query.filter(InventoryRecord.quantity > 0)
+    elif has_stock == '0':
+        query = query.filter(InventoryRecord.quantity <= 0)
+
+    if keyword:
+        kw = f'%{keyword}%'
+        query = query.join(SparePart).filter(
+            db.or_(SparePart.name.like(kw), SparePart.part_code.like(kw))
+        )
+
+    pagination = paginate_query(query, page=page, per_page=per_page)
+
+    items = []
+    for record in pagination.items:
+        data = record.to_dict()
+        if record.spare_part:
+            data['spare_part_name'] = record.spare_part.name
+            data['spare_part_code'] = record.spare_part.part_code
+        if record.warehouse:
+            data['warehouse_name'] = record.warehouse.name
+        items.append(data)
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'items': items,
+            'total': pagination.total
+        },
+        'pagination': {
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'pages': pagination.pages
+        }
+    })
+
+
+@api_inventory_bp.route('/stats', methods=['GET'])
+@login_required
+def get_inventory_stats():
+    """
+    获取库存统计聚合数据（单次请求代替前端3次冗余查询）
+
+    Returns:
+        {
+            total: 总条数,
+            low_stock: 低库存数,
+            out_of_stock: 缺货数,
+            normal: 正常数
+        }
+    """
+    from sqlalchemy import func, case
+
+    warehouse_id = request.args.get('warehouse_id', type=int)
+
+    base_q = db.session.query(
+        func.count(InventoryRecord.id).label('total'),
+        func.sum(
+            case((InventoryRecord.stock_status == 'low', 1), else_=0)
+        ).label('low_stock'),
+        func.sum(
+            case((InventoryRecord.stock_status == 'out', 1), else_=0)
+        ).label('out_of_stock'),
+        func.sum(
+            case((InventoryRecord.stock_status == 'normal', 1), else_=0)
+        ).label('normal')
+    )
+
+    if warehouse_id:
+        base_q = base_q.filter(InventoryRecord.warehouse_id == warehouse_id)
+
+    result = base_q.one()
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'total': result.total or 0,
+            'low_stock': int(result.low_stock or 0),
+            'out_of_stock': int(result.out_of_stock or 0),
+            'normal': int(result.normal or 0)
+        }
     })

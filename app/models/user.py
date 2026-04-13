@@ -5,6 +5,7 @@
 from datetime import datetime
 from app.extensions import db, login_manager
 from flask_login import UserMixin
+import bcrypt
 
 
 class User(db.Model, UserMixin):
@@ -39,6 +40,21 @@ class User(db.Model, UserMixin):
     def get_id(self):
         """返回用户 ID (Flask-Login 要求)"""
         return str(self.id)
+    
+    def set_password(self, password: str) -> None:
+        """设置密码（bcrypt 哈希）"""
+        password_bytes = password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        self.password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+    
+    def check_password(self, password: str) -> bool:
+        """验证密码是否正确"""
+        try:
+            password_bytes = password.encode('utf-8')
+            hash_bytes = self.password_hash.encode('utf-8')
+            return bcrypt.checkpw(password_bytes, hash_bytes)
+        except Exception:
+            return False
     
     def has_permission(self, module, action):
         """检查权限"""

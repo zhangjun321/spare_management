@@ -91,8 +91,12 @@ const WarehouseList = () => {
       const response = await WarehouseService.getWarehouses(params);
       
       if (response.success) {
-        setWarehouses(response.data.warehouses);
-        setPagination(response.data.pagination);
+        // 后端返回 { success, data: [...], pagination: {...} }
+        setWarehouses(Array.isArray(response.data) ? response.data : (response.data?.warehouses || []));
+        setPagination(prev => ({
+          ...prev,
+          ...(response.pagination || response.data?.pagination || {})
+        }));
       } else {
         message.error('加载仓库列表失败');
       }
@@ -464,7 +468,7 @@ const WarehouseList = () => {
       </Card>
 
       {/* 仓库列表 */}
-      {loading && viewMode === 'list' ? (
+      {loading ? (
         <Card><div style={{ textAlign: 'center', padding: 40 }}>加载中...</div></Card>
       ) : (
         viewMode === 'card' ? renderCardView() : renderListView()
