@@ -92,28 +92,28 @@
                     <div class="row g-3">
                         <div class="col-md-3">
                             <div class="d-grid">
-                                <a href="{{ url_for('intelligent_warehouse.index') }}" class="btn btn-outline-primary">
+                                <a href="{{ url_for('warehouses.dashboard') }}" class="btn btn-outline-primary">
                                     <i class="fas fa-brain me-2"></i>智能看板
                                 </a>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="d-grid">
-                                <a href="{{ url_for('warehouses_advanced.inventory_check_list') }}" class="btn btn-outline-success">
+                                <a href="{{ url_for('warehouses.inventory_overview') }}" class="btn btn-outline-success">
                                     <i class="fas fa-clipboard-check me-2"></i>库存盘点
                                 </a>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="d-grid">
-                                <a href="{{ url_for('warehouses_advanced.stock_age_analysis') }}" class="btn btn-outline-info">
+                                <a href="{{ url_for('warehouses.inventory_overview') }}" class="btn btn-outline-info">
                                     <i class="fas fa-hourglass-half me-2"></i>库龄分析
                                 </a>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="d-grid">
-                                <a href="{{ url_for('warehouses_advanced.abc_classification') }}" class="btn btn-outline-warning">
+                                <a href="#" class="btn btn-outline-warning" onclick="return false;">
                                     <i class="fas fa-chart-pie me-2"></i>ABC 分类
                                 </a>
                             </div>
@@ -172,15 +172,15 @@
                             <td>{{ warehouse.spare_parts.count() if warehouse.spare_parts else 0 }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{{ url_for('warehouses_advanced.zones') }}" 
-                                       class="btn btn-outline-secondary" title="库区管理">
+                                    <a href="#" 
+                                       class="btn btn-outline-secondary" title="库区管理" onclick="return false;">
                                         <i class="fas fa-th"></i>
                                     </a>
-                                    <a href="{{ url_for('warehouses_advanced.racks') }}" 
-                                       class="btn btn-outline-secondary" title="货架管理">
+                                    <a href="#" 
+                                       class="btn btn-outline-secondary" title="货架管理" onclick="return false;">
                                         <i class="fas fa-columns"></i>
                                     </a>
-                                    <a href="{{ url_for('warehouses.location_list') }}" 
+                                    <a href="{{ url_for('warehouses.inventory_overview') }}" 
                                        class="btn btn-outline-secondary" title="货位管理">
                                         <i class="fas fa-map-marker-alt"></i>
                                     </a>
@@ -188,19 +188,19 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{{ url_for('intelligent_warehouse.visualization', warehouse_id=warehouse.id) }}" 
+                                    <a href="{{ url_for('warehouses.dashboard') }}" 
                                        class="btn btn-info" title="可视化看板">
                                         <i class="fas fa-chart-pie"></i>
                                     </a>
-                                    <a href="{{ url_for('intelligent_warehouse.analyze_warehouse', warehouse_id=warehouse.id) }}" 
+                                    <a href="{{ url_for('warehouses.dashboard') }}" 
                                        class="btn btn-success" title="AI 分析">
                                         <i class="fas fa-brain"></i>
                                     </a>
-                                    <a href="{{ url_for('intelligent_warehouse.generate_layout', warehouse_id=warehouse.id) }}" 
-                                       class="btn btn-primary" title="布局规划">
+                                    <a href="#" 
+                                       class="btn btn-primary" title="布局规划" onclick="return false;">
                                         <i class="fas fa-th"></i>
                                     </a>
-                                    <a href="{{ url_for('intelligent_warehouse.optimize_inventory', warehouse_id=warehouse.id) }}" 
+                                    <a href="{{ url_for('warehouses.inventory_overview') }}" 
                                        class="btn btn-warning" title="库存优化">
                                         <i class="fas fa-magic"></i>
                                     </a>

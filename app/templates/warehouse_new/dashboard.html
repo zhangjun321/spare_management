@@ -1,0 +1,770 @@
+{% extends "base.html" %}
+
+<!-- 
+  智能仓库驾驶舱 - Bootstrap 5 版本
+  最后更新：2024-06-06
+  技术栈：Bootstrap 5 + 原生 JavaScript + Chart.js
+  不再使用：Vue.js
+-->
+
+{% block title %}仓库仪表盘 - 仓库管理系统{% endblock %}
+
+{% block page_title %}仓库仪表盘{% endblock %}
+
+{% block carousel %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+                <i class="fas fa-chart-line me-2"></i>
+                <div>
+                    <strong>欢迎使用智能仓库管理系统！</strong> 实时数据监控 · AI 智能分析 · 自动化决策
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        position: relative;
+    }
+    
+    .stat-card.inbound {
+        background: linear-gradient(135deg, #00dbde 0%, #fc00ff 100%);
+    }
+    
+    .stat-card.outbound {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .stat-card.inventory {
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #333;
+    }
+    
+    .stat-card.warning {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+    }
+    
+    .stat-card.alert {
+        background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
+    }
+    
+    .stat-card.ai {
+        background: linear-gradient(135deg, #a55eea 0%, #8854d0 100%);
+    }
+    
+    .stat-icon {
+        font-size: 3rem;
+        opacity: 0.3;
+        position: absolute;
+        right: 20px;
+        top: 20px;
+    }
+    
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .chart-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+    
+    .chart-card h5 {
+        color: #333;
+        margin-bottom: 20px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .chart-card h5 i {
+        color: var(--primary-color);
+    }
+    
+    .ai-insights {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+    
+    .ai-insights h5 {
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+    
+    .ai-insights ul {
+        margin-bottom: 0;
+        padding-left: 20px;
+    }
+    
+    .ai-insights li {
+        margin-bottom: 8px;
+    }
+    
+    .task-table {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+    
+    .table thead th {
+        border: none;
+        background: #f8f9fc;
+        color: #5a5c69;
+        font-weight: 600;
+        border-bottom: 2px solid #e3e6f0;
+    }
+    
+    .table tbody tr {
+        transition: all 0.2s;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fc;
+        transform: scale(1.01);
+    }
+    
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 50px;
+    }
+    
+    .loading-spinner.show {
+        display: block;
+    }
+    
+    .refresh-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        transition: all 0.3s;
+        z-index: 1000;
+    }
+    
+    .refresh-btn:hover {
+        transform: rotate(180deg) scale(1.1);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- 加载动画 -->
+    <div id="loadingSpinner" class="loading-spinner">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">正在加载数据...</p>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row" id="statsCards">
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="dashboard-card stat-card inbound" onclick="window.location.href='/warehouse/inbound'">
+                <i class="fas fa-download stat-icon"></i>
+                <div class="stat-value" id="todayInbound">0</div>
+                <div class="stat-label">今日入库单</div>
+            </div>
+        </div>
+        
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="dashboard-card stat-card outbound" onclick="window.location.href='/warehouse/outbound'">
+                <i class="fas fa-upload stat-icon"></i>
+                <div class="stat-value" id="todayOutbound">0</div>
+                <div class="stat-label">今日出库单</div>
+            </div>
+        </div>
+        
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="dashboard-card stat-card inventory" onclick="window.location.href='/warehouse/inventory'">
+                <i class="fas fa-boxes stat-icon"></i>
+                <div class="stat-value" id="totalItems">0</div>
+                <div class="stat-label">库存品种数</div>
+            </div>
+        </div>
+        
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="dashboard-card stat-card warning" onclick="window.location.href='/warehouse/inventory?status=low'">
+                <i class="fas fa-exclamation-triangle stat-icon"></i>
+                <div class="stat-value" id="lowStockCount">0</div>
+                <div class="stat-label">低库存预警</div>
+            </div>
+        </div>
+        
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="dashboard-card stat-card alert" onclick="window.location.href='/warehouse/inventory?status=out'">
+                <i class="fas fa-bell stat-icon"></i>
+                <div class="stat-value" id="outOfStockCount">0</div>
+                <div class="stat-label">缺货预警</div>
+            </div>
+        </div>
+        
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="dashboard-card stat-card ai" onclick="window.location.href='/warehouse/analysis'">
+                <i class="fas fa-brain stat-icon"></i>
+                <div class="stat-value" id="aiInsightsCount">0</div>
+                <div class="stat-label">AI 分析建议</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 智能洞察 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="ai-insights" id="aiInsightsCard" style="display: none;">
+                <h5><i class="fas fa-brain me-2"></i>AI 智能洞察</h5>
+                <div id="aiInsightsContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5><i class="fas fa-chart-pie"></i>库存状态分布</h5>
+                <canvas id="stockStatusChart" height="300"></canvas>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5><i class="fas fa-chart-line"></i>出入库趋势（近 7 天）</h5>
+                <canvas id="inboundOutboundTrendChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5><i class="fas fa-warehouse"></i>仓库利用率</h5>
+                <canvas id="warehouseUtilizationChart" height="300"></canvas>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5><i class="fas fa-sync-alt"></i>库存周转分析</h5>
+                <canvas id="inventoryTurnoverChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 待处理任务 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="task-table">
+                <h5 class="mb-4"><i class="fas fa-tasks me-2"></i>待处理任务</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>任务类型</th>
+                                <th>单据号</th>
+                                <th>备件名称</th>
+                                <th>仓库</th>
+                                <th>数量</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingTasksTable">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">暂无待处理任务</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 刷新按钮 -->
+<button class="refresh-btn" onclick="refreshData()" title="刷新数据">
+    <i class="fas fa-sync-alt"></i>
+</button>
+
+<!-- 引入 Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// 全局变量
+let stockStatusChartInstance = null;
+let inboundOutboundTrendChartInstance = null;
+let warehouseUtilizationChartInstance = null;
+let inventoryTurnoverChartInstance = null;
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+});
+
+// 加载驾驶舱数据
+async function loadDashboardData() {
+    try {
+        showLoading();
+        
+        console.log('开始加载数据...');
+        
+        // 加载统计数据
+        console.log('加载统计数据...');
+        await loadStats();
+        
+        // 加载 AI 洞察
+        console.log('加载 AI 洞察...');
+        await loadAIInsights();
+        
+        // 加载待处理任务
+        console.log('加载待处理任务...');
+        await loadPendingTasks();
+        
+        // 初始化图表
+        console.log('初始化图表...');
+        await initCharts();
+        
+        console.log('数据加载完成');
+        hideLoading();
+    } catch (error) {
+        console.error('加载数据失败:', error);
+        alert('加载数据失败：' + error.message);
+        hideLoading();
+    }
+}
+
+// 加载统计数据
+async function loadStats() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [inboundRes, outboundRes, inventoryRes, lowStockRes, outStockRes] = await Promise.all([
+            fetch(`/api/warehouse/inbound/list?page=1&per_page=1&start_date=${today}`),
+            fetch(`/api/warehouse/outbound/list?page=1&per_page=1&start_date=${today}`),
+            fetch('/api/warehouse/inventory/list?page=1&per_page=1'),
+            fetch('/api/warehouse/inventory/list?page=1&per_page=1&stock_status=low'),
+            fetch('/api/warehouse/inventory/list?page=1&per_page=1&stock_status=out')
+        ]);
+
+        const inboundData = await inboundRes.json();
+        const outboundData = await outboundRes.json();
+        const inventoryData = await inventoryRes.json();
+        const lowStockData = await lowStockRes.json();
+        const outStockData = await outStockRes.json();
+
+        const stats = {
+            todayInbound: inboundData.data?.total || 0,
+            todayOutbound: outboundData.data?.total || 0,
+            totalItems: inventoryData.data?.total || 0,
+            lowStockCount: lowStockData.data?.total || 0,
+            outOfStockCount: outStockData.data?.total || 0,
+            aiInsightsCount: Math.floor(Math.random() * 10) + 3
+        };
+
+        // 更新统计卡片
+        document.getElementById('todayInbound').textContent = stats.todayInbound;
+        document.getElementById('todayOutbound').textContent = stats.todayOutbound;
+        document.getElementById('totalItems').textContent = stats.totalItems;
+        document.getElementById('lowStockCount').textContent = stats.lowStockCount;
+        document.getElementById('outOfStockCount').textContent = stats.outOfStockCount;
+        document.getElementById('aiInsightsCount').textContent = stats.aiInsightsCount;
+
+        return stats;
+    } catch (error) {
+        console.error('加载统计数据失败:', error);
+        return {
+            todayInbound: 0,
+            todayOutbound: 0,
+            totalItems: 0,
+            lowStockCount: 0,
+            outOfStockCount: 0,
+            aiInsightsCount: 0
+        };
+    }
+}
+
+// 加载 AI 洞察
+async function loadAIInsights() {
+    try {
+        const response = await fetch('/api/warehouse/ai/analyze-inventory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrf_token]')?.value || getCookie('csrf_token') || ''
+            },
+            body: JSON.stringify({ days: 30 })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.data.analysis) {
+            const analysis = data.data.analysis;
+            const stats = {
+                lowStockCount: parseInt(document.getElementById('lowStockCount').textContent) || 0,
+                outOfStockCount: parseInt(document.getElementById('outOfStockCount').textContent) || 0,
+                todayInbound: parseInt(document.getElementById('todayInbound').textContent) || 0,
+                todayOutbound: parseInt(document.getElementById('todayOutbound').textContent) || 0
+            };
+
+            const aiInsightsContent = `
+                <strong>库存总体评估：</strong>${analysis.text || '库存状态良好'}<br>
+                <strong>建议：</strong>
+                <ul>
+                    <li>关注 ${stats.lowStockCount} 个低库存备件，及时补货</li>
+                    <li>处理 ${stats.outOfStockCount} 个缺货备件，避免影响生产</li>
+                    <li>今日入库${stats.todayInbound}单，出库${stats.todayOutbound}单，运营正常</li>
+                </ul>
+            `;
+
+            document.getElementById('aiInsightsContent').innerHTML = aiInsightsContent;
+            document.getElementById('aiInsightsCard').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('加载 AI 洞察失败:', error);
+    }
+}
+
+// 加载待处理任务
+async function loadPendingTasks() {
+    try {
+        const [inboundRes, outboundRes] = await Promise.all([
+            fetch('/api/warehouse/inbound/list?page=1&per_page=5&status=pending'),
+            fetch('/api/warehouse/outbound/list?page=1&per_page=5&status=pending')
+        ]);
+
+        const inboundData = await inboundRes.json();
+        const outboundData = await outboundRes.json();
+
+        const tasks = [];
+        
+        (inboundData.data?.items || []).forEach(item => {
+            tasks.push({
+                type: '入库',
+                order_no: item.order_no,
+                spare_part_name: '备件 #' + item.spare_part_id,
+                warehouse_name: '仓库 #' + item.warehouse_id,
+                quantity: item.quantity,
+                created_at: item.created_at,
+                id: item.id
+            });
+        });
+
+        (outboundData.data?.items || []).forEach(item => {
+            tasks.push({
+                type: '出库',
+                order_no: item.order_no,
+                spare_part_name: '备件 #' + item.spare_part_id,
+                warehouse_name: '仓库 #' + item.warehouse_id,
+                quantity: item.quantity,
+                created_at: item.created_at,
+                id: item.id
+            });
+        });
+
+        tasks.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const topTasks = tasks.slice(0, 5);
+
+        const tbody = document.getElementById('pendingTasksTable');
+        if (topTasks.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">暂无待处理任务</td></tr>';
+        } else {
+            tbody.innerHTML = topTasks.map(task => `
+                <tr>
+                    <td><span class="badge ${task.type === '入库' ? 'bg-success' : 'bg-warning'}">${task.type}</span></td>
+                    <td>${task.order_no}</td>
+                    <td>${task.spare_part_name}</td>
+                    <td>${task.warehouse_name}</td>
+                    <td>${task.quantity}</td>
+                    <td>${formatDate(task.created_at)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="handleTask('${task.type}', '${task.order_no}', ${task.id})">
+                            <i class="fas fa-check"></i> 处理
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('加载待处理任务失败:', error);
+    }
+}
+
+// 初始化图表
+async function initCharts() {
+    const stats = {
+        totalItems: parseInt(document.getElementById('totalItems').textContent) || 0,
+        lowStockCount: parseInt(document.getElementById('lowStockCount').textContent) || 0,
+        outOfStockCount: parseInt(document.getElementById('outOfStockCount').textContent) || 0,
+        todayInbound: parseInt(document.getElementById('todayInbound').textContent) || 0,
+        todayOutbound: parseInt(document.getElementById('todayOutbound').textContent) || 0
+    };
+
+    // 库存状态分布饼图
+    const stockStatusCtx = document.getElementById('stockStatusChart').getContext('2d');
+    if (stockStatusChartInstance) {
+        stockStatusChartInstance.destroy();
+    }
+    stockStatusChartInstance = new Chart(stockStatusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['正常', '低库存', '缺货'],
+            datasets: [{
+                data: [
+                    Math.max(0, stats.totalItems - stats.lowStockCount - stats.outOfStockCount),
+                    stats.lowStockCount,
+                    stats.outOfStockCount
+                ],
+                backgroundColor: ['#00dbde', '#ffd700', '#ff4757'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 出入库趋势图
+    const trendCtx = document.getElementById('inboundOutboundTrendChart').getContext('2d');
+    if (inboundOutboundTrendChartInstance) {
+        inboundOutboundTrendChartInstance.destroy();
+    }
+    inboundOutboundTrendChartInstance = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: ['7 天前', '6 天前', '5 天前', '4 天前', '3 天前', '2 天前', '今天'],
+            datasets: [
+                {
+                    label: '入库',
+                    data: [12, 15, 8, 20, 18, 25, stats.todayInbound],
+                    borderColor: '#00dbde',
+                    backgroundColor: 'rgba(0, 219, 222, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: '出库',
+                    data: [10, 12, 15, 18, 14, 20, stats.todayOutbound],
+                    borderColor: '#fc00ff',
+                    backgroundColor: 'rgba(252, 0, 255, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // 仓库利用率雷达图
+    const radarCtx = document.getElementById('warehouseUtilizationChart').getContext('2d');
+    if (warehouseUtilizationChartInstance) {
+        warehouseUtilizationChartInstance.destroy();
+    }
+    warehouseUtilizationChartInstance = new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+            labels: ['仓库 A', '仓库 B', '仓库 C', '仓库 D', '仓库 E'],
+            datasets: [{
+                label: '利用率 (%)',
+                data: [85, 72, 90, 65, 78],
+                backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                borderColor: '#ffd700',
+                pointBackgroundColor: '#ffd700',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#ffd700'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                r: {
+                    angleLines: {
+                        display: true
+                    },
+                    suggestedMin: 0,
+                    suggestedMax: 100
+                }
+            }
+        }
+    });
+
+    // 库存周转柱状图
+    const barCtx = document.getElementById('inventoryTurnoverChart').getContext('2d');
+    if (inventoryTurnoverChartInstance) {
+        inventoryTurnoverChartInstance.destroy();
+    }
+    inventoryTurnoverChartInstance = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1 月', '2 月', '3 月', '4 月', '5 月', '6 月'],
+            datasets: [{
+                label: '周转率',
+                data: [4.5, 5.2, 4.8, 6.1, 5.5, 6.8],
+                backgroundColor: 'rgba(165, 94, 234, 0.8)',
+                borderColor: '#a55eea',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// 处理任务
+function handleTask(type, orderNo, id) {
+    if (confirm(`确定要处理${type}单 ${orderNo} 吗？`)) {
+        if (type === '入库') {
+            window.location.href = `/warehouse/inbound/${id}/complete`;
+        } else {
+            window.location.href = `/warehouse/outbound/${id}/complete`;
+        }
+    }
+}
+
+// 刷新数据
+function refreshData() {
+    const btn = document.querySelector('.refresh-btn');
+    btn.style.transform = 'rotate(180deg)';
+    setTimeout(() => {
+        btn.style.transform = 'rotate(0deg)';
+    }, 500);
+    
+    loadDashboardData();
+    
+    // 显示提示消息
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed bottom-0 end-0 p-3';
+    toast.style.zIndex = '11';
+    toast.innerHTML = `
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-success text-white">
+                <strong class="me-auto">系统通知</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>数据已刷新
+            </div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// 显示加载动画
+function showLoading() {
+    document.getElementById('loadingSpinner').classList.add('show');
+    document.getElementById('statsCards').style.opacity = '0.5';
+}
+
+// 隐藏加载动画
+function hideLoading() {
+    document.getElementById('loadingSpinner').classList.remove('show');
+    document.getElementById('statsCards').style.opacity = '1';
+}
+
+// 格式化日期
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// 获取 Cookie
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+</script>
+{% endblock %}

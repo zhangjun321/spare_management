@@ -14,7 +14,7 @@ from app.models.supplier import Supplier
 from app.forms.spare_parts import SparePartForm, SparePartSearchForm
 from app.utils.decorators import permission_required
 from app.utils.helpers import paginate_query
-from app.services.cache_service import cache, clear_cache
+from app.services.cache_service import cache
 from app.services.image_generation_service import ImageGenerationService
 from app.services.ai_info_fill_service import AIInfoFillService
 from app.services.barcode_service import generate_barcode_for_spare_part, save_barcode_to_file
@@ -34,6 +34,8 @@ csrf.exempt(spare_parts_bp)
 @login_required
 def index():
     """备件列表页面"""
+    from flask import current_app
+    
     form = SparePartSearchForm()
     
     # 使用 joinedload 预加载关联数据，避免 N+1 查询
@@ -41,6 +43,9 @@ def index():
         joinedload(SparePart.category),
         joinedload(SparePart.supplier)
     )
+    
+    # 调试：输出表单数据
+    current_app.logger.info(f"表单数据 - keyword: {form.keyword.data}, category_id: {form.category_id.data}, supplier_id: {form.supplier_id.data}, stock_status: {form.stock_status.data}, is_active: {form.is_active.data}")
     
     if form.keyword.data:
         keyword = f'%{form.keyword.data}%'
@@ -51,20 +56,26 @@ def index():
                 SparePart.specification.like(keyword)
             )
         )
+        current_app.logger.info(f"应用 keyword 过滤：{form.keyword.data}")
     
     if form.category_id.data and form.category_id.data != 0:
         query = query.filter(SparePart.category_id == form.category_id.data)
+        current_app.logger.info(f"应用 category_id 过滤：{form.category_id.data}")
     
     if form.supplier_id.data and form.supplier_id.data != 0:
         query = query.filter(SparePart.supplier_id == form.supplier_id.data)
+        current_app.logger.info(f"应用 supplier_id 过滤：{form.supplier_id.data}")
     
-    if form.stock_status.data:
+    if form.stock_status.data and form.stock_status.data != '':
         query = query.filter(SparePart.stock_status == form.stock_status.data)
+        current_app.logger.info(f"应用 stock_status 过滤：{form.stock_status.data}")
     
     if form.is_active.data == '1':
         query = query.filter(SparePart.is_active == True)
+        current_app.logger.info("应用 is_active 过滤：启用")
     elif form.is_active.data == '0':
         query = query.filter(SparePart.is_active == False)
+        current_app.logger.info("应用 is_active 过滤：停用")
     
     # 获取每页显示数量，默认 20
     try:
@@ -74,10 +85,21 @@ def index():
     except (TypeError, ValueError):
         per_page = 20
     
-    # 使用 distinct 避免重复记录
-    query = query.distinct()
+    # 调试：输出查询前的记录数
+    total_count = query.count()
+    current_app.logger.info(f"查询总记录数：{total_count}")
     
     pagination = paginate_query(query, per_page=per_page)
+    
+    # 调试：输出分页结果
+    current_app.logger.info(f"分页结果 - 总记录数：{pagination.total}, 当前页记录数：{len(pagination.items)}")
+    
+    # 调试：输出第一个备件的信息
+    if pagination.items:
+        first_part = pagination.items[0]
+        current_app.logger.info(f"第一个备件：ID={first_part.id}, code={first_part.part_code}, name={first_part.name}")
+    else:
+        current_app.logger.warning("查询结果为空！")
     
     @cache('categories:active', expire=3600)
     def get_active_categories():
@@ -1111,3 +1133,41 @@ def apply_ai_fill(id):
 # 豁免 CSRF 保护
 csrf.exempt(ai_fill_info)
 csrf.exempt(apply_ai_fill)
+
+
+@spare_parts_bp.route('/debug/query-test')
+@login_required
+def debug_query_test():
+    """测试查询"""
+    from app.extensions import db
+    
+    # 查询所有记录
+    all_parts = SparePart.query.all()
+    total = len(all_parts)
+    
+    # 查询前 5 条
+    first_5 = SparePart.query.limit(5).all()
+    sample_data = []
+    for p in first_5:
+        sample_data.append({
+            'id': p.id,
+            'part_code': p.part_code,
+            'name': p.name,
+            'stock_status': p.stock_status,
+            'is_active': p.is_active
+        })
+    
+    # stock_status 分布
+    statuses = db.session.query(SparePart.stock_status, db.func.count(SparePart.id)).group_by(SparePart.stock_status).all()
+    status_dist = {s[0]: s[1] for s in statuses}
+    
+    # is_active 分布
+    active_status = db.session.query(SparePart.is_active, db.func.count(SparePart.id)).group_by(SparePart.is_active).all()
+    active_dist = {str(a[0]): a[1] for a in active_status}
+    
+    return jsonify({
+        'total': total,
+        'sample': sample_data,
+        'status_distribution': status_dist,
+        'active_distribution': active_dist
+    })

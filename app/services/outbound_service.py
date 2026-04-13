@@ -6,10 +6,9 @@
 from datetime import datetime
 from flask import current_app
 from app.extensions import db
-from app.models.inventory import (
-    OutboundOrder, OutboundOrderItem, OutboundSourceLocation,
-    InventoryRecord, OperationLog
-)
+from app.models.inventory_record import InventoryRecord
+from app.models.inbound_outbound import OutboundOrder
+from app.models.inventory import OutboundOrderItem, OutboundSourceLocation, OperationLog
 from app.models.warehouse import Warehouse
 
 

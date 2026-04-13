@@ -16,8 +16,8 @@ from app.models.warehouse_location import WarehouseLocation
 from app.models.warehouse_advanced import (
     WarehouseZone, 
     WarehouseRack, 
-    InventoryCheck, 
-    InventoryCheckItem, 
+    InventoryCheckAdvanced, 
+    InventoryCheckItemAdvanced, 
     StockAgeAnalysis
 )
 from app.models.spare_part import SparePart
@@ -37,6 +37,11 @@ from app.models.database_backup import DatabaseBackup
 from app.models.dictionary import DictType, DictItem
 from app.models.help import HelpCategory, HelpDocument
 from app.models.api import ApiCategory, ApiEndpoint, ApiLog
+
+# 新的仓库管理模块（核心联动模型）
+# InventoryRecord 在 inventory.py 中定义，避免重复导入
+from app.models.inbound_outbound import InboundOrder, OutboundOrder
+# from app.models.inventory_transaction_log import InventoryTransactionLog
 
 __all__ = [
     'db',
@@ -84,5 +89,10 @@ __all__ = [
     'HelpDocument',
     'ApiCategory',
     'ApiEndpoint',
-    'ApiLog'
+    'ApiLog',
+    # 新的仓库管理模块
+    'InventoryRecord',
+    'InboundOrder',
+    'OutboundOrder',
+    'InventoryTransactionLog'
 ]

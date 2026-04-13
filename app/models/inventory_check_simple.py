@@ -8,10 +8,10 @@ from app.extensions import db
 from datetime import datetime
 
 
-class InventoryCheck(db.Model):
-    """库存盘点单表"""
+class InventoryCheckSimple(db.Model):
+    """库存盘点单表（简化版）"""
     
-    __tablename__ = 'inventory_check'
+    __tablename__ = 'inventory_check_simple'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     check_code = db.Column(db.String(50), unique=True, nullable=False)

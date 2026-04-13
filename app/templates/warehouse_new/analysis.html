@@ -1,0 +1,743 @@
+{% extends "base.html" %}
+
+{% block title %}AI 分析 - 仓库管理系统{% endblock %}
+
+{% block page_title %}AI 分析{% endblock %}
+
+{% block content %}
+    <div id="app">
+        <div class="page-header">
+            <h2>🤖 AI 智能分析</h2>
+            <el-button type="primary" size="small" @click="showHistory">📋 查看历史记录</el-button>
+        </div>
+
+        <el-row :gutter="20">
+            <el-col :span="24">
+                <div class="ai-suggestion">
+                    <h3><i class="el-icon-connection"></i> AI 智能洞察</h3>
+                    <p>基于历史数据和机器学习算法，为您提供库存优化建议和需求预测。</p>
+                </div>
+            </el-col>
+        </el-row>
+        
+        <!-- 加载进度提示 -->
+        <el-row :gutter="20" v-if="loading">
+            <el-col :span="24">
+                <el-card class="loading-card" shadow="never">
+                    <div class="loading-content">
+                        <el-progress type="circle" :percentage="loadingProgress" :status="loadingProgress >= 100 ? 'success' : ''" :width="80"></el-progress>
+                        <div class="loading-text" v-text="loadingText"></div>
+                        <div class="loading-subtext" v-text="loadingSubText"></div>
+                    </div>
+                </el-card>
+            </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+            <el-col :span="8">
+                <div class="analysis-card">
+                    <h4>📊 需求预测</h4>
+                    <p>分析历史出库数据，预测未来需求趋势。</p>
+                    <el-button type="primary" size="small" @click="generateForecast">生成预测报告</el-button>
+                </div>
+            </el-col>
+            <el-col :span="8">
+                <div class="analysis-card">
+                    <h4>📦 库存优化</h4>
+                    <p>智能分析库存结构，提供优化建议。</p>
+                    <el-button type="success" size="small" @click="getOptimization">查看优化方案</el-button>
+                </div>
+            </el-col>
+            <el-col :span="8">
+                <div class="analysis-card">
+                    <h4>⚠️ 风险预警</h4>
+                    <p>识别库存风险，提前预警。</p>
+                    <el-button type="warning" size="small" @click="getRiskWarning">查看风险清单</el-button>
+                </div>
+            </el-col>
+        </el-row>
+        
+        <!-- 结果显示区域 -->
+        <el-row :gutter="20" v-if="result">
+            <el-col :span="24">
+                <el-card class="result-card" shadow="hover">
+                    <template #header>
+                        <div class="card-header">
+                            <span v-text="resultTitle"></span>
+                            <div>
+                                <el-button @click="saveResult" size="small" type="primary" v-if="!saved">💾 保存报告</el-button>
+                                <el-button @click="closeResult" size="small">关闭</el-button>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <!-- 统计信息 -->
+                    <el-row :gutter="20" class="stats-row" v-if="stats && (stats.totalParts || stats.totalValue || stats.duration)">
+                        <el-col :span="8">
+                            <div class="stat-item">
+                                <div class="stat-value" v-text="stats.totalParts || 0"></div>
+                                <div class="stat-label">备件总数</div>
+                            </div>
+                        </el-col>
+                        <el-col :span="8">
+                            <div class="stat-item">
+                                <div class="stat-value">¥<span v-text="stats.totalValue || '0.00'"></span></div>
+                                <div class="stat-label">总价值</div>
+                            </div>
+                        </el-col>
+                        <el-col :span="8">
+                            <div class="stat-item">
+                                <div class="stat-value"><span v-text="stats.duration || 0"></span>s</div>
+                                <div class="stat-label">分析耗时</div>
+                            </div>
+                        </el-col>
+                    </el-row>
+                    
+                    <!-- 分析结果 -->
+                    <div class="analysis-result" v-html="resultContent"></div>
+                </el-card>
+            </el-col>
+        </el-row>
+        
+        <!-- 历史记录对话框 -->
+        <el-dialog v-model="historyVisible" title="📋 AI 分析报告历史" width="900px" :close-on-click-modal="false">
+            <!-- 筛选条件 -->
+            <div class="filter-bar">
+                <el-select v-model="historyFilter.type" placeholder="报告类型" clearable size="default" @change="loadHistory">
+                    <el-option label="📊 需求预测" value="forecast"></el-option>
+                    <el-option label="📦 库存优化" value="optimization"></el-option>
+                    <el-option label="⚠️ 风险预警" value="risk"></el-option>
+                </el-select>
+                <el-select v-model="historyFilter.days" placeholder="时间范围" size="default" @change="loadHistory">
+                    <el-option label="最近 7 天" :value="7"></el-option>
+                    <el-option label="最近 15 天" :value="15"></el-option>
+                    <el-option label="最近 30 天" :value="30"></el-option>
+                    <el-option label="最近 90 天" :value="90"></el-option>
+                </el-select>
+                <el-button type="primary" @click="loadHistory" size="default">🔍 查询</el-button>
+            </div>
+            
+            <!-- 历史记录列表 -->
+            <el-table :data="historyList" style="width: 100%" v-loading="historyLoading" height="500">
+                <el-table-column prop="report_title" label="报告标题" width="180"></el-table-column>
+                <el-table-column prop="report_type" label="类型" width="100">
+                    <template #default="scope">
+                        <el-tag v-if="scope.row.report_type === 'forecast'" type="primary" size="small">📊 预测</el-tag>
+                        <el-tag v-else-if="scope.row.report_type === 'optimization'" type="success" size="small">📦 优化</el-tag>
+                        <el-tag v-else-if="scope.row.report_type === 'risk'" type="warning" size="small">⚠️ 风险</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="统计信息" width="200">
+                    <template #default="scope">
+                        <span v-if="scope.row.total_parts">备件：<span v-text="scope.row.total_parts"></span>个</span>
+                        <span v-if="scope.row.total_value && scope.row.total_parts"> | </span>
+                        <span v-if="scope.row.total_value">价值：¥<span v-text="scope.row.total_value"></span></span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="duration" label="耗时" width="80">
+                    <template #default="scope">
+                        <span v-if="scope.row.duration"><span v-text="scope.row.duration"></span>s</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="user_name" label="生成人" width="100"></el-table-column>
+                <el-table-column prop="created_at" label="生成时间" width="180"></el-table-column>
+                <el-table-column label="操作" fixed="right" width="200">
+                    <template #default="scope">
+                        <el-button @click="viewHistoryReport(scope.row)" size="small" type="primary">👁️ 查看</el-button>
+                        <el-button @click="deleteHistoryReport(scope.row)" size="small" type="danger">🗑️ 删除</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            
+            <!-- 分页 -->
+            <div class="pagination-bar" style="margin-top: 20px;">
+                <el-pagination
+                    v-model:current-page="historyPagination.page"
+                    v-model:page-size="historyPagination.per_page"
+                    :page-sizes="[10, 20, 50, 100]"
+                    :total="historyPagination.total"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    @size-change="loadHistory"
+                    @current-change="loadHistory"
+                />
+            </div>
+            
+            <template #footer>
+                <el-button @click="historyVisible = false" size="default">关闭</el-button>
+            </template>
+        </el-dialog>
+        
+        <!-- 查看历史报告详情对话框 -->
+        <el-dialog v-model="detailVisible" title="📋 报告详情" width="900px">
+            <div v-if="currentReport">
+                <el-descriptions :column="2" border>
+                    <el-descriptions-item label="报告标题" v-text="currentReport.report_title || '-'"></el-descriptions-item>
+                    <el-descriptions-item label="报告类型">
+                        <el-tag v-if="currentReport.report_type === 'forecast'" type="primary" size="small">📊 预测</el-tag>
+                        <el-tag v-else-if="currentReport.report_type === 'optimization'" type="success" size="small">📦 优化</el-tag>
+                        <el-tag v-else-if="currentReport.report_type === 'risk'" type="warning" size="small">⚠️ 风险</el-tag>
+                        <span v-else>-</span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="备件总数">
+                        <span v-text="currentReport.total_parts ? currentReport.total_parts + '个' : (currentReport.total_parts === 0 ? '0 个' : '-')"></span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="总价值">
+                        <span v-text="currentReport.total_value !== undefined && currentReport.total_value !== null ? '¥' + currentReport.total_value : '-'"></span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="分析耗时">
+                        <span v-text="currentReport.duration !== undefined && currentReport.duration !== null ? currentReport.duration + '秒' : '-'"></span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="生成人" v-text="currentReport.user_name || '-'"></el-descriptions-item>
+                    <el-descriptions-item label="生成时间" v-text="currentReport.created_at || '-'"></el-descriptions-item>
+                </el-descriptions>
+                
+                <div style="margin-top: 20px;">
+                    <h4>报告内容：</h4>
+                    <div class="analysis-result" v-html="currentReport.report_content"></div>
+                </div>
+            </div>
+            
+            <template #footer>
+                <el-button @click="detailVisible = false" size="default">关闭</el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .analysis-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        .analysis-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        .analysis-card h4 {
+            margin-top: 0;
+            color: #303133;
+            font-size: 18px;
+        }
+        .analysis-card p {
+            color: #909399;
+            font-size: 14px;
+            margin: 10px 0 15px;
+        }
+        
+        /* 加载进度 */
+        .loading-card {
+            margin-top: 20px;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+        }
+        .loading-content {
+            text-align: center;
+            padding: 20px;
+        }
+        .loading-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #409EFF;
+            margin: 15px 0 5px;
+        }
+        .loading-subtext {
+            font-size: 14px;
+            color: #909399;
+        }
+        
+        /* 结果卡片 */
+        .result-card {
+            margin-top: 20px;
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        /* 统计信息 */
+        .stats-row {
+            margin-bottom: 20px;
+            padding: 15px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            color: white;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* 分析结果 */
+        .analysis-result {
+            line-height: 1.8;
+            color: #333;
+            padding: 15px 0;
+        }
+        .analysis-result h1,
+        .analysis-result h2,
+        .analysis-result h3 {
+            color: #409EFF;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .analysis-result h1 { font-size: 24px; }
+        .analysis-result h2 { font-size: 20px; }
+        .analysis-result h3 { font-size: 16px; }
+        .analysis-result p {
+            margin: 10px 0;
+        }
+        .analysis-result strong {
+            color: #67C23A;
+            font-weight: bold;
+        }
+        .analysis-result ul,
+        .analysis-result ol {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        .analysis-result li {
+            margin: 5px 0;
+        }
+        
+        /* 筛选栏 */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f5f7fa;
+            border-radius: 8px;
+        }
+        
+        /* 分页 */
+        .pagination-bar {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js?v=20260412"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.full.min.js?v=20260412"></script>
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    loading: false,
+                    loadingProgress: 0,
+                    loadingText: '',
+                    loadingSubText: '',
+                    stats: {
+                        totalParts: 0,
+                        totalValue: 0,
+                        duration: 0
+                    },
+                    result: null,
+                    resultTitle: '',
+                    resultContent: '',
+                    saved: false,
+                    
+                    // 历史记录
+                    historyVisible: false,
+                    historyLoading: false,
+                    historyList: [],
+                    historyFilter: {
+                        type: '',
+                        days: 30
+                    },
+                    historyPagination: {
+                        page: 1,
+                        per_page: 20,
+                        total: 0,
+                        pages: 0
+                    },
+                    
+                    // 报告详情
+                    detailVisible: false,
+                    currentReport: null
+                };
+            },
+            methods: {
+                async loadAnalysis() {
+                    console.log('loadAnalysis 被调用');
+                    this.loading = true;
+                    try {
+                        this.loading = false;
+                    } catch (error) {
+                        this.$message.error('加载分析数据失败');
+                        this.loading = false;
+                    }
+                },
+                
+                testClick() {
+                    console.log('测试按钮被点击！');
+                    this.$message.success('Vue 应用正常工作！按钮可以点击！');
+                },
+                
+                async generateForecast() {
+                    console.log('开始生成预测报告...');
+                    this.startLoading('正在分析历史数据...', 'AI 正在处理出库记录');
+                    
+                    const startTime = Date.now();
+                    
+                    try {
+                        const response = await fetch('/warehouses/api/ai/forecast', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include'
+                        });
+                        
+                        console.log('响应状态码:', response.status);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log('收到数据:', data);
+                            
+                            // 计算耗时
+                            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                            
+                            // 更新统计信息
+                            this.stats.totalParts = data.total_parts || 0;
+                            this.stats.totalValue = (data.total_value || 0).toFixed(2);
+                            this.stats.duration = data.duration || duration;
+                            
+                            // 构建显示内容
+                            let content = '';
+                            if (data.result) {
+                                content += `<div style="white-space: pre-wrap; line-height: 1.8;">${data.result}</div>`;
+                            }
+                            
+                            this.completeLoading();
+                            this.showResult('需求预测报告', content);
+                            this.saved = false;
+                            this.$message.success(`预测报告生成成功，耗时 ${this.stats.duration} 秒`);
+                        } else {
+                            const error = await response.json();
+                            console.error('API 错误:', error);
+                            this.completeLoading();
+                            this.$message.error(error.message || '生成预测报告失败');
+                        }
+                    } catch (error) {
+                        console.error('网络错误:', error);
+                        this.completeLoading();
+                        this.$message.error('网络错误：' + error.message);
+                    }
+                },
+                
+                async getOptimization() {
+                    console.log('开始获取优化方案...');
+                    this.startLoading('正在分析库存结构...', 'AI 正在计算最优方案');
+                    
+                    const startTime = Date.now();
+                    
+                    try {
+                        const response = await fetch('/warehouses/api/ai/optimization', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include'
+                        });
+                        
+                        console.log('响应状态码:', response.status);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log('收到数据:', data);
+                            
+                            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                            this.stats.totalParts = data.total_parts || 0;
+                            this.stats.totalValue = (data.total_value || 0).toFixed(2);
+                            this.stats.duration = data.duration || duration;
+                            
+                            let content = '';
+                            if (data.result) {
+                                content += `<div style="white-space: pre-wrap; line-height: 1.8;">${data.result}</div>`;
+                            }
+                            
+                            this.completeLoading();
+                            this.showResult('库存优化方案', content);
+                            this.saved = false;
+                            this.$message.success(`优化方案生成成功，耗时 ${this.stats.duration} 秒`);
+                        } else {
+                            const error = await response.json();
+                            console.error('API 错误:', error);
+                            this.completeLoading();
+                            this.$message.error(error.message || '获取优化方案失败');
+                        }
+                    } catch (error) {
+                        console.error('网络错误:', error);
+                        this.completeLoading();
+                        this.$message.error('网络错误：' + error.message);
+                    }
+                },
+                
+                async getRiskWarning() {
+                    console.log('开始获取风险预警...');
+                    this.startLoading('正在识别库存风险...', 'AI 正在分析异常数据');
+                    
+                    const startTime = Date.now();
+                    
+                    try {
+                        const response = await fetch('/warehouses/api/ai/risk', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include'
+                        });
+                        
+                        console.log('响应状态码:', response.status);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log('收到数据:', data);
+                            
+                            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                            this.stats.totalParts = data.total_parts || 0;
+                            this.stats.totalValue = (data.total_value || 0).toFixed(2);
+                            this.stats.duration = data.duration || duration;
+                            
+                            let content = '';
+                            if (data.result) {
+                                content += `<div style="white-space: pre-wrap; line-height: 1.8;">${data.result}</div>`;
+                            }
+                            
+                            this.completeLoading();
+                            this.showResult('风险预警清单', content);
+                            this.saved = false;
+                            this.$message.success(`风险清单生成成功，耗时 ${this.stats.duration} 秒`);
+                        } else {
+                            const error = await response.json();
+                            console.error('API 错误:', error);
+                            this.completeLoading();
+                            this.$message.error(error.message || '获取风险清单失败');
+                        }
+                    } catch (error) {
+                        console.error('网络错误:', error);
+                        this.completeLoading();
+                        this.$message.error('网络错误：' + error.message);
+                    }
+                },
+                
+                startLoading(text, subText) {
+                    this.loading = true;
+                    this.loadingProgress = 0;
+                    this.loadingText = text;
+                    this.loadingSubText = subText;
+                    
+                    // 模拟进度条增长
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += Math.random() * 15;
+                        if (progress > 80) {
+                            progress = 80;
+                            clearInterval(interval);
+                        }
+                        this.loadingProgress = Math.floor(progress);
+                        
+                        // 更新提示文字
+                        if (progress > 30 && progress <= 50) {
+                            this.loadingSubText = 'AI 正在分析数据模式...';
+                        } else if (progress > 50 && progress <= 70) {
+                            this.loadingSubText = 'AI 正在生成智能建议...';
+                        } else if (progress > 70) {
+                            this.loadingSubText = 'AI 正在整理分析结果...';
+                        }
+                    }, 500);
+                    
+                    this.loadingInterval = interval;
+                },
+                
+                completeLoading() {
+                    if (this.loadingInterval) {
+                        clearInterval(this.loadingInterval);
+                    }
+                    this.loadingProgress = 100;
+                    this.loadingText = '分析完成！';
+                    this.loadingSubText = '正在显示结果...';
+                    
+                    setTimeout(() => {
+                        this.loading = false;
+                        this.loadingProgress = 0;
+                    }, 800);
+                },
+                
+                showResult(title, content) {
+                    this.resultTitle = title;
+                    this.resultContent = content;
+                    this.result = true;
+                    console.log('显示结果:', title, content);
+                },
+                
+                closeResult() {
+                    this.result = null;
+                    this.resultTitle = '';
+                    this.resultContent = '';
+                    this.stats = {
+                        totalParts: 0,
+                        totalValue: 0,
+                        duration: 0
+                    };
+                    this.saved = false;
+                },
+                
+                saveResult() {
+                    // 由于 API 已经自动保存，这里只是提示用户
+                    this.$message.success('报告已自动保存到数据库');
+                    this.saved = true;
+                },
+                
+                // 显示历史记录
+                showHistory() {
+                    this.historyVisible = true;
+                    this.historyFilter = {
+                        type: '',
+                        days: 30
+                    };
+                    this.historyPagination = {
+                        page: 1,
+                        per_page: 20,
+                        total: 0,
+                        pages: 0
+                    };
+                    this.loadHistory();
+                },
+                
+                // 加载历史记录
+                async loadHistory() {
+                    this.historyLoading = true;
+                    try {
+                        const params = new URLSearchParams({
+                            page: this.historyPagination.page,
+                            per_page: this.historyPagination.per_page,
+                            days: this.historyFilter.days
+                        });
+                        
+                        if (this.historyFilter.type) {
+                            params.append('report_type', this.historyFilter.type);
+                        }
+                        
+                        const response = await fetch(`/warehouses/api/ai/reports?${params.toString()}`, {
+                            method: 'GET',
+                            credentials: 'include'
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success) {
+                                this.historyList = data.data;
+                                this.historyPagination = data.pagination;
+                            } else {
+                                this.$message.error(data.message || '加载历史记录失败');
+                            }
+                        } else {
+                            this.$message.error('加载历史记录失败');
+                        }
+                    } catch (error) {
+                        console.error('网络错误:', error);
+                        this.$message.error('网络错误：' + error.message);
+                    } finally {
+                        this.historyLoading = false;
+                    }
+                },
+                
+                // 查看历史报告详情
+                viewHistoryReport(report) {
+                    console.log('查看报告详情:', report);
+                    console.log('报告 ID:', report.id);
+                    console.log('备件总数:', report.total_parts, '类型:', typeof report.total_parts);
+                    console.log('总价值:', report.total_value, '类型:', typeof report.total_value);
+                    console.log('耗时:', report.duration, '类型:', typeof report.duration);
+                    this.currentReport = report;
+                    this.detailVisible = true;
+                },
+                
+                // 删除历史报告
+                async deleteHistoryReport(report) {
+                    try {
+                        const confirmed = await this.$confirm(`确定要删除报告"${report.report_title}"吗？`, '确认删除', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        if (confirmed) {
+                            const response = await fetch('/warehouses/api/ai/reports', {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                credentials: 'include',
+                                body: JSON.stringify({ report_id: report.id })
+                            });
+                            
+                            if (response.ok) {
+                                const data = await response.json();
+                                if (data.success) {
+                                    this.$message.success('报告已删除');
+                                    this.loadHistory(); // 刷新列表
+                                } else {
+                                    this.$message.error(data.message || '删除失败');
+                                }
+                            } else {
+                                this.$message.error('删除失败');
+                            }
+                        }
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('删除错误:', error);
+                            this.$message.error('删除失败：' + error.message);
+                        }
+                    }
+                }
+            },
+            mounted() {
+                this.loadAnalysis();
+            }
+        })
+        .use(ElementPlus)
+        .mount('#app');
+        
+        console.log('脚本加载完成');
+    </script>
+{% endblock %}

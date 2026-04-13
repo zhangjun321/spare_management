@@ -2,7 +2,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-智能仓库管理服务 - 使用百度千帆 API
+智能仓库管理服务 - 使用百度千帆 API（OpenAI SDK 方式）
 提供智能库位推荐、仓库优化、可视化分析等功能
 """
 
@@ -22,7 +22,7 @@ load_dotenv()
 
 
 class IntelligentWarehouseService:
-    """智能仓库服务 - 基于百度千帆 AI"""
+    """智能仓库服务 - 基于百度千帆 AI（OAuth2 认证方式）"""
     
     def __init__(self):
         self.api_key = os.getenv("BAIDU_API_KEY", "")
@@ -30,7 +30,7 @@ class IntelligentWarehouseService:
         self.access_token = None
     
     def get_access_token(self):
-        """获取百度千帆 API 的 access token"""
+        """获取百度千帆 API 的 access token（OAuth2 认证）"""
         if self.access_token:
             return self.access_token
             
@@ -44,23 +44,36 @@ class IntelligentWarehouseService:
         try:
             response = requests.post(url, params=params)
             result = response.json()
-            self.access_token = result.get("access_token")
-            return self.access_token
+            if "access_token" in result:
+                self.access_token = result.get("access_token")
+                logger.info("Access Token 获取成功")
+                return self.access_token
+            else:
+                logger.error(f"获取 access token 失败：{result}")
+                return None
         except Exception as e:
-            logger.error(f"获取 access token 失败：{str(e)}")
+            logger.error(f"获取 access token 异常：{str(e)}")
             return None
     
-    def call_wenxin_api(self, messages, max_tokens=3000):
-        """调用文心一言 API"""
-        access_token = self.get_access_token()
-        if not access_token:
+    def call_wenxin_api(self, messages, max_tokens=2048):
+        """调用文心一言 API（使用 API Key 作为 Bearer Token）"""
+        if not self.api_key:
+            logger.error("未配置 BAIDU_API_KEY")
             return None
         
-        url = f"https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions?access_token={access_token}"
+        # 使用 API Key 直接作为 Bearer Token 调用
+        url = "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions"
         
         headers = {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
         }
+        
+        # 确保 max_tokens 在有效范围内 [2, 2048]
+        if max_tokens > 2048:
+            max_tokens = 2048
+        elif max_tokens < 2:
+            max_tokens = 2
         
         payload = {
             "messages": messages,
@@ -72,9 +85,13 @@ class IntelligentWarehouseService:
             response = requests.post(url, headers=headers, json=payload)
             if response.status_code == 200:
                 result = response.json()
-                return result.get('result', '')
+                if "result" in result:
+                    return result.get('result', '')
+                else:
+                    logger.error(f"API 响应异常：{result}")
+                    return None
             else:
-                logger.error(f"API 调用失败：{response.text}")
+                logger.error(f"API 调用失败 (状态码 {response.status_code}): {response.text}")
                 return None
         except Exception as e:
             logger.error(f"API 调用异常：{str(e)}")
@@ -90,14 +107,20 @@ class IntelligentWarehouseService:
         Returns:
             dict: AI 分析结果
         """
-        # 获取备件数据
-        query = SparePart.query.filter_by(is_active=True)
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # 获取备件数据（包括未激活的）
+        query = SparePart.query
         if warehouse_id:
             query = query.filter_by(warehouse_id=warehouse_id)
         
         spare_parts = query.all()
         
+        logger.info(f"查询到 {len(spare_parts)} 条备件记录")
+        
         if not spare_parts:
+            logger.error("没有可用的备件数据")
             return {
                 'success': False,
                 'error': '没有可用的备件数据'
@@ -125,47 +148,28 @@ class IntelligentWarehouseService:
         # 按价值排序
         parts_data.sort(key=lambda x: x['stock_value'], reverse=True)
         
-        # 构建 AI 分析提示词
-        prompt = f"""
-你是一个智能仓库管理专家。请分析以下备件数据，并提供专业的仓库管理建议。
+        # 构建 AI 分析提示词（简化版，提高响应速度和准确性）
+        prompt = f"""分析以下备件数据并提供建议：
 
-备件数据（共{len(parts_data)}个备件，总价值{total_value:.2f}元）：
-{json.dumps(parts_data[:20], ensure_ascii=False, indent=2)}
+备件总数：{len(parts_data)}
+总价值：{total_value:.2f} 元
 
-请从以下维度进行分析：
-1. ABC 分类分析（按价值）
-2. 库存周转分析
-3. 库位需求预测
-4. 存储环境要求
-5. 拣货路径优化建议
-6. 安全库存建议
+前 10 个高价值备件：
+{json.dumps(parts_data[:10], ensure_ascii=False)}
 
-请以 JSON 格式返回分析结果，包含以下字段：
-{{
-    "abc_analysis": {{
-        "A_class": [备件列表],
-        "B_class": [备件列表],
-        "C_class": [备件列表],
-        "summary": "分类说明"
-    }},
-    "turnover_analysis": {{
-        "high_turnover": [高周转备件],
-        "medium_turnover": [中周转备件],
-        "low_turnover": [低周转备件]
-    }},
-    "location_recommendations": [库位建议],
-    "storage_requirements": [存储要求],
-    "picking_optimization": [拣货优化建议],
-    "safety_stock_suggestions": [安全库存建议]
-}}
-"""
+请分析：
+1. ABC 分类（哪些是 A 类高价值备件）
+2. 库存优化建议
+3. 存储建议
+
+用中文简要回答。"""
         
+        # 调用 AI API
         messages = [
-            {"role": "system", "content": "你是智能仓库管理专家，精通库存优化、库位规划和仓储管理。"},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": f"你是仓库管理专家。{prompt}"}
         ]
         
-        result = self.call_wenxin_api(messages, max_tokens=4000)
+        result = self.call_wenxin_api(messages, max_tokens=1500)
         
         if result:
             try:

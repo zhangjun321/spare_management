@@ -15,6 +15,8 @@ from app.models.spare_part import SparePart
 from app.models import Warehouse
 from app.extensions import db
 from app.utils.decorators import permission_required
+from datetime import datetime
+from datetime import timedelta
 
 warehouses_bp = Blueprint('warehouses', __name__, template_folder='../templates/warehouses')
 
@@ -56,22 +58,60 @@ def index():
 @login_required
 @permission_required('warehouse', 'read')
 def dashboard():
-    """仓库看板"""
-    from app.services.warehouse_advanced_service_v2 import WarehouseAdvancedService
+    """仓库看板 - 智能仪表盘"""
+    # 获取统计信息用于仪表盘
+    statistics = WarehouseService.get_warehouse_statistics()
     
-    warehouse_id = request.args.get('warehouse_id', type=int)
-    period_days = request.args.get('period_days', 30, type=int)
-    
-    kpis = WarehouseAdvancedService.calculate_kpis(warehouse_id, period_days)
-    
-    from app.models.warehouse import Warehouse
+    # 获取所有启用的仓库
     warehouses = Warehouse.query.filter_by(is_active=True).all()
     
-    return render_template('warehouses/dashboard.html', 
-                         kpis=kpis,
-                         warehouses=warehouses,
-                         selected_warehouse_id=warehouse_id,
-                         period_days=period_days)
+    return render_template('warehouse_new/dashboard.html', 
+                         statistics=statistics,
+                         warehouses=warehouses)
+
+
+@warehouses_bp.route('/inbound')
+@login_required
+@permission_required('inbound', 'read')
+def inbound_list():
+    """入库管理列表"""
+    return render_template('warehouses/inbound.html')
+
+
+@warehouses_bp.route('/outbound')
+@login_required
+@permission_required('outbound', 'read')
+def outbound_list():
+    """出库管理列表"""
+    return render_template('warehouses/outbound.html')
+
+
+@warehouses_bp.route('/inventory')
+@login_required
+@permission_required('inventory', 'read')
+def inventory_list():
+    """库存管理列表"""
+    return render_template('warehouses/inventory.html')
+
+
+@warehouses_bp.route('/analysis')
+@login_required
+@permission_required('analysis', 'read')
+def analysis():
+    """AI 分析"""
+    return render_template('warehouse_new/analysis.html')
+
+@warehouses_bp.route('/test-simple')
+@login_required
+def test_simple():
+    """简单测试页面"""
+    return render_template('test_simple.html')
+
+@warehouses_bp.route('/test-api')
+@login_required
+def test_api():
+    """API 测试页面"""
+    return render_template('test_api.html')
 
 @warehouses_bp.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -298,27 +338,13 @@ def location_delete(id):
     return redirect(url_for('warehouses.location_list'))
 
 # 库存管理路由
+@warehouses_bp.route('/inventory-overview')
 @warehouses_bp.route('/inventory/')
 @login_required
 @permission_required('inventory', 'read')
 def inventory_overview():
-    """库存概览"""
-    # 获取所有仓库的库存统计
-    from app.models.warehouse import Warehouse
-    warehouses = Warehouse.query.filter_by(is_active=True).all()
-    
-    inventory_stats = []
-    for warehouse in warehouses:
-        stats = InventoryService.get_inventory_statistics(warehouse.id)
-        stats['warehouse'] = warehouse
-        inventory_stats.append(stats)
-    
-    # 获取总统计
-    total_stats = InventoryService.get_inventory_statistics()
-    
-    return render_template('warehouses/inventory_overview.html', 
-                         inventory_stats=inventory_stats,
-                         total_stats=total_stats)
+    """库存概览 - 重定向到仓库列表"""
+    return redirect(url_for('warehouses.index'))
 
 @warehouses_bp.route('/inventory/warehouse/<int:id>')
 @login_required
@@ -663,3 +689,357 @@ def quick_create_warehouses():
     
     flash('成功创建 ' + str(created_count) + ' 个仓库！', 'success')
     return redirect(url_for('warehouses.index'))
+
+
+# ===========================================
+# AI 分析 API 路由
+# ===========================================
+
+# 豁免 CSRF 保护
+from app.extensions import csrf
+
+@warehouses_bp.route('/api/ai/forecast', methods=['POST'])
+@csrf.exempt  # 豁免 CSRF 保护
+def api_ai_forecast():
+    """AI 需求预测 API"""
+    from flask_login import current_user
+    from app.models.ai_analysis_report import AIAnalysisReport
+    from datetime import datetime
+    
+    if not current_user.is_authenticated:
+        return jsonify({
+            'success': False,
+            'message': '请先登录'
+        }), 401
+    
+    try:
+        from app.services.intelligent_warehouse_service import intelligent_warehouse_service
+        
+        # 调用 AI 分析服务
+        result = intelligent_warehouse_service.analyze_spare_parts_data()
+        
+        if result.get('success'):
+            # 优先使用 analysis 字段（JSON 格式），其次使用 raw_analysis（原始文本）
+            analysis_result = result.get('analysis') or result.get('raw_analysis', '暂无预测数据')
+            
+            # 获取统计数据
+            total_parts = result.get('total_parts', 0)
+            total_value = result.get('total_value', 0)
+            duration = result.get('duration', 0)
+            
+            print(f"准备保存报告：类型={result.get('report_type', 'forecast')}, 备件数={total_parts}, 价值={total_value}, 耗时={duration}")
+            
+            # 保存到数据库
+            try:
+                report = AIAnalysisReport(
+                    report_type='forecast',
+                    report_title='需求预测报告',
+                    report_content=analysis_result,
+                    total_parts=total_parts,
+                    total_value=total_value,
+                    duration=duration,
+                    user_id=current_user.id,
+                    user_name=current_user.username
+                )
+                db.session.add(report)
+                db.session.commit()
+                print(f"报告保存成功，ID: {report.id}, 内容长度：{len(analysis_result)}")
+            except Exception as e:
+                import traceback
+                error_msg = f"保存报告失败：{e}"
+                print(error_msg)
+                traceback.print_exc()
+                db.session.rollback()
+                # 保存失败不影响返回结果
+            
+            return jsonify({
+                'success': True,
+                'message': '预测生成成功',
+                'result': analysis_result,
+                'total_parts': total_parts,
+                'total_value': total_value,
+                'duration': duration
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': result.get('error', '预测失败')
+            }), 400
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'预测失败：{str(e)}'
+        }), 500
+
+
+@warehouses_bp.route('/api/ai/optimization', methods=['POST'])
+@csrf.exempt  # 豁免 CSRF 保护
+def api_ai_optimization():
+    """AI 库存优化 API"""
+    from flask_login import current_user
+    from app.models.ai_analysis_report import AIAnalysisReport
+    from datetime import datetime
+    
+    if not current_user.is_authenticated:
+        return jsonify({
+            'success': False,
+            'message': '请先登录'
+        }), 401
+    
+    try:
+        from app.services.intelligent_warehouse_service import intelligent_warehouse_service
+        
+        # 调用 AI 分析服务
+        result = intelligent_warehouse_service.analyze_spare_parts_data()
+        
+        if result.get('success'):
+            optimization_suggestion = result.get('optimization', '暂无优化建议')
+            
+            # 保存到数据库
+            try:
+                report = AIAnalysisReport(
+                    report_type='optimization',
+                    report_title='库存优化方案',
+                    report_content=optimization_suggestion,
+                    total_parts=result.get('total_parts', 0),
+                    total_value=result.get('total_value', 0),
+                    duration=result.get('duration', 0),
+                    user_id=current_user.id,
+                    user_name=current_user.username
+                )
+                db.session.add(report)
+                db.session.commit()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                db.session.rollback()
+            
+            return jsonify({
+                'success': True,
+                'message': '优化方案生成成功',
+                'result': optimization_suggestion,
+                'total_parts': result.get('total_parts', 0),
+                'total_value': result.get('total_value', 0),
+                'duration': result.get('duration', 0)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': result.get('error', '生成优化方案失败')
+            }), 400
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'生成优化方案失败：{str(e)}'
+        }), 500
+
+
+@warehouses_bp.route('/api/ai/risk', methods=['POST'])
+@csrf.exempt  # 豁免 CSRF 保护
+def api_ai_risk():
+    """AI 风险预警 API"""
+    from flask_login import current_user
+    from app.models.ai_analysis_report import AIAnalysisReport
+    from datetime import datetime
+    
+    if not current_user.is_authenticated:
+        return jsonify({
+            'success': False,
+            'message': '请先登录'
+        }), 401
+    
+    try:
+        from app.services.intelligent_warehouse_service import intelligent_warehouse_service
+        
+        # 调用 AI 分析服务
+        result = intelligent_warehouse_service.analyze_spare_parts_data()
+        
+        if result.get('success'):
+            risk_warning = result.get('risk_warning', '暂无风险预警')
+            
+            # 保存到数据库
+            try:
+                report = AIAnalysisReport(
+                    report_type='risk',
+                    report_title='风险预警清单',
+                    report_content=risk_warning,
+                    total_parts=result.get('total_parts', 0),
+                    total_value=result.get('total_value', 0),
+                    duration=result.get('duration', 0),
+                    user_id=current_user.id,
+                    user_name=current_user.username
+                )
+                db.session.add(report)
+                db.session.commit()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                db.session.rollback()
+            
+            return jsonify({
+                'success': True,
+                'message': '风险清单生成成功',
+                'result': risk_warning,
+                'total_parts': result.get('total_parts', 0),
+                'total_value': result.get('total_value', 0),
+                'duration': result.get('duration', 0)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': result.get('error', '生成风险清单失败')
+            }), 400
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'生成风险清单失败：{str(e)}'
+        }), 500
+
+
+# ==================== AI 分析报告历史记录 API ====================
+
+@warehouses_bp.route('/api/ai/reports', methods=['GET'])
+@login_required
+def api_get_ai_reports():
+    """获取 AI 分析报告历史记录"""
+    from app.models.ai_analysis_report import AIAnalysisReport
+    
+    try:
+        # 获取筛选参数
+        report_type = request.args.get('report_type', type=str)
+        days = request.args.get('days', default=30, type=int)  # 默认最近 30 天
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=20, type=int)
+        
+        # 构建查询
+        query = AIAnalysisReport.query.filter(
+            AIAnalysisReport.created_at >= datetime.now() - timedelta(days=days)
+        )
+        
+        # 按报告类型筛选
+        if report_type:
+            query = query.filter(AIAnalysisReport.report_type == report_type)
+        
+        # 按用户筛选（普通用户只能看自己的，管理员可以看所有）
+        from flask_login import current_user
+        if not current_user.is_admin:
+            query = query.filter(AIAnalysisReport.user_id == current_user.id)
+        
+        # 排序（最新的在前）
+        query = query.order_by(AIAnalysisReport.created_at.desc())
+        
+        # 分页
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        reports = pagination.items
+        
+        # 转换为字典
+        reports_data = [report.to_dict() for report in reports]
+        
+        return jsonify({
+            'success': True,
+            'data': reports_data,
+            'pagination': {
+                'page': pagination.page,
+                'per_page': pagination.per_page,
+                'total': pagination.total,
+                'pages': pagination.pages
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'获取报告列表失败：{str(e)}'
+        }), 500
+
+
+@warehouses_bp.route('/api/ai/reports/<int:report_id>', methods=['GET'])
+@login_required
+def api_get_ai_report(report_id):
+    """获取单个 AI 分析报告详情"""
+    from app.models.ai_analysis_report import AIAnalysisReport
+    from flask_login import current_user
+    
+    try:
+        report = AIAnalysisReport.query.get(report_id)
+        
+        if not report:
+            return jsonify({
+                'success': False,
+                'message': '报告不存在'
+            }), 404
+        
+        # 权限检查
+        if not current_user.is_admin and report.user_id != current_user.id:
+            return jsonify({
+                'success': False,
+                'message': '无权查看此报告'
+            }), 403
+        
+        return jsonify({
+            'success': True,
+            'data': report.to_dict()
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'获取报告详情失败：{str(e)}'
+        }), 500
+
+
+@warehouses_bp.route('/api/ai/reports', methods=['DELETE'])
+@login_required
+@csrf.exempt
+def api_delete_ai_report():
+    """删除 AI 分析报告"""
+    from app.models.ai_analysis_report import AIAnalysisReport
+    from flask_login import current_user
+    
+    try:
+        report_id = request.json.get('report_id')
+        
+        if not report_id:
+            return jsonify({
+                'success': False,
+                'message': '请提供报告 ID'
+            }), 400
+        
+        report = AIAnalysisReport.query.get(report_id)
+        
+        if not report:
+            return jsonify({
+                'success': False,
+                'message': '报告不存在'
+            }), 404
+        
+        # 权限检查
+        if not current_user.is_admin and report.user_id != current_user.id:
+            return jsonify({
+                'success': False,
+                'message': '无权删除此报告'
+            }), 403
+        
+        db.session.delete(report)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '报告已删除'
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'删除报告失败：{str(e)}'
+        }), 500

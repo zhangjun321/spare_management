@@ -9,6 +9,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Element Plus CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css">
+    <!-- Element Plus CSS (备用) -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
     
     <style>
         :root {
@@ -874,7 +878,7 @@
                 </a>
             </li>
             <li class="has-submenu">
-                <a href="#" class="{% if request.endpoint and (request.endpoint.startswith('warehouses') or request.endpoint.startswith('intelligent_warehouse')) %}active{% endif %}" data-tooltip="仓库管理">
+                <a href="#" class="{% if request.endpoint and request.endpoint.startswith('warehouses') %}active{% endif %}" data-tooltip="仓库管理">
                     <i class="fas fa-warehouse"></i>
                     <span class="menu-text">仓库管理</span>
                     <i class="fas fa-chevron-down ms-auto"></i>
@@ -886,38 +890,59 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ url_for('warehouses.create') }}" class="{% if request.endpoint == 'warehouses.create' %}active{% endif %}">
-                            <i class="fas fa-plus"></i>创建仓库
+                        <a href="{{ url_for('warehouses.dashboard') }}" class="{% if request.endpoint == 'warehouses.dashboard' %}active{% endif %}">
+                            <i class="fas fa-tachometer-alt"></i>仓库仪表盘
                         </a>
                     </li>
                     <li>
-                        <a href="{{ url_for('warehouses_advanced.zones') }}" class="{% if request.endpoint and request.endpoint.startswith('warehouses_advanced') %}active{% endif %}">
-                            <i class="fas fa-th"></i>库区管理
+                        <a href="{{ url_for('warehouses.inbound_list') }}" class="{% if request.endpoint == 'warehouses.inbound_list' %}active{% endif %}">
+                            <i class="fas fa-download"></i>入库管理
                         </a>
                     </li>
                     <li>
-                        <a href="{{ url_for('intelligent_warehouse.index') }}" class="{% if request.endpoint and request.endpoint.startswith('intelligent_warehouse') %}active{% endif %}">
-                            <i class="fas fa-brain"></i>智能仓库 (AI)
+                        <a href="{{ url_for('warehouses.outbound_list') }}" class="{% if request.endpoint == 'warehouses.outbound_list' %}active{% endif %}">
+                            <i class="fas fa-upload"></i>出库管理
                         </a>
                     </li>
                     <li>
-                        <a href="{{ url_for('visualization.index') }}" class="{% if request.endpoint and request.endpoint.startswith('visualization') %}active{% endif %}">
-                            <i class="fas fa-chart-area"></i>仓库可视化
+                        <a href="{{ url_for('warehouses.inventory_list') }}" class="{% if request.endpoint == 'warehouses.inventory_list' %}active{% endif %}">
+                            <i class="fas fa-boxes"></i>库存概览
                         </a>
                     </li>
                     <li>
-                        <a href="{{ url_for('ai_image.index') }}" class="{% if request.endpoint and request.endpoint.startswith('ai_image') %}active{% endif %}">
-                            <i class="fas fa-magic"></i>AI 图像生成
+                        <a href="{{ url_for('warehouses.analysis') }}" class="{% if request.endpoint == 'warehouses.analysis' %}active{% endif %}">
+                            <i class="fas fa-brain"></i>AI 分析
+                        </a>
+                    </li>
+                    {# 
+                    <!-- AI 预测补货 - 待开发前端页面
+                    <li>
+                        <a href="{{ url_for('ai_forecast.dashboard') }}" class="{% if request.endpoint == 'ai_forecast.dashboard' %}active{% endif %}">
+                            <i class="fas fa-chart-line"></i>AI 预测补货
+                        </a>
+                    </li>
+                    AI 任务分配 - 待开发前端页面
+                    <li>
+                        <a href="{{ url_for('ai_task_assignment.dashboard') }}" class="{% if request.endpoint == 'ai_task_assignment.dashboard' %}active{% endif %}">
+                            <i class="fas fa-tasks"></i>AI 任务分配
+                        </a>
+                    </li>
+                    预警管理 - 待开发前端页面
+                    <li>
+                        <a href="{{ url_for('warning_v3.index') }}" class="{% if request.endpoint == 'warning_v3.index' %}active{% endif %}">
+                            <i class="fas fa-exclamation-triangle"></i>预警管理
+                        </a>
+                    </li>
+                    -->
+                    #}
+                    <li>
+                        <a href="{{ url_for('quality_check_pages.quality_standard') }}" class="{% if request.endpoint == 'quality_check_pages.quality_standard' %}active{% endif %}">
+                            <i class="fas fa-clipboard-check"></i>质检标准管理
                         </a>
                     </li>
                     <li>
-                        <a href="{{ url_for('warehouses.index') }}" class="{% if request.endpoint and request.endpoint.startswith('warehouses') and 'intelligent' not in request.endpoint %}active{% endif %}">
-                            <i class="fas fa-chart-bar"></i>库存管理
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('reports.index') }}" class="{% if request.endpoint and request.endpoint.startswith('reports') %}active{% endif %}">
-                            <i class="fas fa-file-alt"></i>报表统计
+                        <a href="{{ url_for('quality_check_pages.quality_check') }}" class="{% if request.endpoint == 'quality_check_pages.quality_check' %}active{% endif %}">
+                            <i class="fas fa-microscope"></i>质检管理
                         </a>
                     </li>
                 </ul>
@@ -1131,8 +1156,36 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Vue 3 -->
+    <script src="https://cdn.staticfile.org/vue/3.3.4/vue.global.prod.min.js"></script>
+    <!-- Element Plus -->
+    <script src="https://cdn.staticfile.org/element-plus/2.3.8/index.full.min.js"></script>
+    <!-- Element Plus Icons -->
+    <script src="https://cdn.staticfile.org/element-plus-icons-vue/2.1.0/index.iife.min.js"></script>
     
     <script>
+        // 检查 Vue 和 Element Plus 是否加载成功
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('=== 检查 Vue 和 Element Plus 加载状态 ===');
+            console.log('Vue:', typeof Vue);
+            console.log('ElementPlus:', typeof ElementPlus);
+            console.log('ElementPlusIconsVue:', typeof ElementPlusIconsVue);
+            
+            if (typeof Vue !== 'undefined') {
+                console.log('✓ Vue 加载成功:', Vue.version);
+            } else {
+                console.error('✗ Vue 加载失败');
+                console.log('尝试访问 window.Vue:', window.Vue);
+            }
+            if (typeof ElementPlus !== 'undefined') {
+                console.log('✓ Element Plus 加载成功');
+            } else {
+                console.error('✗ Element Plus 加载失败');
+            }
+            console.log('===========================================');
+        });
+    </script>
+        <script>
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
             // 侧边栏折叠功能
@@ -1207,11 +1260,12 @@
                     
                     if (submenu) {
                         // 切换当前菜单的展开状态
+                        const isOpen = parent.classList.contains('open');
                         parent.classList.toggle('open');
                         submenu.classList.toggle('show');
                         
-                        // 如果当前菜单被展开，关闭其他已展开的菜单（手风琴效果）
-                        if (parent.classList.contains('open')) {
+                        // 只在展开时关闭其他菜单，折叠时不关闭（保持用户选择）
+                        if (!isOpen && parent.classList.contains('open')) {
                             hasSubmenuItems.forEach(otherItem => {
                                 if (otherItem !== this) {
                                     const otherParent = otherItem.parentElement;
@@ -1224,6 +1278,57 @@
                             });
                         }
                     }
+                });
+            });
+            
+            // 页面加载时自动展开包含激活子菜单的父菜单
+            const activeSubmenu = document.querySelector('.submenu li a.active');
+            if (activeSubmenu) {
+                const parentSubmenu = activeSubmenu.closest('.submenu');
+                if (parentSubmenu) {
+                    parentSubmenu.classList.add('show');
+                    parentSubmenu.parentElement.classList.add('open');
+                }
+            }
+            
+            // 子菜单点击高亮功能
+            const submenuLinks = document.querySelectorAll('.submenu li a');
+            submenuLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // 移除所有子菜单的 active 类
+                    submenuLinks.forEach(l => l.classList.remove('active'));
+                    // 添加当前点击的子菜单 active 类
+                    this.classList.add('active');
+                    
+                    // 确保父菜单保持展开状态
+                    const parentSubmenu = this.closest('.submenu');
+                    if (parentSubmenu) {
+                        parentSubmenu.classList.add('show');
+                        parentSubmenu.parentElement.classList.add('open');
+                    }
+                });
+            });
+            
+            // 主菜单点击高亮功能
+            const mainMenuLinks = document.querySelectorAll('.sidebar-menu > li > a:not(.has-submenu > a)');
+            mainMenuLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // 移除所有主菜单的 active 类
+                    mainMenuLinks.forEach(l => l.classList.remove('active'));
+                    // 移除所有子菜单的 active 类
+                    submenuLinks.forEach(l => l.classList.remove('active'));
+                    // 添加当前点击的主菜单 active 类
+                    this.classList.add('active');
+                    
+                    // 关闭所有展开的子菜单
+                    hasSubmenuItems.forEach(item => {
+                        const parent = item.parentElement;
+                        const submenu = parent.querySelector('.submenu');
+                        if (submenu) {
+                            parent.classList.remove('open');
+                            submenu.classList.remove('show');
+                        }
+                    });
                 });
             });
         });
@@ -1243,7 +1348,11 @@
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
+                const href = this.getAttribute('href');
+                // 跳过空链接或只有 # 的链接
+                if (!href || href === '#' || href.length < 2) return;
+                
+                const target = document.querySelector(href);
                 if (target) {
                     target.scrollIntoView({
                         behavior: 'smooth'

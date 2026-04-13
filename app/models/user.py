@@ -31,6 +31,7 @@ class User(db.Model, UserMixin):
     # 关系
     department = db.relationship('Department', foreign_keys=[department_id])
     role = db.relationship('Role', foreign_keys=[role_id], backref='role_users')
+    managed_warehouses = db.relationship('Warehouse', foreign_keys='Warehouse.manager_id', back_populates='manager')
     
     def __repr__(self):
         return f'<User {self.username}>'

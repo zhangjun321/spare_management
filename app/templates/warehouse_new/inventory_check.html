@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}库存盘点 - 仓库管理系统{% endblock %}
+
+{% block page_title %}库存盘点{% endblock %}
+
+{% block content %}
+<div id="app">
+    <style>
+        .action-bar {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .data-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+
+    {% raw %}
+    <div class="action-bar">
+        <el-button type="primary" @click="handleCreateCheck">
+            <i class="el-icon-plus"></i> 创建盘点单
+        </el-button>
+        <el-button @click="loadData">
+            <i class="el-icon-refresh"></i> 刷新
+        </el-button>
+    </div>
+
+    <div class="data-card">
+        <!-- 搜索栏 -->
+        <el-form :inline="true" :model="searchForm" class="search-form">
+            <el-form-item label="仓库">
+                <el-select v-model="searchForm.warehouse_id" placeholder="请选择" clearable>
+                    <el-option v-for="wh in warehouses" :key="wh.id" :label="wh.name" :value="wh.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="状态">
+                <el-select v-model="searchForm.status" placeholder="请选择" clearable>
+                    <el-option label="计划中" value="planned"></el-option>
+                    <el-option label="进行中" value="in_progress"></el-option>
+                    <el-option label="已完成" value="completed"></el-option>
+                    <el-option label="已取消" value="cancelled"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="handleSearch">查询</el-button>
+                <el-button @click="handleReset">重置</el-button>
+            </el-form-item>
+        </el-form>
+
+        <!-- 盘点单列表 -->
+        <el-table :data="tableData" border stripe style="width: 100%" v-loading="loading">
+            <el-table-column prop="check_no" label="盘点单号" width="180"></el-table-column>
+            <el-table-column prop="warehouse_name" label="仓库" width="150"></el-table-column>
+            <el-table-column prop="check_type" label="盘点类型" width="100">
+                <template #default="scope">
+                    <el-tag :type="getCheckTypeTag(scope.row.check_type)">
+                        {{ getCheckTypeText(scope.row.check_type) }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
+                <template #default="scope">
+                    <el-tag :type="getStatusTag(scope.row.status)">
+                        {{ getStatusText(scope.row.status) }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="progress" label="进度" width="100"></el-table-column>
+            <el-table-column prop="planned_date" label="计划日期" width="120"></el-table-column>
+            <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
+            <el-table-column label="操作" fixed="right" width="300">
+                <template #default="scope">
+                    <el-button size="small" type="primary" @click="handleView(scope.row)">详情</el-button>
+                    <el-button size="small" type="success" @click="handleExecute(scope.row)" v-if="scope.row.status === 'in_progress'">执行</el-button>
+                    <el-button size="small" type="warning" @click="handleProcessDiff(scope.row)" v-if="scope.row.difference_items > 0">处理差异</el-button>
+                    <el-button size="small" type="danger" @click="handleCancel(scope.row)" v-if="scope.row.status === 'planned'">取消</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.per_page"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+            style="margin-top: 20px; justify-content: flex-end;"
+        />
+    </div>
+
+    <!-- 创建盘点单对话框 -->
+    <el-dialog v-model="dialogVisible" title="创建盘点单" width="600px">
+        <el-form :model="createForm" label-width="100px">
+            <el-form-item label="仓库" required>
+                <el-select v-model="createForm.warehouse_id" placeholder="请选择仓库" style="width: 100%">
+                    <el-option v-for="wh in warehouses" :key="wh.id" :label="wh.name" :value="wh.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="盘点类型" required>
+                <el-select v-model="createForm.check_type" placeholder="请选择" style="width: 100%">
+                    <el-option label="定期盘点" value="periodic"></el-option>
+                    <el-option label="循环盘点" value="cyclic"></el-option>
+                    <el-option label="动态盘点" value="dynamic"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="计划日期">
+                <el-date-picker v-model="createForm.planned_date" type="date" placeholder="选择日期" style="width: 100%" format="YYYY-MM-DD" value-format="YYYY-MM-DD"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="自动生成明细">
+                <el-switch v-model="createForm.auto_generate_items"></el-switch>
+            </el-form-item>
+            <el-form-item label="备注">
+                <el-input v-model="createForm.notes" type="textarea" :rows="3"></el-input>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitCreate">确定</el-button>
+        </template>
+    </el-dialog>
+    {% endraw %}
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.css">
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.full.min.js"></script>
+
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            loading: false,
+            searchForm: {
+                warehouse_id: '',
+                status: ''
+            },
+            tableData: [],
+            pagination: {
+                page: 1,
+                per_page: 20,
+                total: 0
+            },
+            warehouses: [],
+            dialogVisible: false,
+            createForm: {
+                warehouse_id: '',
+                check_type: 'periodic',
+                planned_date: '',
+                auto_generate_items: true,
+                notes: ''
+            }
+        };
+    },
+    methods: {
+        async loadWarehouses() {
+            try {
+                const response = await fetch('/api/warehouse/list');
+                const data = await response.json();
+                if (data.success) {
+                    this.warehouses = data.data || [];
+                }
+            } catch (error) {
+                console.error('加载仓库列表失败:', error);
+            }
+        },
+        async loadData() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams({
+                    page: this.pagination.page,
+                    per_page: this.pagination.per_page,
+                    ...this.searchForm
+                });
+                
+                const response = await fetch(`/api/inventory-check/checks?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.tableData = data.data.items || [];
+                    this.pagination.total = data.data.total || 0;
+                } else {
+                    this.$message.error('加载数据失败');
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                this.$message.error('加载数据失败');
+            } finally {
+                this.loading = false;
+            }
+        },
+        handleSearch() {
+            this.pagination.page = 1;
+            this.loadData();
+        },
+        handleReset() {
+            this.searchForm = {
+                warehouse_id: '',
+                status: ''
+            };
+            this.pagination.page = 1;
+            this.loadData();
+        },
+        handleSizeChange(size) {
+            this.pagination.per_page = size;
+            this.pagination.page = 1;
+            this.loadData();
+        },
+        handlePageChange(page) {
+            this.pagination.page = page;
+            this.loadData();
+        },
+        handleCreateCheck() {
+            this.createForm = {
+                warehouse_id: '',
+                check_type: 'periodic',
+                planned_date: '',
+                auto_generate_items: true,
+                notes: ''
+            };
+            this.dialogVisible = true;
+        },
+        async submitCreate() {
+            if (!this.createForm.warehouse_id) {
+                this.$message.warning('请选择仓库');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/inventory-check/checks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(this.createForm)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.$message.success('盘点单创建成功');
+                    this.dialogVisible = false;
+                    this.loadData();
+                } else {
+                    this.$message.error(data.message || '创建失败');
+                }
+            } catch (error) {
+                console.error('创建盘点单失败:', error);
+                this.$message.error('创建失败');
+            }
+        },
+        handleView(row) {
+            this.$message.info('查看详情功能开发中');
+        },
+        handleExecute(row) {
+            this.$message.info('执行盘点功能开发中');
+        },
+        handleProcessDiff(row) {
+            this.$message.info('处理差异功能开发中');
+        },
+        async handleCancel(row) {
+            try {
+                const response = await fetch(`/api/inventory-check/checks/${row.id}/cancel`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.$message.success('盘点单已取消');
+                    this.loadData();
+                } else {
+                    this.$message.error(data.message || '取消失败');
+                }
+            } catch (error) {
+                console.error('取消盘点单失败:', error);
+                this.$message.error('取消失败');
+            }
+        },
+        getCheckTypeTag(type) {
+            const tags = {
+                'periodic': 'primary',
+                'cyclic': 'success',
+                'dynamic': 'warning'
+            };
+            return tags[type] || 'info';
+        },
+        getCheckTypeText(type) {
+            const texts = {
+                'periodic': '定期盘点',
+                'cyclic': '循环盘点',
+                'dynamic': '动态盘点'
+            };
+            return texts[type] || type;
+        },
+        getStatusTag(status) {
+            const tags = {
+                'planned': 'primary',
+                'in_progress': 'warning',
+                'completed': 'success',
+                'cancelled': 'info'
+            };
+            return tags[status] || 'info';
+        },
+        getStatusText(status) {
+            const texts = {
+                'planned': '计划中',
+                'in_progress': '进行中',
+                'completed': '已完成',
+                'cancelled': '已取消'
+            };
+            return texts[status] || status;
+        }
+    },
+    mounted() {
+        this.loadWarehouses();
+        this.loadData();
+    }
+}).use(ElementPlus).mount('#app');
+</script>
+{% endblock %}

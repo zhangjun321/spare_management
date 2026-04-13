@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}质检管理 - 仓库管理系统{% endblock %}
+
+{% block page_title %}质检管理{% endblock %}
+
+{% block content %}
+<!-- 质检管理页面 -->
+<div class="quality-check-page" id="quality-check-app" v-cloak>
+  <el-card class="box-card">
+    <div class="card-header">
+      <span>质检管理</span>
+      <el-button type="primary" @click="showCreateDialog">创建质检单</el-button>
+    </div>
+
+    <!-- 筛选条件 -->
+    <el-form :inline="true" :model="filters" class="filter-form">
+      <el-form-item label="状态">
+        <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 120px;">
+          <el-option label="待质检" value="pending"></el-option>
+          <el-option label="质检中" value="inspecting"></el-option>
+          <el-option label="已完成" value="completed"></el-option>
+          <el-option label="已取消" value="cancelled"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="质检类型">
+        <el-select v-model="filters.check_type" placeholder="全部类型" clearable style="width: 120px;">
+          <el-option label="入库质检" value="inbound"></el-option>
+          <el-option label="退货质检" value="return"></el-option>
+          <el-option label="在库质检" value="inventory"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="loadChecks">查询</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-table :data="checks" v-loading="loading" style="width: 100%">
+      <el-table-column prop="id" label="ID" width="80"></el-table-column>
+      <el-table-column prop="check_no" label="质检单号" width="180"></el-table-column>
+      <el-table-column prop="inbound_order_no" label="入库单号" width="180"></el-table-column>
+      <el-table-column prop="check_type" label="质检类型" width="100">
+        <template v-slot:default="scope">
+          <el-tag :type="getCheckTypeTag(scope.row.check_type)">
+            <span v-text="getCheckTypeText(scope.row.check_type)"></span>
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="status" label="状态" width="100">
+        <template v-slot:default="scope">
+          <el-tag :type="getStatusTag(scope.row.status)">
+            <span v-text="getStatusText(scope.row.status)"></span>
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="pass_rate" label="合格率" width="100">
+        <template v-slot:default="scope">
+          <el-progress :percentage="scope.row.pass_rate" :stroke-width="10"></el-progress>
+        </template>
+      </el-table-column>
+      <el-table-column prop="created_at" label="创建时间" width="160"></el-table-column>
+      <el-table-column label="操作" width="200" fixed="right">
+        <template v-slot:default="scope">
+          <el-button size="small" @click="showDetail(scope.row)">详情</el-button>
+          <el-button size="small" type="primary" @click="startCheck(scope.row)" v-if="scope.row.status === 'pending'">开始质检</el-button>
+          <el-button size="small" type="success" @click="showExecuteDialog(scope.row)" v-if="scope.row.status === 'inspecting'">执行质检</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      v-model:current-page="pagination.page"
+      v-model:page-size="pagination.per_page"
+      :total="pagination.total"
+      @current-change="loadChecks"
+      layout="total, prev, pager, next"
+      style="margin-top: 20px; justify-content: flex-end;">
+    </el-pagination>
+  </el-card>
+
+  <!-- 创建质检单对话框 -->
+  <el-dialog
+    v-model="createDialogVisible"
+    title="创建质检单"
+    width="600px">
+    <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-width="120px">
+      <el-form-item label="入库单" prop="inbound_order_id">
+        <el-select 
+          v-model="createForm.inbound_order_id" 
+          placeholder="请选择入库单" 
+          style="width: 100%;"
+          filterable>
+          <el-option
+            v-for="order in inboundOrders"
+            :key="order.id"
+            :label="'入库单号：' + order.order_no"
+            :value="order.id">
+          </el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="质检类型" prop="check_type">
+        <el-select v-model="createForm.check_type" placeholder="请选择质检类型" style="width: 100%;">
+          <el-option label="入库质检" value="inbound"></el-option>
+          <el-option label="退货质检" value="return"></el-option>
+          <el-option label="在库质检" value="inventory"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="检验类型" prop="inspection_type">
+        <el-radio-group v-model="createForm.inspection_type">
+          <el-radio label="sampling">抽检</el-radio>
+          <el-radio label="full">全检</el-radio>
+        </el-radio-group>
+      </el-form-item>
+    </el-form>
+    <div slot="footer">
+      <el-button @click="createDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="submitCreate" :loading="submitting">确定</el-button>
+    </div>
+  </el-dialog>
+</div>
+
+<!-- Vue 应用初始化 -->
+<script type="text/javascript">
+window.addEventListener('DOMContentLoaded', function() {
+  (function() {
+    const { createApp, ref, reactive, onMounted } = Vue
+    const { ElMessage, ElMessageBox } = ElementPlus
+
+    const app = createApp({
+      setup() {
+        const loading = ref(false)
+        const submitting = ref(false)
+        const createDialogVisible = ref(false)
+        const createFormRef = ref(null)
+
+        const checks = ref([])
+        const inboundOrders = ref([])
+
+        const pagination = reactive({
+          page: 1,
+          per_page: 50,
+          total: 0
+        })
+
+        const filters = reactive({
+          status: '',
+          check_type: ''
+        })
+
+        const createForm = reactive({
+          inbound_order_id: null,
+          check_type: 'inbound',
+          inspection_type: 'sampling'
+        })
+
+        const createRules = {
+          inbound_order_id: [{ required: true, message: '请选择入库单', trigger: 'change' }]
+        }
+
+        const stats = reactive({
+          pending: 0,
+          inspecting: 0,
+          completed: 0,
+          pass_rate: 0
+        })
+
+        // 加载质检单列表
+        const loadChecks = async () => {
+          loading.value = true
+          try {
+            const params = new URLSearchParams({
+              page: pagination.page,
+              per_page: pagination.per_page
+            })
+            if (filters.status) params.append('status', filters.status)
+            if (filters.check_type) params.append('check_type', filters.check_type)
+            
+            const response = await fetch('/api/quality-check?' + params)
+            const result = await response.json()
+            if (result.success) {
+              checks.value = result.data.list
+              pagination.total = result.data.total
+              stats.pending = result.stats.pending || 0
+              stats.inspecting = result.stats.inspecting || 0
+              stats.completed = result.stats.completed || 0
+              stats.pass_rate = result.stats.pass_rate || 0
+            } else {
+              ElMessage.error(result.message)
+            }
+          } catch (error) {
+            ElMessage.error('加载质检单失败')
+          } finally {
+            loading.value = false
+          }
+        }
+
+        // 加载入库单列表
+        const loadInboundOrders = async () => {
+          try {
+            const response = await fetch('/api/inbound-orders?limit=100&status=approved')
+            const result = await response.json()
+            if (result.success) {
+              inboundOrders.value = result.data.list || []
+            }
+          } catch (error) {
+            console.error('加载入库单列表失败', error)
+          }
+        }
+
+        // 显示创建对话框
+        const showCreateDialog = () => {
+          Object.assign(createForm, {
+            inbound_order_id: null,
+            check_type: 'inbound',
+            inspection_type: 'sampling'
+          })
+          createDialogVisible.value = true
+        }
+
+        // 提交创建
+        const submitCreate = async () => {
+          if (!createFormRef.value) return
+          
+          await createFormRef.value.validate(async (valid) => {
+            if (!valid) return
+            
+            submitting.value = true
+            try {
+              const response = await fetch('/api/quality-check', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(createForm)
+              })
+              
+              const result = await response.json()
+              if (result.success) {
+                ElMessage.success('创建成功')
+                createDialogVisible.value = false
+                loadChecks()
+              } else {
+                ElMessage.error(result.message)
+              }
+            } catch (error) {
+              ElMessage.error('创建失败')
+            } finally {
+              submitting.value = false
+            }
+          })
+        }
+
+        // 开始质检
+        const startCheck = (row) => {
+          ElMessageBox.confirm('确定要开始质检吗？', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(async () => {
+            try {
+              const response = await fetch('/api/quality-check/' + row.id + '/start', {
+                method: 'POST'
+              })
+              
+              const result = await response.json()
+              if (result.success) {
+                ElMessage.success('已开始质检')
+                loadChecks()
+              } else {
+                ElMessage.error(result.message)
+              }
+            } catch (error) {
+              ElMessage.error('操作失败')
+            }
+          })
+        }
+
+        // 显示详情
+        const showDetail = (row) => {
+          ElMessage.info('查看质检单详情：' + row.check_no)
+        }
+
+        // 执行质检
+        const showExecuteDialog = (row) => {
+          ElMessage.info('执行质检：' + row.check_no)
+        }
+
+        // 工具函数
+        const getCheckTypeTag = (type) => {
+          const tagMap = {
+            inbound: '',
+            return: 'warning',
+            inventory: 'info'
+          }
+          return tagMap[type] || ''
+        }
+
+        const getCheckTypeText = (type) => {
+          const textMap = {
+            inbound: '入库质检',
+            return: '退货质检',
+            inventory: '在库质检'
+          }
+          return textMap[type] || type
+        }
+
+        const getStatusTag = (status) => {
+          const tagMap = {
+            pending: 'warning',
+            inspecting: '',
+            completed: 'success',
+            cancelled: 'info'
+          }
+          return tagMap[status] || ''
+        }
+
+        const getStatusText = (status) => {
+          const textMap = {
+            pending: '待质检',
+            inspecting: '质检中',
+            completed: '已完成',
+            cancelled: '已取消'
+          }
+          return textMap[status] || status
+        }
+
+        onMounted(() => {
+          loadChecks()
+          loadInboundOrders()
+        })
+
+        return {
+          loading,
+          submitting,
+          createDialogVisible,
+          createFormRef,
+          checks,
+          inboundOrders,
+          pagination,
+          filters,
+          createForm,
+          createRules,
+          stats,
+          loadChecks,
+          loadInboundOrders,
+          showCreateDialog,
+          submitCreate,
+          startCheck,
+          showDetail,
+          showExecuteDialog,
+          getCheckTypeTag,
+          getCheckTypeText,
+          getStatusTag,
+          getStatusText
+        }
+      }
+    })
+
+    app.use(ElementPlus)
+    app.mount('#quality-check-app')
+  })()
+});
+</script>
+
+<style scoped>
+[v-cloak] {
+  display: none;
+}
+
+.quality-check-page {
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.filter-form {
+  margin-bottom: 20px;
+}
+
+.stats-row {
+  margin-bottom: 20px;
+}
+</style>
+{% endblock %}

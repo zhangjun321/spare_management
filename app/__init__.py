@@ -43,12 +43,42 @@ def create_app(config_name=None):
     # 初始化扩展
     init_extensions(app)
     
-    # 初始化 Redis 缓存（非强制）
+    # 初始化缓存服务（优先 Redis，其次 SQLite）
     try:
-        from app.services.cache_service import init_redis
-        init_redis()
+        from app.services.cache_service import init_cache, SQLiteCacheService
+        
+        # 检查是否启用 Redis
+        use_redis = app.config.get('USE_REDIS', True)
+        
+        if use_redis:
+            # 尝试初始化 Redis
+            cache_service = init_cache(app)
+            if cache_service and cache_service.redis_client:
+                app.logger.info('使用 Redis 作为缓存后端')
+            else:
+                # Redis 失败，使用 SQLite
+                raise Exception('Redis 连接失败')
+        else:
+            raise Exception('配置禁用 Redis')
+            
     except Exception as e:
-        print(f"Redis 初始化失败：{e}")
+        # 使用 SQLite 缓存
+        app.logger.warning(f'Redis 初始化失败 ({str(e)})，使用 SQLite 缓存替代')
+        try:
+            sqlite_cache = SQLiteCacheService()
+            sqlite_cache.init_app(app)
+            app.extensions['cache'] = sqlite_cache
+            app.logger.info('SQLite 缓存初始化成功')
+        except Exception as sqlite_error:
+            app.logger.error(f'SQLite 缓存初始化失败：{str(sqlite_error)}')
+    
+    # 初始化定时任务调度器
+    try:
+        from app.scheduler import init_scheduler
+        init_scheduler(app)
+        app.logger.info('定时任务调度器初始化成功')
+    except Exception as e:
+        app.logger.error(f'定时任务调度器初始化失败：{str(e)}')
     
     # 注册蓝图
     register_blueprints(app)
@@ -113,7 +143,7 @@ def create_app(config_name=None):
         # 防止点击劫持
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         # 内容安全策略 - 允许 CDN 资源和内联样式
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self' http://localhost:* http://127.0.0.1:* https://* 'unsafe-inline'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.staticfile.org; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://jsdelivr.net https://unpkg.com https://cdn.staticfile.org; img-src 'self' data: https: blob:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.staticfile.org; connect-src 'self' http://localhost:* http://127.0.0.1:* https://* 'unsafe-inline'"
         # 缓存控制
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
@@ -194,9 +224,13 @@ def register_blueprints(app):
     from app.routes.help import help_bp
     app.register_blueprint(help_bp, url_prefix='/help')
     
-    # API接口管理模块
+    # API 接口管理模块
     from app.routes.api_management import api_bp
     app.register_blueprint(api_bp, url_prefix='/api-docs')
+    
+    # 仓库管理 API 模块（为 React 前端提供完整 CRUD API）
+    from app.routes.api_warehouses import api_warehouses_bp
+    app.register_blueprint(api_warehouses_bp)
     
     # 数据备份模块
     from app.routes.backup import backup_bp
@@ -218,9 +252,12 @@ def register_blueprints(app):
     from app.routes.alerts import alerts_bp
     app.register_blueprint(alerts_bp, url_prefix='/alerts')
     
-    # 高级仓库管理模块
-    from app.routes.warehouses_advanced_routes import warehouses_advanced_bp
-    app.register_blueprint(warehouses_advanced_bp, url_prefix='/warehouses')
+    # ===========================================
+    # 注意：旧的仓库管理模块已屏蔽，等待新模块开发完成
+    # ===========================================
+    # # 高级仓库管理模块
+    # from app.routes.warehouses_advanced_routes import warehouses_advanced_bp
+    # app.register_blueprint(warehouses_advanced_bp, url_prefix='/warehouses')
     
     # 智能仓库管理模块（百度千帆 AI）
     from app.routes.intelligent_warehouse_routes import intelligent_warehouse_bp
@@ -239,6 +276,102 @@ def register_blueprints(app):
     app.register_blueprint(ai_image_bp)
     from app.extensions import csrf
     csrf.exempt(ai_image_bp)
+    
+    # # 仓库管理 V3 模块（旧）- 已屏蔽
+    # from app.routes.warehouse_v3 import warehouse_v3_bp
+    # app.register_blueprint(warehouse_v3_bp)
+    
+    # # 仓库管理 V3 前端页面
+    # from app.routes.warehouse_v3_pages import warehouse_v3_pages_bp
+    # app.register_blueprint(warehouse_v3_pages_bp)
+    # ===========================================
+    
+    # ===========================================
+    # 注意：旧的仓库管理模块已屏蔽，使用 React 版本替代
+    # ===========================================
+    # # 旧的仓库管理模块前端页面 - 已屏蔽
+    # from app.routes.warehouse_new_pages import warehouse_new_pages_bp
+    # app.register_blueprint(warehouse_new_pages_bp)
+    # ===========================================
+    
+    # 新的 React 仓库管理模块（完全独立）
+    from app.routes.react_warehouse import react_warehouse_bp
+    app.register_blueprint(react_warehouse_bp)
+    
+    # 库存盘点 API
+    from app.routes.inventory_check import inventory_check_bp
+    app.register_blueprint(inventory_check_bp)
+    
+    # 库存盘点页面
+    from app.routes.inventory_check_pages import inventory_check_pages_bp
+    app.register_blueprint(inventory_check_pages_bp)
+    
+    # 预警管理 API
+    from app.routes.warning import warning_bp
+    app.register_blueprint(warning_bp)
+    
+    # 预警管理页面
+    from app.routes.warning_pages import warning_pages_bp
+    app.register_blueprint(warning_pages_bp)
+    
+    # 质检管理 API
+    from app.routes.quality_check import quality_check_bp
+    app.register_blueprint(quality_check_bp)
+    
+    # 质检管理页面
+    from app.routes.quality_check_pages import quality_check_pages_bp
+    app.register_blueprint(quality_check_pages_bp)
+    
+    # 库存事务日志 API
+    from app.routes.warehouse_v3.inventory_transaction_log_routes import inventory_transaction_log_bp
+    app.register_blueprint(inventory_transaction_log_bp)
+    
+    # 效期预警 API
+    from app.routes.warehouse_v3.expiry_warning_routes import expiry_warning_bp
+    app.register_blueprint(expiry_warning_bp)
+    
+    # 拣货推荐 API
+    from app.routes.warehouse_v3.picking_recommendation_routes import picking_recommendation_bp
+    app.register_blueprint(picking_recommendation_bp)
+    
+    # 批次谱系 API
+    from app.routes.warehouse_v3.batch_genealogy_routes import batch_genealogy_bp
+    app.register_blueprint(batch_genealogy_bp)
+    
+    # 循环盘点 API
+    from app.routes.warehouse_v3.cycle_count_routes import cycle_count_bp
+    app.register_blueprint(cycle_count_bp)
+    
+    # 波次管理 API
+    from app.routes.warehouse_v3.wave_management_routes import wave_management_bp
+    app.register_blueprint(wave_management_bp)
+    
+    # 库位优化 API
+    from app.routes.warehouse_v3.location_optimization_routes import location_optimization_bp
+    app.register_blueprint(location_optimization_bp)
+    
+    # 任务调度 API
+    from app.routes.warehouse_v3.task_scheduler_routes import task_scheduler_bp
+    app.register_blueprint(task_scheduler_bp)
+    
+    # 路径优化 API
+    from app.routes.warehouse_v3.path_optimization_routes import path_optimization_bp
+    app.register_blueprint(path_optimization_bp)
+    
+    # AI 预测补货 API
+    from app.routes.warehouse_v3.ai_forecast_routes import ai_forecast_bp
+    app.register_blueprint(ai_forecast_bp)
+    
+    # AI 任务分配 API
+    from app.routes.warehouse_v3.ai_task_assignment_routes import ai_task_assignment_bp
+    app.register_blueprint(ai_task_assignment_bp)
+    
+    # 质检管理页面（已存在）
+    # 质检管理 API 已在上面注册（app.routes.quality_check）
+    
+    # 库存并发控制 API
+    from app.routes.warehouse_v3.inventory_concurrency_routes import inventory_concurrency_bp
+    app.register_blueprint(inventory_concurrency_bp)
     
     # API 模块
     from app.routes.api import api_bp

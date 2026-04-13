@@ -4,6 +4,7 @@
 
 from app.models.warehouse import Warehouse
 from app.models.warehouse_location import WarehouseLocation
+from app.models.inventory_record import InventoryRecord
 from app.extensions import db
 
 
@@ -97,6 +98,50 @@ class WarehouseService:
             'active': active,
             'inactive': inactive
         }
+    
+    @staticmethod
+    def get_warehouse_detail_statistics(warehouse_id):
+        """获取仓库详细统计信息"""
+        warehouse = Warehouse.query.get(warehouse_id)
+        if not warehouse:
+            return None
+        
+        # 统计信息
+        stats = {
+            'total_locations': warehouse.locations.count(),
+            'occupied_locations': warehouse.locations.filter(
+                WarehouseLocation.occupied == True
+            ).count(),
+            'total_inventory': warehouse.inventory_records.count(),
+            'total_quantity': db.session.query(
+                db.func.sum(InventoryRecord.quantity)
+            ).filter_by(warehouse_id=warehouse_id).scalar() or 0,
+            'total_value': db.session.query(
+                db.func.sum(InventoryRecord.total_value)
+            ).filter_by(warehouse_id=warehouse_id).scalar() or 0,
+            'inbound_orders': warehouse.inbound_orders.count(),
+            'outbound_orders': warehouse.outbound_orders.count(),
+            'pending_inbound': warehouse.inbound_orders.filter_by(status='pending').count(),
+            'pending_outbound': warehouse.outbound_orders.filter_by(status='pending').count(),
+        }
+        
+        # 利用率计算
+        if stats['total_locations'] > 0:
+            stats['location_utilization'] = round(
+                (stats['occupied_locations'] / stats['total_locations']) * 100, 2
+            )
+        else:
+            stats['location_utilization'] = 0.0
+        
+        # 仓库容量利用率
+        if warehouse.capacity:
+            stats['capacity_utilization'] = round(
+                (stats['total_quantity'] / warehouse.capacity) * 100, 2
+            ) if stats['total_quantity'] else 0.0
+        else:
+            stats['capacity_utilization'] = 0.0
+        
+        return stats
     
     @staticmethod
     def get_total_inventory(warehouse_id):

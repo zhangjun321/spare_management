@@ -25,10 +25,10 @@ class InventoryCheckType(Enum):
     RANDOM = 'random'  # 随机抽盘
 
 
-class InventoryCheck(db.Model):
-    """库存盘点单表"""
+class InventoryCheckLegacy(db.Model):
+    """库存盘点单表（旧版）"""
     
-    __tablename__ = 'inventory_check'
+    __tablename__ = 'inventory_check_legacy'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment='盘点单 ID')
     check_code = db.Column(db.String(50), unique=True, nullable=False, comment='盘点单号')
@@ -77,13 +77,13 @@ class InventoryCheck(db.Model):
         return f'&lt;InventoryCheck {self.check_code}&gt;'
 
 
-class InventoryCheckItem(db.Model):
-    """库存盘点明细表"""
+class InventoryCheckItemLegacy(db.Model):
+    """库存盘点明细表（旧版）"""
     
-    __tablename__ = 'inventory_check_item'
+    __tablename__ = 'inventory_check_item_legacy'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment='明细 ID')
-    inventory_check_id = db.Column(db.Integer, db.ForeignKey('inventory_check.id'), nullable=False, comment='盘点单 ID')
+    inventory_check_id = db.Column(db.Integer, db.ForeignKey('inventory_check_legacy.id'), nullable=False, comment='盘点单 ID')
     
     # 库存信息
     spare_part_id = db.Column(db.Integer, db.ForeignKey('spare_part.id'), nullable=False, comment='备件 ID')

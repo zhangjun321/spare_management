@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试 Vue</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.css">
+</head>
+<body>
+    <div id="app">
+        <h1>测试页面</h1>
+        <p>计数：${ count }</p>
+        <el-button @click="increment">增加</el-button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.full.min.js"></script>
+    
+    <script>
+        const { createApp, ref } = Vue;
+        
+        createApp({
+            delimiters: ['${', '}'],
+            setup() {
+                const count = ref(0);
+                
+                const increment = () => {
+                    count.value++;
+                };
+                
+                return {
+                    count,
+                    increment
+                };
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+</body>
+</html>

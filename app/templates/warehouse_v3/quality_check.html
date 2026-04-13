@@ -1,0 +1,659 @@
+{% extends "base.html" %}
+
+{% block title %}质检管理 - 备件管理系统{% endblock %}
+
+{% block page_title %}质检管理{% endblock %}
+
+{% block content %}
+{% raw %}
+<div id="qualityCheckApp" v-cloak>
+    <!-- Loading 状态 -->
+    <div v-if="!vueLoaded" class="loading-container">
+        <i class="el-icon-loading loading-icon"></i>
+        <div class="loading-text">正在加载质检数据...</div>
+    </div>
+    
+    <!-- 主要内容 -->
+    <div v-else>
+    <!-- 统计卡片 -->
+    <el-row :gutter="20" style="margin-bottom: 20px;">
+        <el-col :span="6">
+            <el-card shadow="hover">
+                <el-statistic title="待质检" :value="stats.pending">
+                    <template v-slot:suffix>
+                        <el-tag type="warning">单</el-tag>
+                    </template>
+                </el-statistic>
+            </el-card>
+        </el-col>
+        <el-col :span="6">
+            <el-card shadow="hover">
+                <el-statistic title="质检中" :value="stats.inspecting">
+                    <template v-slot:suffix>
+                        <el-tag type="primary">单</el-tag>
+                    </template>
+                </el-statistic>
+            </el-card>
+        </el-col>
+        <el-col :span="6">
+            <el-card shadow="hover">
+                <el-statistic title="已完成" :value="stats.completed">
+                    <template v-slot:suffix>
+                        <el-tag type="success">单</el-tag>
+                    </template>
+                </el-statistic>
+            </el-card>
+        </el-col>
+        <el-col :span="6">
+            <el-card shadow="hover">
+                <el-statistic title="平均合格率" :value="stats.avg_pass_rate" :precision="2" suffix="%" />
+            </el-card>
+        </el-col>
+    </el-row>
+
+    <!-- 筛选条件 -->
+    <el-card style="margin-bottom: 20px;">
+        <el-form :inline="true" :model="filters">
+            <el-form-item label="状态">
+                <el-select v-model="filters.status" placeholder="全部状态" clearable>
+                    <el-option label="待质检" value="pending" />
+                    <el-option label="质检中" value="inspecting" />
+                    <el-option label="已完成" value="completed" />
+                    <el-option label="已批准" value="approved" />
+                    <el-option label="已拒绝" value="rejected" />
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="loadChecks">查询</el-button>
+                <el-button @click="resetFilters">重置</el-button>
+            </el-form-item>
+        </el-form>
+    </el-card>
+
+    <!-- 质检单列表 -->
+    <el-card>
+        <template v-slot:header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>质检单列表</span>
+                <el-button type="primary" @click="showCreateDialog">
+                    <i class="fas fa-plus"></i> 创建质检单
+                </el-button>
+            </div>
+        </template>
+
+        <el-table :data="checks" v-loading="loading" style="width: 100%">
+            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="check_no" label="质检单号" width="200" />
+            <el-table-column prop="inbound_order_no" label="入库单号" width="180" />
+            <el-table-column prop="check_type" label="质检类型" width="120">
+                <template v-slot="scope">
+                    <el-tag>{{ getCheckTypeText(scope.row.check_type || '') }}</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="inspection_type" label="检验方式" width="100">
+                <template v-slot="scope">
+                    <el-tag :type="scope.row.inspection_type === 'full' ? 'danger' : 'warning'">
+                        <span v-if="scope.row.inspection_type === 'full'">全检</span>
+                        <span v-else>抽检</span>
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
+                <template v-slot="scope">
+                    <el-tag :type="getStatusTag(scope.row.status || '')">
+                        {{ getStatusText(scope.row.status || '') }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="pass_rate" label="合格率" width="100" align="right">
+                <template v-slot="scope">
+                    <span v-if="scope.row.pass_rate !== null && scope.row.pass_rate !== undefined">{{ scope.row.pass_rate.toFixed(2) }}%</span>
+                    <span v-else>-</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="result" label="结果" width="100">
+                <template v-slot="scope">
+                    <el-tag :type="getResultTag(scope.row.result)" v-if="scope.row.result">
+                        {{ getResultText(scope.row.result) }}
+                    </el-tag>
+                    <span v-else>-</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="created_at" label="创建时间" width="180" />
+            <el-table-column label="操作" width="380" fixed="right">
+                <template v-slot="scope">
+                    <el-button size="small" @click="showCheckDetail(scope.row)">详情</el-button>
+                    <el-button 
+                        v-if="scope.row.status === 'pending'" 
+                        size="small" 
+                        type="primary" 
+                        @click="startInspection(scope.row)"
+                    >
+                        开始质检
+                    </el-button>
+                    <el-button 
+                        v-if="scope.row.status === 'inspecting'" 
+                        size="small" 
+                        type="success" 
+                        @click="submitResult(scope.row)"
+                    >
+                        提交结果
+                    </el-button>
+                    <el-button 
+                        v-if="scope.row.status === 'completed'" 
+                        size="small" 
+                        type="warning" 
+                        @click="approveCheck(scope.row, true)"
+                    >
+                        批准
+                    </el-button>
+                    <el-button 
+                        v-if="scope.row.status === 'completed'" 
+                        size="small" 
+                        type="danger" 
+                        @click="approveCheck(scope.row, false)"
+                    >
+                        拒绝
+                    </el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-card>
+
+    <!-- 创建质检单对话框 -->
+    <el-dialog v-model="dialogs.create.visible" title="创建质检单" width="600px">
+        <el-form :model="dialogs.create.form" label-width="120px">
+            <el-form-item label="入库单" required>
+                <el-select 
+                    v-model="dialogs.create.form.inbound_order_id" 
+                    placeholder="请选择入库单"
+                    filterable
+                    style="width: 100%"
+                >
+                    <el-option
+                        v-for="order in pendingInboundOrders"
+                        :key="order.id"
+                        :label="order.order_no"
+                        :value="order.id"
+                    >
+                        {{ order.order_no }} - {{ order.supplier_name }}
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="质检类型">
+                <el-select v-model="dialogs.create.form.check_type" style="width: 100%">
+                    <el-option label="来料检验" value="inbound" />
+                    <el-option label="过程检验" value="process" />
+                    <el-option label="最终检验" value="final" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="检验方式">
+                <el-radio-group v-model="dialogs.create.form.inspection_type">
+                    <el-radio label="full">全检</el-radio>
+                    <el-radio label="sampling">抽检</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="备注">
+                <el-input 
+                    v-model="dialogs.create.form.remark" 
+                    type="textarea" 
+                    :rows="3"
+                    placeholder="请输入备注"
+                />
+            </el-form-item>
+        </el-form>
+        <template v-slot:footer>
+            <el-button @click="dialogs.create.visible = false">取消</el-button>
+            <el-button type="primary" @click="createQualityCheck">创建</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- 质检详情对话框 -->
+    <el-dialog v-model="dialogs.detail.visible" title="质检单详情" width="900px">
+        <el-descriptions :column="2" border>
+            <el-descriptions-item label="质检单号">{{ currentCheck.check_no }}</el-descriptions-item>
+            <el-descriptions-item label="入库单号">{{ currentCheck.inbound_order_no }}</el-descriptions-item>
+            <el-descriptions-item label="质检类型">{{ getCheckTypeText(currentCheck.check_type) }}</el-descriptions-item>
+            <el-descriptions-item label="检验方式">
+                <span v-if="currentCheck.inspection_type === 'full'">全检</span>
+                <span v-else>抽检</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="状态">
+                <el-tag :type="getStatusTag(currentCheck.status)">
+                    {{ getStatusText(currentCheck.status) }}
+                </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="合格率" v-if="currentCheck.pass_rate !== null">
+                {{ currentCheck.pass_rate.toFixed(2) }}%
+            </el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ currentCheck.created_at }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-divider>质检项目</el-divider>
+
+        <el-table :data="currentCheckItems" style="width: 100%">
+            <el-table-column prop="part_no" label="备件编号" width="150" />
+            <el-table-column prop="part_name" label="备件名称" width="200" />
+            <el-table-column prop="expected_quantity" label="应检数量" width="100" align="right" />
+            <el-table-column prop="checked_quantity" label="实检数量" width="100" align="right" />
+            <el-table-column prop="qualified_quantity" label="合格数量" width="100" align="right" />
+            <el-table-column prop="unqualified_quantity" label="不合格数量" width="100" align="right" />
+            <el-table-column prop="pass_rate" label="合格率" width="100" align="right">
+                <template v-slot="scope">
+                    <span v-if="scope.row.pass_rate !== null && scope.row.pass_rate !== undefined">{{ scope.row.pass_rate.toFixed(2) }}%</span>
+                    <span v-else>-</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" />
+        </el-table>
+    </el-dialog>
+
+    <!-- 提交质检结果对话框 -->
+    <el-dialog v-model="dialogs.submitResult.visible" title="提交质检结果" width="800px">
+        <el-table :data="dialogs.submitResult.items">
+            <el-table-column label="备件信息">
+                <template v-slot="scope">
+                    {{ scope.row.part_no }} - {{ scope.row.part_name }}
+                </template>
+            </el-table-column>
+            <el-table-column label="应检数量" width="100" align="right">
+                <template v-slot="scope">
+                    {{ scope.row.expected_quantity }}
+                </template>
+            </el-table-column>
+            <el-table-column label="实检数量" width="120">
+                <template v-slot="scope">
+                    <el-input-number 
+                        v-model="scope.row.checked_quantity" 
+                        :min="0" 
+                        :max="scope.row.expected_quantity"
+                        @change="calculatePassRate(scope.row)"
+                    />
+                </template>
+            </el-table-column>
+            <el-table-column label="合格数量" width="120">
+                <template v-slot="scope">
+                    <el-input-number 
+                        v-model="scope.row.qualified_quantity" 
+                        :min="0" 
+                        :max="scope.row.checked_quantity"
+                        @change="calculatePassRate(scope.row)"
+                    />
+                </template>
+            </el-table-column>
+            <el-table-column label="不合格数量" width="120">
+                <template v-slot="scope">
+                    <el-input-number 
+                        v-model="scope.row.unqualified_quantity" 
+                        :min="0" 
+                        :max="scope.row.checked_quantity"
+                        disabled
+                    />
+                </template>
+            </el-table-column>
+            <el-table-column prop="pass_rate" label="合格率" width="100" align="right">
+                <template v-slot="scope">
+                    <span v-if="scope.row.pass_rate !== null && scope.row.pass_rate !== undefined">{{ scope.row.pass_rate.toFixed(2) }}%</span>
+                    <span v-else>-</span>
+                </template>
+            </el-table-column>
+            <el-table-column label="备注">
+                <template v-slot="scope">
+                    <el-input v-model="scope.row.remark" placeholder="不合格原因" />
+                </template>
+            </el-table-column>
+        </el-table>
+        <template v-slot:footer>
+            <el-button @click="dialogs.submitResult.visible = false">取消</el-button>
+            <el-button type="primary" @click="submitInspectionResult">提交</el-button>
+        </template>
+    </el-dialog>
+</div>
+
+<style>
+[v-cloak] {
+    display: none;
+}
+
+/* 加载动画优化 */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px;
+}
+
+.loading-icon {
+    font-size: 48px;
+    color: #409EFF;
+    animation: rotating 2s linear infinite;
+}
+
+.loading-text {
+    margin-top: 20px;
+    color: #909399;
+    font-size: 14px;
+}
+
+@keyframes rotating {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
+
+<script>
+// 等待 DOM 加载完成后再初始化 Vue
+document.addEventListener('DOMContentLoaded', function() {
+    const { createApp } = Vue;
+    
+    createApp({
+        data() {
+        return {
+            vueLoaded: false,  // Vue 加载标志
+            loading: false,
+                checks: [],
+                pendingInboundOrders: [],
+                stats: {
+                    pending: 0,
+                    inspecting: 0,
+                    completed: 0,
+                    avg_pass_rate: 0
+                },
+                filters: {
+                    status: '',
+                },
+                currentCheck: {},
+                currentCheckItems: [],
+                dialogs: {
+                    create: {
+                        visible: false,
+                        form: {
+                            inbound_order_id: null,
+                            check_type: 'inbound',
+                            inspection_type: 'sampling',
+                            sample_ratio: 10,
+                            remark: ''
+                        }
+                    },
+                    detail: {
+                        visible: false
+                    },
+                    submitResult: {
+                        visible: false,
+                        items: []
+                    }
+                }
+            };
+        },
+        mounted() {
+            // 并行加载所有数据，提升加载速度
+            Promise.all([
+                this.loadChecks(),
+                this.loadStats(),
+                this.loadPendingInboundOrders()
+            ]).then(() => {
+                this.vueLoaded = true;  // 所有数据加载完成后标记 Vue 已加载
+            }).catch(error => {
+                console.error('加载数据失败:', error);
+                this.vueLoaded = true;  // 即使失败也显示页面
+            });
+        },
+        methods: {
+        async loadChecks() {
+            try {
+                const params = new URLSearchParams();
+                if (this.filters.status) {
+                    params.append('status', this.filters.status);
+                }
+                
+                const response = await fetch(`/api/quality-check/checks?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.checks = data.data.list || [];
+                } else {
+                    this.$message.error(data.message);
+                }
+            } catch (error) {
+                this.$message.error('加载质检单失败：' + error.message);
+            }
+        },
+        async loadStats() {
+            try {
+                const response = await fetch('/api/quality-check/statistics');
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.stats = data.data;
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        },
+        async loadPendingInboundOrders() {
+            try {
+                const response = await fetch('/api/inbound-orders?status=pending');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const list = data.data.list || data.data || [];
+                    this.pendingInboundOrders = Array.isArray(list) ? list.filter(order => !order.has_quality_check) : [];
+                }
+            } catch (error) {
+                // 入库单加载失败不影响主页面显示
+                console.warn('加载入库单失败，使用空列表:', error);
+                this.pendingInboundOrders = [];
+            }
+        },
+        showCreateDialog() {
+            this.dialogs.create.visible = true;
+        },
+        async createQualityCheck() {
+            if (!this.dialogs.create.form.inbound_order_id) {
+                this.$message.warning('请选择入库单');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/quality-check/checks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(this.dialogs.create.form)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.$message.success('质检单创建成功');
+                    this.dialogs.create.visible = false;
+                    this.loadChecks();
+                    this.loadStats();
+                } else {
+                    this.$message.error(data.message);
+                }
+            } catch (error) {
+                this.$message.error('创建失败：' + error.message);
+            }
+        },
+        async startInspection(check) {
+            try {
+                const response = await fetch(`/api/quality-check/checks/${check.id}/start`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.$message.success('质检已开始');
+                    this.loadChecks();
+                } else {
+                    this.$message.error(data.message);
+                }
+            } catch (error) {
+                this.$message.error('开始质检失败：' + error.message);
+            }
+        },
+        async showCheckDetail(check) {
+            try {
+                const response = await fetch(`/api/quality-check/checks/${check.id}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.currentCheck = data.data;
+                    this.currentCheckItems = data.data.items || [];
+                    this.dialogs.detail.visible = true;
+                }
+            } catch (error) {
+                this.$message.error('加载详情失败：' + error.message);
+            }
+        },
+        async submitResult(check) {
+            try {
+                const response = await fetch(`/api/quality-check/v3/checks/${check.id}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.dialogs.submitResult.items = (data.data.items || []).map(item => ({
+                        ...item,
+                        checked_quantity: item.expected_quantity || 0,
+                        qualified_quantity: item.expected_quantity || 0,
+                        unqualified_quantity: 0,
+                        pass_rate: 100,
+                        remark: ''
+                    }));
+                    this.currentCheck = check;
+                    this.dialogs.submitResult.visible = true;
+                }
+            } catch (error) {
+                this.$message.error('加载质检项目失败：' + error.message);
+            }
+        },
+        calculatePassRate(item) {
+            item.unqualified_quantity = item.checked_quantity - item.qualified_quantity;
+            
+            if (item.checked_quantity > 0) {
+                item.pass_rate = (item.qualified_quantity / item.checked_quantity) * 100;
+            } else {
+                item.pass_rate = 0;
+            }
+        },
+        async submitInspectionResult() {
+            const items = this.dialogs.submitResult.items.map(item => ({
+                id: item.id,
+                checked_quantity: item.checked_quantity,
+                qualified_quantity: item.qualified_quantity,
+                unqualified_quantity: item.unqualified_quantity,
+                pass_rate: item.pass_rate,
+                remark: item.remark
+            }));
+
+            try {
+                const response = await fetch(`/api/quality-check/checks/${this.currentCheck.id}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ items })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.$message.success('质检结果提交成功');
+                    this.dialogs.submitResult.visible = false;
+                    this.loadChecks();
+                    this.loadStats();
+                } else {
+                    this.$message.error(data.message);
+                }
+            } catch (error) {
+                this.$message.error('提交失败：' + error.message);
+            }
+        },
+        async approveCheck(check, approved) {
+            const action = approved ? '批准' : '拒绝';
+            try {
+                const response = await fetch(`/api/quality-check/checks/${check.id}/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ approved })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.$message.success(`质检单已${action}`);
+                    this.loadChecks();
+                    this.loadStats();
+                } else {
+                    this.$message.error(data.message);
+                }
+            } catch (error) {
+                this.$message.error('操作失败：' + error.message);
+            }
+        },
+        resetFilters() {
+            this.filters.status = '';
+            this.loadChecks();
+        },
+        getCheckTypeText(type) {
+            const map = {
+                'inbound': '来料检验',
+                'process': '过程检验',
+                'final': '最终检验'
+            };
+            return map[type] || type;
+        },
+        getStatusTag(status) {
+            const map = {
+                'pending': 'warning',
+                'inspecting': 'primary',
+                'completed': 'success',
+                'approved': 'success',
+                'rejected': 'danger',
+                'cancelled': 'info'
+            };
+            return map[status] || 'info';
+        },
+        getStatusText(status) {
+            const map = {
+                'pending': '待质检',
+                'inspecting': '质检中',
+                'completed': '已完成',
+                'approved': '已批准',
+                'rejected': '已拒绝',
+                'cancelled': '已取消'
+            };
+            return map[status] || status;
+        },
+        getResultTag(result) {
+            const map = {
+                'pass': 'success',
+                'conditional_pass': 'warning',
+                'fail': 'danger'
+            };
+            return map[result] || 'info';
+        },
+        getResultText(result) {
+            const map = {
+                'pass': '合格',
+                'conditional_pass': '条件接收',
+                'fail': '不合格'
+            };
+            return map[result] || result;
+        }
+    }
+    }).use(ElementPlus).mount('#qualityCheckApp');
+    
+    console.log('质检管理 Vue 应用已初始化');
+    console.log('Vue 版本:', Vue.version);
+    console.log('ElementPlus 版本:', ElementPlus.version);
+});
+</script>
+{% endraw %}
+{% endblock %}

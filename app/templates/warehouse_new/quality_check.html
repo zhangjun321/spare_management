@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% raw %}
+<template>
+  <div class="quality-check">
+    <el-card class="box-card">
+      <template #header>
+        <div class="card-header">
+          <span>质检管理</span>
+          <el-button type="primary" @click="showCreateDialog">创建质检单</el-button>
+        </div>
+      </template>
+
+      <!-- 统计信息 -->
+      <el-row :gutter="20" style="margin-bottom: 20px;">
+        <el-col :span="6">
+          <el-statistic title="待质检" :value="stats.pending">
+            <template #suffix>
+              <el-tag type="warning">单</el-tag>
+            </template>
+          </el-statistic>
+        </el-col>
+        <el-col :span="6">
+          <el-statistic title="质检中" :value="stats.inspecting">
+            <template #suffix>
+              <el-tag type="primary">单</el-tag>
+            </template>
+          </el-statistic>
+        </el-col>
+        <el-col :span="6">
+          <el-statistic title="已完成" :value="stats.completed">
+            <template #suffix>
+              <el-tag type="success">单</el-tag>
+            </template>
+          </el-statistic>
+        </el-col>
+        <el-col :span="6">
+          <el-statistic title="合格率" :value="stats.pass_rate" :precision="2">
+            <template #suffix>%</template>
+          </el-statistic>
+        </el-col>
+      </el-row>
+
+      <!-- 质检单列表 -->
+      <el-table :data="checks" style="width: 100%" v-loading="loading">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="check_no" label="质检单号" width="200" />
+        <el-table-column prop="check_type" label="质检类型" width="120" />
+        <el-table-column prop="check_method" label="质检方式" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.check_method === 'full' ? 'danger' : ''">
+              {{ row.check_method === 'full' ? '全检' : '抽检' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTag(row.status)">
+              {{ getStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sample_ratio" label="抽检比例" width="100">
+          <template #default="{ row }">
+            {{ (row.sample_ratio * 100).toFixed(0) }}%
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="180" />
+        <el-table-column label="操作" width="300" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="showCheckDetail(row)">详情</el-button>
+            <el-button 
+              v-if="row.status === 'pending'" 
+              size="small" 
+              type="primary" 
+              @click="startCheck(row)"
+            >
+              开始质检
+            </el-button>
+            <el-button 
+              v-if="row.status === 'inspecting'" 
+              size="small" 
+              type="success" 
+              @click="completeCheck(row)"
+            >
+              完成质检
+            </el-button>
+            <el-button 
+              v-if="row.status !== 'completed' && row.status !== 'cancelled'" 
+              size="small" 
+              type="danger" 
+              @click="cancelCheck(row)"
+            >
+              取消
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-pagination
+        v-model:current-page="pagination.page"
+        v-model:page-size="pagination.per_page"
+        :total="pagination.total"
+        @current-change="loadChecks"
+        layout="total, prev, pager, next"
+        style="margin-top: 20px; justify-content: flex-end;"
+      />
+    </el-card>
+
+    <!-- 创建质检单对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      title="创建质检单"
+      width="600px"
+    >
+      <el-form :model="checkForm" :rules="rules" ref="checkFormRef" label-width="120px">
+        <el-form-item label="入库单" prop="inbound_order_id">
+          <el-select 
+            v-model="checkForm.inbound_order_id" 
+            placeholder="请选择入库单" 
+            style="width: 100%;"
+            @change="onInboundOrderChange"
+          >
+            <el-option
+              v-for="order in inboundOrders"
+              :key="order.id"
+              :label="`入库单号：${order.inbound_no}`"
+              :value="order.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="质检类型" prop="check_type">
+          <el-select v-model="checkForm.check_type" placeholder="请选择质检类型" style="width: 100%;">
+            <el-option label="入库质检" value="inbound" />
+            <el-option label="退货质检" value="return" />
+            <el-option label="在库质检" value="inventory" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="质检方式" prop="check_method">
+          <el-radio-group v-model="checkForm.check_method">
+            <el-radio label="sampling">抽检</el-radio>
+            <el-radio label="full">全检</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="抽检比例" prop="sample_ratio" v-if="checkForm.check_method === 'sampling'">
+          <el-slider v-model="checkForm.sample_ratio" :min="0" :max="1" :step="0.1" show-input />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="checkForm.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitCheckForm" :loading="submitting">
+          确定
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 质检详情对话框 -->
+    <el-dialog
+      v-model="detailVisible"
+      :title="`质检单详情 - ${currentCheck.check_no}`"
+      width="900px"
+    >
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="质检单号">{{ currentCheck.check_no }}</el-descriptions-item>
+        <el-descriptions-item label="质检类型">{{ currentCheck.check_type }}</el-descriptions-item>
+        <el-descriptions-item label="质检方式">{{ currentCheck.check_method === 'full' ? '全检' : '抽检' }}</el-descriptions-item>
+        <el-descriptions-item label="抽检比例">{{ (currentCheck.sample_ratio * 100).toFixed(0) }}%</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusTag(currentCheck.status)">
+            {{ getStatusText(currentCheck.status) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ currentCheck.created_at }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">{{ currentCheck.remark || '-' }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider>质检明细</el-divider>
+
+      <el-table :data="checkItems" style="width: 100%">
+        <el-table-column prop="part_name" label="备件名称" />
+        <el-table-column prop="specification" label="规格型号" />
+        <el-table-column prop="expected_quantity" label="应检数量" width="100" />
+        <el-table-column prop="checked_quantity" label="实检数量" width="100" />
+        <el-table-column prop="qualified_quantity" label="合格数量" width="100">
+          <template #default="{ row }">
+            <span style="color: #67C23A;">{{ row.qualified_quantity }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="unqualified_quantity" label="不合格数量" width="100">
+          <template #default="{ row }">
+            <span style="color: #F56C6C;">{{ row.unqualified_quantity }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="unit" label="单位" width="80" />
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="showItemDetail(row)">录入结果</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <!-- 录入质检结果对话框 -->
+    <el-dialog
+      v-model="itemDetailVisible"
+      title="录入质检结果"
+      width="500px"
+    >
+      <el-form :model="itemForm" label-width="120px">
+        <el-form-item label="备件名称">
+          <span>{{ currentItem.part_name }}</span>
+        </el-form-item>
+        <el-form-item label="规格型号">
+          <span>{{ currentItem.specification }}</span>
+        </el-form-item>
+        <el-form-item label="应检数量">
+          <span>{{ currentItem.expected_quantity }} {{ currentItem.unit }}</span>
+        </el-form-item>
+        <el-form-item label="实检数量" required>
+          <el-input-number v-model="itemForm.checked_quantity" :min="0" :max="currentItem.expected_quantity" />
+        </el-form-item>
+        <el-form-item label="合格数量" required>
+          <el-input-number v-model="itemForm.qualified_quantity" :min="0" :max="itemForm.checked_quantity" />
+        </el-form-item>
+        <el-form-item label="不合格数量" required>
+          <el-input-number v-model="itemForm.unqualified_quantity" :min="0" :max="itemForm.checked_quantity" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="itemForm.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="itemDetailVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitItemResult" :loading="submitting">
+          提交
+        </el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+const loading = ref(false)
+const submitting = ref(false)
+const dialogVisible = ref(false)
+const detailVisible = ref(false)
+const itemDetailVisible = ref(false)
+const checkFormRef = ref(null)
+
+const checks = ref([])
+const inboundOrders = ref([])
+const checkItems = ref([])
+const currentCheck = reactive({})
+const currentItem = reactive({})
+
+const stats = reactive({
+  pending: 0,
+  inspecting: 0,
+  completed: 0,
+  pass_rate: 0
+})
+
+const pagination = reactive({
+  page: 1,
+  per_page: 20,
+  total: 0
+})
+
+const checkForm = reactive({
+  inbound_order_id: null,
+  check_type: 'inbound',
+  check_method: 'sampling',
+  sample_ratio: 0.1,
+  remark: ''
+})
+
+const itemForm = reactive({
+  checked_quantity: 0,
+  qualified_quantity: 0,
+  unqualified_quantity: 0,
+  remark: ''
+})
+
+const rules = {
+  inbound_order_id: [{ required: true, message: '请选择入库单', trigger: 'change' }],
+  check_type: [{ required: true, message: '请选择质检类型', trigger: 'change' }]
+}
+
+// 加载质检单列表
+const loadChecks = async () => {
+  loading.value = true
+  try {
+    const response = await fetch(`/api/quality-check/checks?page=${pagination.page}&per_page=${pagination.per_page}`)
+    const result = await response.json()
+    if (result.success) {
+      checks.value = result.data.list
+      pagination.total = result.data.total
+    } else {
+      ElMessage.error(result.message)
+    }
+  } catch (error) {
+    ElMessage.error('加载质检单失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 加载统计信息
+const loadStats = async () => {
+  try {
+    const response = await fetch('/api/quality-check/stats')
+    const result = await response.json()
+    if (result.success) {
+      Object.assign(stats, result.data)
+    }
+  } catch (error) {
+    console.error('加载统计信息失败', error)
+  }
+}
+
+// 加载入库单列表
+const loadInboundOrders = async () => {
+  try {
+    const response = await fetch('/api/inventory/inbound-orders?status=completed')
+    const result = await response.json()
+    if (result.success) {
+      inboundOrders.value = result.data.list || []
+    }
+  } catch (error) {
+    console.error('加载入库单失败', error)
+  }
+}
+
+// 显示创建对话框
+const showCreateDialog = () => {
+  Object.assign(checkForm, {
+    inbound_order_id: null,
+    check_type: 'inbound',
+    check_method: 'sampling',
+    sample_ratio: 0.1,
+    remark: ''
+  })
+  dialogVisible.value = true
+}
+
+// 提交质检单
+const submitCheckForm = async () => {
+  if (!checkFormRef.value) return
+  
+  await checkFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    submitting.value = true
+    try {
+      const response = await fetch('/api/quality-check/checks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(checkForm)
+      })
+      
+      const result = await response.json()
+      if (result.success) {
+        ElMessage.success('创建成功')
+        dialogVisible.value = false
+        loadChecks()
+      } else {
+        ElMessage.error(result.message)
+      }
+    } catch (error) {
+      ElMessage.error('创建失败')
+    } finally {
+      submitting.value = false
+    }
+  })
+}
+
+// 显示质检详情
+const showCheckDetail = async (row) => {
+  Object.assign(currentCheck, row)
+  try {
+    const response = await fetch(`/api/quality-check/checks/${row.id}/items`)
+    const result = await response.json()
+    if (result.success) {
+      checkItems.value = result.data
+      detailVisible.value = true
+    } else {
+      ElMessage.error(result.message)
+    }
+  } catch (error) {
+    ElMessage.error('加载明细失败')
+  }
+}
+
+// 开始质检
+const startCheck = async (row) => {
+  try {
+    const response = await fetch(`/api/quality-check/checks/${row.id}/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ started_by: 'current_user' })
+    })
+    
+    const result = await response.json()
+    if (result.success) {
+      ElMessage.success('质检已开始')
+      loadChecks()
+    } else {
+      ElMessage.error(result.message)
+    }
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+// 完成质检
+const completeCheck = async (row) => {
+  ElMessageBox.confirm('确定要完成该质检单吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const response = await fetch(`/api/quality-check/checks/${row.id}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ completed_by: 'current_user' })
+      })
+      
+      const result = await response.json()
+      if (result.success) {
+        ElMessage.success('质检已完成')
+        loadChecks()
+      } else {
+        ElMessage.error(result.message)
+      }
+    } catch (error) {
+      ElMessage.error('操作失败')
+    }
+  })
+}
+
+// 取消质检
+const cancelCheck = async (row) => {
+  ElMessageBox.confirm('确定要取消该质检单吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const response = await fetch(`/api/quality-check/checks/${row.id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ cancelled_by: 'current_user' })
+      })
+      
+      const result = await response.json()
+      if (result.success) {
+        ElMessage.success('质检已取消')
+        loadChecks()
+      } else {
+        ElMessage.error(result.message)
+      }
+    } catch (error) {
+      ElMessage.error('操作失败')
+    }
+  })
+}
+
+// 显示明细详情
+const showItemDetail = (row) => {
+  Object.assign(currentItem, row)
+  Object.assign(itemForm, {
+    checked_quantity: row.checked_quantity || 0,
+    qualified_quantity: row.qualified_quantity || 0,
+    unqualified_quantity: row.unqualified_quantity || 0,
+    remark: row.remark || ''
+  })
+  itemDetailVisible.value = true
+}
+
+// 提交质检结果
+const submitItemResult = async () => {
+  submitting.value = true
+  try {
+    const response = await fetch(`/api/quality-check/checks/${currentCheck.id}/items/${currentItem.id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(itemForm)
+    })
+    
+    const result = await response.json()
+    if (result.success) {
+      ElMessage.success('提交成功')
+      itemDetailVisible.value = false
+      showCheckDetail(currentCheck)
+    } else {
+      ElMessage.error(result.message)
+    }
+  } catch (error) {
+    ElMessage.error('提交失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 工具函数
+const getStatusTag = (status) => {
+  const tagMap = {
+    pending: 'warning',
+    inspecting: 'primary',
+    completed: 'success',
+    cancelled: 'info'
+  }
+  return tagMap[status] || ''
+}
+
+const getStatusText = (status) => {
+  const textMap = {
+    pending: '待质检',
+    inspecting: '质检中',
+    completed: '已完成',
+    cancelled: '已取消'
+  }
+  return textMap[status] || status
+}
+
+onMounted(() => {
+  loadChecks()
+  loadStats()
+  loadInboundOrders()
+})
+</script>
+
+<style scoped>
+.quality-check {
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
+{% endraw %}
+{% endblock %}

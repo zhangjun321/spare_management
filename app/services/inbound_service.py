@@ -7,9 +7,9 @@ import json
 from datetime import datetime
 from flask import current_app
 from app.extensions import db
-from app.models.inventory import (
-    InboundOrder, InboundOrderItem, InventoryRecord, OperationLog
-)
+from app.models.inventory_record import InventoryRecord
+from app.models.inbound_outbound import InboundOrder
+from app.models.inventory import InboundOrderItem, OperationLog
 from app.models.warehouse import Warehouse
 from app.models.warehouse_location import WarehouseLocation as StorageLocation
 from app.models.spare_part import SparePart

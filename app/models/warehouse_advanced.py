@@ -90,10 +90,10 @@ class WarehouseRack(db.Model):
         return f'<WarehouseRack {self.rack_code}>'
 
 
-class InventoryCheck(db.Model):
-    """库存盘点单表"""
+class InventoryCheckAdvanced(db.Model):
+    """库存盘点单表（高级版）"""
     
-    __tablename__ = 'inventory_check'
+    __tablename__ = 'inventory_check_advanced'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     check_code = db.Column(db.String(50), unique=True, nullable=False)
@@ -130,13 +130,13 @@ class InventoryCheck(db.Model):
         return f'<InventoryCheck {self.check_code}>'
 
 
-class InventoryCheckItem(db.Model):
-    """库存盘点明细表"""
+class InventoryCheckItemAdvanced(db.Model):
+    """库存盘点明细表（高级版）"""
     
-    __tablename__ = 'inventory_check_item'
+    __tablename__ = 'inventory_check_item_advanced'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    inventory_check_id = db.Column(db.Integer, db.ForeignKey('inventory_check.id'), nullable=False)
+    inventory_check_id = db.Column(db.Integer, db.ForeignKey('inventory_check_advanced.id'), nullable=False)
     
     spare_part_id = db.Column(db.Integer, db.ForeignKey('spare_part.id'), nullable=False)
     batch_id = db.Column(db.Integer, db.ForeignKey('batch.id'), nullable=True)
@@ -163,7 +163,7 @@ class InventoryCheckItem(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    inventory_check = db.relationship('InventoryCheck', foreign_keys=[inventory_check_id])
+    inventory_check = db.relationship('InventoryCheckAdvanced', foreign_keys=[inventory_check_id])
     spare_part = db.relationship('SparePart', foreign_keys=[spare_part_id])
     
     def __repr__(self):

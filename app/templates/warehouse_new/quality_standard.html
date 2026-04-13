@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}质检标准管理 - 仓库管理系统{% endblock %}
+
+{% block page_title %}质检标准管理{% endblock %}
+
+{% block content %}
+<div class="quality-standard-page" id="quality-standard-app" v-cloak>
+  <el-card class="box-card">
+    <div class="card-header">
+      <span>质检标准管理</span>
+      <el-button type="primary" @click="showCreateDialog">新增标准</el-button>
+    </div>
+
+    <!-- 筛选条件 -->
+    <el-form :inline="true" :model="filters" class="filter-form">
+      <el-form-item label="备件编码">
+        <el-input v-model="filters.part_code" placeholder="请输入备件编码" clearable style="width: 200px;"></el-input>
+      </el-form-item>
+      <el-form-item label="启用状态">
+        <el-select v-model="filters.is_active" placeholder="全部状态" clearable style="width: 120px;">
+          <el-option label="启用" :value="true"></el-option>
+          <el-option label="禁用" :value="false"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="loadStandards">查询</el-button>
+        <el-button @click="resetFilters">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-table :data="standards" v-loading="loading" style="width: 100%">
+      <el-table-column prop="id" label="ID" width="80"></el-table-column>
+      <el-table-column prop="part_code" label="备件编码" width="150"></el-table-column>
+      <el-table-column prop="part_name" label="备件名称" width="200"></el-table-column>
+      <el-table-column prop="check_item" label="检验项目" width="150"></el-table-column>
+      <el-table-column prop="check_method" label="检验方法" width="120"></el-table-column>
+      <el-table-column prop="standard_value" label="标准值" width="150" show-overflow-tooltip></el-table-column>
+      <el-table-column label="标准范围" width="180">
+        <template v-slot:default="scope">
+          <span v-if="scope.row.min_value || scope.row.max_value">
+            <span v-text="scope.row.min_value || '无下限'"></span> ~ <span v-text="scope.row.max_value || '无上限'"></span> <span v-text="scope.row.unit"></span>
+          </span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="severity_level" label="严重程度" width="100">
+        <template v-slot:default="scope">
+          <el-tag :type="getSeverityTag(scope.row.severity_level)">
+            <span v-text="getSeverityText(scope.row.severity_level)"></span>
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="is_active" label="状态" width="80">
+        <template v-slot:default="scope">
+          <el-tag :type="scope.row.is_active ? 'success' : 'info'">
+            <span v-if="scope.row.is_active">启用</span>
+            <span v-else>禁用</span>
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="created_at" label="创建时间" width="160"></el-table-column>
+      <el-table-column label="操作" width="180" fixed="right">
+        <template v-slot:default="scope">
+          <el-button size="small" @click="showEditDialog(scope.row)">编辑</el-button>
+          <el-button size="small" type="danger" @click="deleteStandard(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      v-model:current-page="pagination.page"
+      v-model:page-size="pagination.per_page"
+      :total="pagination.total"
+      @current-change="loadStandards"
+      layout="total, prev, pager, next"
+      style="margin-top: 20px; justify-content: flex-end;">
+    </el-pagination>
+  </el-card>
+
+  <!-- 创建/编辑对话框 -->
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogMode === 'create' ? '新增质检标准' : '编辑质检标准'"
+    width="600px">
+    <el-form :model="standardForm" :rules="rules" ref="standardFormRef" label-width="120px">
+      <el-form-item label="备件" prop="part_id">
+        <el-select 
+          v-model="standardForm.part_id" 
+          placeholder="请选择备件" 
+          style="width: 100%;"
+          filterable
+          @change="onPartChange">
+          <el-option
+            v-for="part in spareParts"
+            :key="part.id"
+            :label="part.code + ' - ' + part.name"
+            :value="part.id">
+          </el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="检验项目" prop="check_item">
+        <el-input v-model="standardForm.check_item" placeholder="例如：外观检查、尺寸检测"></el-input>
+      </el-form-item>
+      <el-form-item label="检验方法" prop="check_method">
+        <el-select v-model="standardForm.check_method" placeholder="请选择检验方法" style="width: 100%;">
+          <el-option label="目视检查" value="visual"></el-option>
+          <el-option label="测量" value="measurement"></el-option>
+          <el-option label="测试" value="test"></el-option>
+          <el-option label="试验" value="experiment"></el-option>
+          <el-option label="材质分析" value="material"></el-option>
+          <el-option label="硬度测试" value="hardness"></el-option>
+          <el-option label="其他" value="other"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="标准值" prop="standard_value">
+        <el-input v-model="standardForm.standard_value" placeholder="例如：无划痕、符合图纸要求"></el-input>
+      </el-form-item>
+      <el-form-item label="最小值" prop="min_value">
+        <el-input-number v-model="standardForm.min_value" :precision="4" :step="0.01" style="width: 100%;"></el-input-number>
+      </el-form-item>
+      <el-form-item label="最大值" prop="max_value">
+        <el-input-number v-model="standardForm.max_value" :precision="4" :step="0.01" style="width: 100%;"></el-input-number>
+      </el-form-item>
+      <el-form-item label="单位" prop="unit">
+        <el-input v-model="standardForm.unit" placeholder="例如：mm、HRC" style="width: 150px;"></el-input>
+      </el-form-item>
+      <el-form-item label="严重程度" prop="severity_level">
+        <el-select v-model="standardForm.severity_level" placeholder="请选择严重程度" style="width: 100%;">
+          <el-option label="关键" value="critical"></el-option>
+          <el-option label="主要" value="major"></el-option>
+          <el-option label="次要" value="minor"></el-option>
+          <el-option label="一般" value="normal"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="是否启用" prop="is_active">
+        <el-switch v-model="standardForm.is_active"></el-switch>
+      </el-form-item>
+    </el-form>
+    <div slot="footer">
+      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="submitForm" :loading="submitting">
+        确定
+      </el-button>
+    </div>
+  </el-dialog>
+</div>
+
+<!-- Vue 应用初始化 -->
+<script type="text/javascript">
+window.addEventListener('DOMContentLoaded', function() {
+  (function() {
+    const { createApp, ref, reactive, onMounted } = Vue
+    const { ElMessage, ElMessageBox } = ElementPlus
+
+  const app = createApp({
+    setup() {
+      const loading = ref(false)
+      const submitting = ref(false)
+      const dialogVisible = ref(false)
+      const dialogMode = ref('create')
+      const standardFormRef = ref(null)
+
+      const standards = ref([])
+      const spareParts = ref([])
+
+      const pagination = reactive({
+        page: 1,
+        per_page: 50,
+        total: 0
+      })
+
+      const filters = reactive({
+        part_code: '',
+        is_active: null
+      })
+
+      const standardForm = reactive({
+        id: null,
+        part_id: null,
+        part_code: '',
+        check_item: '',
+        check_method: '',
+        standard_value: '',
+        min_value: null,
+        max_value: null,
+        unit: '',
+        severity_level: 'normal',
+        is_active: true
+      })
+
+      const rules = {
+        part_id: [{ required: true, message: '请选择备件', trigger: 'change' }],
+        check_item: [{ required: true, message: '请输入检验项目', trigger: 'blur' }]
+      }
+
+      // 加载质检标准列表
+      const loadStandards = async () => {
+        loading.value = true
+        try {
+          const params = new URLSearchParams({
+            page: pagination.page,
+            per_page: pagination.per_page
+          })
+          if (filters.part_code) params.append('part_code', filters.part_code)
+          if (filters.is_active !== null) params.append('is_active', filters.is_active)
+          
+          const response = await fetch('/api/quality-check/standards?' + params)
+          const result = await response.json()
+          if (result.success) {
+            standards.value = result.data.list
+            pagination.total = result.data.total
+          } else {
+            ElMessage.error(result.message)
+          }
+        } catch (error) {
+          ElMessage.error('加载质检标准失败')
+        } finally {
+          loading.value = false
+        }
+      }
+
+      // 加载备件列表
+      const loadSpareParts = async () => {
+        try {
+          const response = await fetch('/api/spare-parts?limit=1000')
+          const result = await response.json()
+          if (result.success) {
+            spareParts.value = result.data.list || []
+          }
+        } catch (error) {
+          console.error('加载备件列表失败', error)
+        }
+      }
+
+      // 显示创建对话框
+      const showCreateDialog = () => {
+        dialogMode.value = 'create'
+        Object.assign(standardForm, {
+          id: null,
+          part_id: null,
+          part_code: '',
+          check_item: '',
+          check_method: '',
+          standard_value: '',
+          min_value: null,
+          max_value: null,
+          unit: '',
+          severity_level: 'normal',
+          is_active: true
+        })
+        dialogVisible.value = true
+      }
+
+      // 显示编辑对话框
+      const showEditDialog = (row) => {
+        dialogMode.value = 'edit'
+        Object.assign(standardForm, {
+          id: row.id,
+          part_id: row.part_id,
+          part_code: row.part_code,
+          check_item: row.check_item,
+          check_method: row.check_method,
+          standard_value: row.standard_value,
+          min_value: row.min_value,
+          max_value: row.max_value,
+          unit: row.unit,
+          severity_level: row.severity_level,
+          is_active: row.is_active
+        })
+        dialogVisible.value = true
+      }
+
+      // 备件选择变化
+      const onPartChange = (partId) => {
+        const part = spareParts.value.find(p => p.id === partId)
+        if (part) {
+          standardForm.part_code = part.code
+        }
+      }
+
+      // 提交表单
+      const submitForm = async () => {
+        if (!standardFormRef.value) return
+        
+        await standardFormRef.value.validate(async (valid) => {
+          if (!valid) return
+          
+          submitting.value = true
+          try {
+            const url = dialogMode.value === 'create' 
+              ? '/api/quality-check/standards' 
+              : '/api/quality-check/standards/' + standardForm.id
+            const method = dialogMode.value === 'create' ? 'POST' : 'PUT'
+            
+            const response = await fetch(url, {
+              method,
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(standardForm)
+            })
+            
+            const result = await response.json()
+            if (result.success) {
+              ElMessage.success(dialogMode.value === 'create' ? '创建成功' : '更新成功')
+              dialogVisible.value = false
+              loadStandards()
+            } else {
+              ElMessage.error(result.message)
+            }
+          } catch (error) {
+            ElMessage.error('操作失败')
+          } finally {
+            submitting.value = false
+          }
+        })
+      }
+
+      // 删除质检标准
+      const deleteStandard = (row) => {
+        ElMessageBox.confirm('确定要删除该质检标准吗？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(async () => {
+          try {
+            const response = await fetch('/api/quality-check/standards/' + row.id, {
+              method: 'DELETE'
+            })
+            
+            const result = await response.json()
+            if (result.success) {
+              ElMessage.success('删除成功')
+              loadStandards()
+            } else {
+              ElMessage.error(result.message)
+            }
+          } catch (error) {
+            ElMessage.error('删除失败')
+          }
+        })
+      }
+
+      // 重置筛选
+      const resetFilters = () => {
+        Object.assign(filters, {
+          part_code: '',
+          is_active: null
+        })
+        loadStandards()
+      }
+
+      // 工具函数
+      const getSeverityTag = (level) => {
+        const tagMap = {
+          critical: 'danger',
+          major: 'warning',
+          minor: 'info',
+          normal: ''
+        }
+        return tagMap[level] || ''
+      }
+
+      const getSeverityText = (level) => {
+        const textMap = {
+          critical: '关键',
+          major: '主要',
+          minor: '次要',
+          normal: '一般'
+        }
+        return textMap[level] || level
+      }
+
+      onMounted(() => {
+        loadStandards()
+        loadSpareParts()
+      })
+
+      return {
+        loading,
+        submitting,
+        dialogVisible,
+        dialogMode,
+        standardFormRef,
+        standards,
+        spareParts,
+        pagination,
+        filters,
+        standardForm,
+        rules,
+        loadStandards,
+        loadSpareParts,
+        showCreateDialog,
+        showEditDialog,
+        onPartChange,
+        submitForm,
+        deleteStandard,
+        resetFilters,
+        getSeverityTag,
+        getSeverityText
+      }
+    }
+  })
+
+  app.use(ElementPlus)
+  app.mount('#quality-standard-app')
+  })()
+});
+</script>
+
+<style scoped>
+[v-cloak] {
+  display: none;
+}
+
+.quality-standard-page {
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.filter-form {
+  margin-bottom: 20px;
+}
+</style>
+{% endblock %}

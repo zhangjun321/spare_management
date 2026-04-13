@@ -1,0 +1,232 @@
+/* 侧边栏导航菜单交互样式 */
+
+/* 侧边栏容器 */
+.sidebar-container {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 菜单项基础样式 */
+.sidebar-nav-link {
+  position: relative;
+  height: 48px;
+  margin: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* 激活状态的菜单项 */
+.sidebar-nav-link.active {
+  background: linear-gradient(135deg, #4e73df 0%, #375a7f 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 8px rgba(78, 115, 223, 0.3);
+  transform: translateX(2px);
+}
+
+/* 激活状态的左侧高亮条 */
+.sidebar-nav-link.active .highlight-bar {
+  transform: scaleY(1) !important;
+  background: linear-gradient(180deg, #6a8fef 0%, #4e73df 100%);
+  box-shadow: 2px 0 4px rgba(78, 115, 223, 0.5);
+}
+
+/* 鼠标悬停效果 - 非激活状态 */
+.sidebar-nav-link:not(.active):hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  transform: translateX(4px) scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 鼠标悬停时的左侧指示器 */
+.sidebar-nav-link:not(.active):hover .highlight-bar {
+  transform: scaleY(0.8) !important;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 子菜单项样式 */
+.sidebar-submenu-link {
+  position: relative;
+  height: 40px;
+  margin: 0.25rem 0;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* 子菜单激活状态 */
+.sidebar-submenu-link.active {
+  background: linear-gradient(135deg, #4e73df 0%, #375a7f 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(78, 115, 223, 0.25);
+  transform: translateX(2px);
+}
+
+/* 子菜单激活状态的左侧高亮条 */
+.sidebar-submenu-link.active .highlight-bar {
+  transform: scaleY(1) !important;
+  background: linear-gradient(180deg, #6a8fef 0%, #4e73df 100%);
+  box-shadow: 2px 0 4px rgba(78, 115, 223, 0.5);
+}
+
+/* 子菜单鼠标悬停效果 */
+.sidebar-submenu-link:not(.active):hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  transform: translateX(3px) scale(1.01);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* 子菜单悬停时的左侧指示器 */
+.sidebar-submenu-link:not(.active):hover .highlight-bar {
+  transform: scaleY(0.8) !important;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 左侧高亮条基础样式 */
+.highlight-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background: transparent;
+  transform: scaleY(0);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, box-shadow 0.2s;
+  border-radius: 0 3px 3px 0;
+}
+
+/* 图标容器 */
+.sidebar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  font-size: 1.25rem;
+  transition: transform 0.2s;
+}
+
+/* 激活状态下的图标动画 */
+.sidebar-nav-link.active .sidebar-icon {
+  transform: scale(1.1);
+}
+
+/* 悬停状态下的图标动画 */
+.sidebar-nav-link:not(.active):hover .sidebar-icon {
+  transform: scale(1.15);
+}
+
+/* 菜单标签文本 */
+.sidebar-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s;
+}
+
+/* 折叠状态下的提示 */
+.sidebar-container.collapsed .sidebar-nav-link:not(.active):hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(10px);
+  }
+}
+
+/* 子菜单容器 */
+.submenu-container {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  padding-left: 0.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: submenuSlideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes submenuSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 展开箭头的旋转动画 */
+.expand-icon {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expand-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* 底部设置菜单项 */
+.settings-link {
+  margin: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.settings-link:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  transform: translateX(3px);
+}
+
+/* 滚动条样式优化 */
+.sidebar-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 响应式优化 */
+@media (max-width: 991px) {
+  .sidebar-nav-link {
+    height: 56px;
+  }
+  
+  .sidebar-nav-link:not(.active):hover {
+    transform: translateX(2px) scale(1.01);
+  }
+}

@@ -6,7 +6,7 @@
 
 from datetime import datetime, timedelta
 from app.extensions import db
-from app.models.inventory_check import InventoryCheck, InventoryCheckItem, StockAgeAnalysis
+from app.models.inventory_check import InventoryCheckLegacy as InventoryCheck, InventoryCheckItemLegacy as InventoryCheckItem, StockAgeAnalysis
 from app.models.warehouse import Warehouse
 from app.models.warehouse_location import WarehouseZone, WarehouseRack, WarehouseLocation
 from app.models.spare_part import SparePart

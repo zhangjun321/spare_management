@@ -50,6 +50,7 @@ class SparePart(db.Model):
     batches = db.relationship('Batch', foreign_keys='Batch.spare_part_id', back_populates='spare_part', lazy='dynamic')
     transactions = db.relationship('Transaction', foreign_keys='Transaction.spare_part_id', back_populates='spare_part', lazy='dynamic')
     serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.spare_part_id', back_populates='spare_part', lazy='dynamic')
+    inventory_records = db.relationship('InventoryRecord', back_populates='spare_part', lazy='dynamic')
     
     def update_stock_status(self):
         """更新库存状态并触发预警"""

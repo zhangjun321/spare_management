@@ -77,6 +77,52 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
+@auth_bp.route('/api/permissions', methods=['GET'])
+@login_required
+def get_permissions():
+    """获取当前用户权限（供前端调用）"""
+    from flask import jsonify
+    
+    # 获取用户权限
+    permissions = {}
+    
+    # 如果是超级管理员
+    if current_user.is_admin or current_user.is_superuser:
+        permissions = {
+            'is_admin': True,
+            'is_superuser': True,
+            'warehouse': {
+                'read': True,
+                'create': True,
+                'update': True,
+                'delete': True
+            },
+            'spare_part': {
+                'read': True,
+                'create': True,
+                'update': True,
+                'delete': True
+            },
+            'inventory': {
+                'read': True,
+                'create': True,
+                'update': True,
+                'delete': True
+            }
+        }
+    elif current_user.role:
+        # 获取角色权限
+        role_permissions = current_user.role.permissions or {}
+        permissions = role_permissions
+    
+    return jsonify({
+        'success': True,
+        'permissions': permissions,
+        'role': current_user.role.name if current_user.role else None,
+        'is_admin': current_user.is_admin or current_user.is_superuser
+    })
+
+
 @auth_bp.route('/profile')
 @login_required
 def profile():
