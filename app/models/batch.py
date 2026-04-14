@@ -25,7 +25,6 @@ class Batch(db.Model):
     location = db.relationship('WarehouseLocation', foreign_keys=[location_id], back_populates='batches')
     spare_part = db.relationship('SparePart', foreign_keys=[spare_part_id], back_populates='batches')
     serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.batch_id', back_populates='batch', lazy='dynamic')
-    transactions = db.relationship('Transaction', foreign_keys='Transaction.batch_id', back_populates='batch', lazy='dynamic')
     
     def __repr__(self):
         return f'<Batch {self.batch_number}>'

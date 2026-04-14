@@ -217,6 +217,9 @@
     // 库存状态饼图
     const ctx = document.getElementById('stockStatusChart');
     if (ctx) {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js 未加载，跳过库存状态图渲染');
+        } else {
         const stockData = [
             {{ stats.stock_status.normal }},
             {{ stats.stock_status.low }},
@@ -288,6 +291,7 @@
                 }
             }
         });
+        }
     }
 </script>
 {% endblock %}

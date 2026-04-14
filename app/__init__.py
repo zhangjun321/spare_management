@@ -340,6 +340,19 @@ def register_blueprints(app):
     # 新的 React 仓库管理模块（完全独立）
     from app.routes.react_warehouse import react_warehouse_bp
     app.register_blueprint(react_warehouse_bp)
+
+    # 备件管理 REST API（供 React 前端调用）
+    from app.routes.api_spare_parts import api_spare_parts_bp
+    app.register_blueprint(api_spare_parts_bp)
+
+    # 交易管理 REST API（React 前端）
+    from app.routes.api_transactions import api_transactions_bp
+    app.register_blueprint(api_transactions_bp)
+    csrf.exempt(api_transactions_bp)
+
+    # React 备件管理前端页面入口
+    from app.routes.react_spare_parts import react_spare_parts_bp
+    app.register_blueprint(react_spare_parts_bp)
     
     # 库存盘点 API
     from app.routes.inventory_check import inventory_check_bp
@@ -429,6 +442,11 @@ def register_blueprints(app):
     app.register_blueprint(api_inbound_bp)
     app.register_blueprint(api_outbound_bp)
     
+    # 处理 favicon 请求，避免浏览器控制台 404
+    @app.route('/favicon.ico')
+    def favicon():
+        return ('', 204)
+
     # 提供uploads目录的静态文件访问
     @app.route('/uploads/<path:filename>')
     def uploaded_file(filename):

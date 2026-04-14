@@ -333,9 +333,6 @@
     <i class="fas fa-sync-alt"></i>
 </button>
 
-<!-- 引入 Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
 <script>
 // 全局变量
 let stockStatusChartInstance = null;
@@ -348,34 +345,24 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDashboardData();
 });
 
-// 加载驾驶舱数据
+// 加载驾驶舱数据（并行加载，不阻塞菜单）
 async function loadDashboardData() {
+    showLoading();
     try {
-        showLoading();
-        
-        console.log('开始加载数据...');
-        
-        // 加载统计数据
-        console.log('加载统计数据...');
-        await loadStats();
-        
-        // 加载 AI 洞察
-        console.log('加载 AI 洞察...');
-        await loadAIInsights();
-        
-        // 加载待处理任务
-        console.log('加载待处理任务...');
-        await loadPendingTasks();
-        
-        // 初始化图表
-        console.log('初始化图表...');
-        await initCharts();
-        
-        console.log('数据加载完成');
-        hideLoading();
+        // 并行加载统计数据和待处理任务，互不依赖
+        const [stats] = await Promise.all([
+            loadStats(),
+            loadPendingTasks()
+        ]);
+
+        // AI 洞察基于已更新的 DOM 数据，无需等待异步，直接调用
+        loadAIInsights();
+
+        // 初始化图表（依赖 stats 数据）
+        initCharts();
     } catch (error) {
         console.error('加载数据失败:', error);
-        alert('加载数据失败：' + error.message);
+    } finally {
         hideLoading();
     }
 }
@@ -384,28 +371,25 @@ async function loadDashboardData() {
 async function loadStats() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        
-        const [inboundRes, outboundRes, inventoryRes, lowStockRes, outStockRes] = await Promise.all([
-            fetch(`/api/warehouse/inbound/list?page=1&per_page=1&start_date=${today}`),
-            fetch(`/api/warehouse/outbound/list?page=1&per_page=1&start_date=${today}`),
-            fetch('/api/warehouse/inventory/list?page=1&per_page=1'),
-            fetch('/api/warehouse/inventory/list?page=1&per_page=1&stock_status=low'),
-            fetch('/api/warehouse/inventory/list?page=1&per_page=1&stock_status=out')
+
+        // 并行请求：今日入库单、今日出库单、库存统计（一次获取 total/low/out）
+        const [inboundRes, outboundRes, invStatsRes] = await Promise.all([
+            fetch(`/api/inbound/orders?page=1&per_page=1&status=&start_date=${today}`),
+            fetch(`/api/outbound/orders?page=1&per_page=1&status=&start_date=${today}`),
+            fetch('/api/inventory/stats')
         ]);
 
-        const inboundData = await inboundRes.json();
-        const outboundData = await outboundRes.json();
-        const inventoryData = await inventoryRes.json();
-        const lowStockData = await lowStockRes.json();
-        const outStockData = await outStockRes.json();
+        const inboundData = inboundRes.ok ? await inboundRes.json() : {};
+        const outboundData = outboundRes.ok ? await outboundRes.json() : {};
+        const invStats = invStatsRes.ok ? await invStatsRes.json() : {};
 
         const stats = {
             todayInbound: inboundData.data?.total || 0,
             todayOutbound: outboundData.data?.total || 0,
-            totalItems: inventoryData.data?.total || 0,
-            lowStockCount: lowStockData.data?.total || 0,
-            outOfStockCount: outStockData.data?.total || 0,
-            aiInsightsCount: Math.floor(Math.random() * 10) + 3
+            totalItems: invStats.data?.total || 0,
+            lowStockCount: invStats.data?.low_stock || 0,
+            outOfStockCount: invStats.data?.out_of_stock || 0,
+            aiInsightsCount: (invStats.data?.low_stock || 0) + (invStats.data?.out_of_stock || 0) + 3
         };
 
         // 更新统计卡片
@@ -430,42 +414,28 @@ async function loadStats() {
     }
 }
 
-// 加载 AI 洞察
+// 加载 AI 洞察（基于已有统计数据生成，不调用不存在的 AI 接口）
 async function loadAIInsights() {
     try {
-        const response = await fetch('/api/warehouse/ai/analyze-inventory', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrf_token]')?.value || getCookie('csrf_token') || ''
-            },
-            body: JSON.stringify({ days: 30 })
-        });
+        const stats = {
+            lowStockCount: parseInt(document.getElementById('lowStockCount').textContent) || 0,
+            outOfStockCount: parseInt(document.getElementById('outOfStockCount').textContent) || 0,
+            todayInbound: parseInt(document.getElementById('todayInbound').textContent) || 0,
+            todayOutbound: parseInt(document.getElementById('todayOutbound').textContent) || 0
+        };
 
-        const data = await response.json();
+        const aiInsightsContent = `
+            <strong>库存总体评估：</strong>当前库存运行${stats.outOfStockCount > 0 ? '存在缺货风险' : '状态良好'}。<br>
+            <strong>建议：</strong>
+            <ul>
+                ${stats.lowStockCount > 0 ? `<li>关注 <strong>${stats.lowStockCount}</strong> 个低库存备件，建议及时补货</li>` : '<li>低库存备件暂无，库存充裕</li>'}
+                ${stats.outOfStockCount > 0 ? `<li>处理 <strong>${stats.outOfStockCount}</strong> 个缺货备件，避免影响生产</li>` : '<li>暂无缺货备件，运营正常</li>'}
+                <li>今日入库 <strong>${stats.todayInbound}</strong> 单，出库 <strong>${stats.todayOutbound}</strong> 单</li>
+            </ul>
+        `;
 
-        if (data.success && data.data.analysis) {
-            const analysis = data.data.analysis;
-            const stats = {
-                lowStockCount: parseInt(document.getElementById('lowStockCount').textContent) || 0,
-                outOfStockCount: parseInt(document.getElementById('outOfStockCount').textContent) || 0,
-                todayInbound: parseInt(document.getElementById('todayInbound').textContent) || 0,
-                todayOutbound: parseInt(document.getElementById('todayOutbound').textContent) || 0
-            };
-
-            const aiInsightsContent = `
-                <strong>库存总体评估：</strong>${analysis.text || '库存状态良好'}<br>
-                <strong>建议：</strong>
-                <ul>
-                    <li>关注 ${stats.lowStockCount} 个低库存备件，及时补货</li>
-                    <li>处理 ${stats.outOfStockCount} 个缺货备件，避免影响生产</li>
-                    <li>今日入库${stats.todayInbound}单，出库${stats.todayOutbound}单，运营正常</li>
-                </ul>
-            `;
-
-            document.getElementById('aiInsightsContent').innerHTML = aiInsightsContent;
-            document.getElementById('aiInsightsCard').style.display = 'block';
-        }
+        document.getElementById('aiInsightsContent').innerHTML = aiInsightsContent;
+        document.getElementById('aiInsightsCard').style.display = 'block';
     } catch (error) {
         console.error('加载 AI 洞察失败:', error);
     }
@@ -475,33 +445,33 @@ async function loadAIInsights() {
 async function loadPendingTasks() {
     try {
         const [inboundRes, outboundRes] = await Promise.all([
-            fetch('/api/warehouse/inbound/list?page=1&per_page=5&status=pending'),
-            fetch('/api/warehouse/outbound/list?page=1&per_page=5&status=pending')
+            fetch('/api/inbound/orders/pending'),
+            fetch('/api/outbound/orders/pending')
         ]);
 
-        const inboundData = await inboundRes.json();
-        const outboundData = await outboundRes.json();
+        const inboundData = inboundRes.ok ? await inboundRes.json() : {};
+        const outboundData = outboundRes.ok ? await outboundRes.json() : {};
 
         const tasks = [];
         
-        (inboundData.data?.items || []).forEach(item => {
+        (inboundData.items || []).slice(0, 5).forEach(item => {
             tasks.push({
                 type: '入库',
                 order_no: item.order_no,
-                spare_part_name: '备件 #' + item.spare_part_id,
-                warehouse_name: '仓库 #' + item.warehouse_id,
+                spare_part_name: item.spare_part_name || ('备件 #' + item.spare_part_id),
+                warehouse_name: item.warehouse_name || ('仓库 #' + item.warehouse_id),
                 quantity: item.quantity,
                 created_at: item.created_at,
                 id: item.id
             });
         });
 
-        (outboundData.data?.items || []).forEach(item => {
+        (outboundData.items || []).slice(0, 5).forEach(item => {
             tasks.push({
                 type: '出库',
                 order_no: item.order_no,
-                spare_part_name: '备件 #' + item.spare_part_id,
-                warehouse_name: '仓库 #' + item.warehouse_id,
+                spare_part_name: item.spare_part_name || ('备件 #' + item.spare_part_id),
+                warehouse_name: item.warehouse_name || ('仓库 #' + item.warehouse_id),
                 quantity: item.quantity,
                 created_at: item.created_at,
                 id: item.id
@@ -702,15 +672,27 @@ function handleTask(type, orderNo, id) {
     }
 }
 
-// 刷新数据
+// 刷新数据（防止重复点击）
+let _refreshing = false;
 function refreshData() {
+    if (_refreshing) return;
+    _refreshing = true;
+
     const btn = document.querySelector('.refresh-btn');
-    btn.style.transform = 'rotate(180deg)';
-    setTimeout(() => {
-        btn.style.transform = 'rotate(0deg)';
-    }, 500);
+    if (btn) {
+        btn.style.transform = 'rotate(180deg)';
+        btn.disabled = true;
+    }
     
-    loadDashboardData();
+    loadDashboardData().finally(() => {
+        _refreshing = false;
+        setTimeout(() => {
+            if (btn) {
+                btn.style.transform = 'rotate(0deg)';
+                btn.disabled = false;
+            }
+        }, 500);
+    });
     
     // 显示提示消息
     const toast = document.createElement('div');
@@ -723,27 +705,27 @@ function refreshData() {
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
             <div class="toast-body">
-                <i class="fas fa-check-circle me-2"></i>数据已刷新
+                <i class="fas fa-check-circle me-2"></i>数据刷新中...
             </div>
         </div>
     `;
     document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+    setTimeout(() => { toast.remove(); }, 3000);
 }
 
-// 显示加载动画
+// 显示加载动画（仅在 spinner 区域显示，不覆盖菜单/导航栏）
 function showLoading() {
     document.getElementById('loadingSpinner').classList.add('show');
-    document.getElementById('statsCards').style.opacity = '0.5';
+    // 仅降低统计卡片透明度，不阻断菜单点击
+    document.getElementById('statsCards').style.opacity = '0.6';
+    document.getElementById('statsCards').style.pointerEvents = 'none';
 }
 
 // 隐藏加载动画
 function hideLoading() {
     document.getElementById('loadingSpinner').classList.remove('show');
     document.getElementById('statsCards').style.opacity = '1';
+    document.getElementById('statsCards').style.pointerEvents = '';
 }
 
 // 格式化日期

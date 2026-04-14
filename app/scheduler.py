@@ -138,7 +138,7 @@ def check_stock_age_warnings():
             ).first()
             if not existing:
                 part_name = record.spare_part.name if record.spare_part else str(record.spare_part_id)
-                part_code = record.spare_part.code if record.spare_part else ''
+                part_code = record.spare_part.part_code if record.spare_part else ''
                 alert = Alert(
                     alert_type='stock_age_warning',
                     title=f"库龄超期预警：{part_name}",

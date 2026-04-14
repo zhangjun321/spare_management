@@ -32,9 +32,16 @@ const Sidebar = () => {
   // 根据当前路径确定激活的菜单
   const currentPath = window.location.pathname
   const [activeMenu, setActiveMenu] = useState(() => {
-    // 检查是否是仓库管理的子页面
-    if (currentPath.startsWith('/warehouses/')) {
-      return currentPath // 使用完整路径作为 key
+    if (currentPath.startsWith('/spare-parts') || currentPath.startsWith('/spare_parts')) {
+      return 'spare_parts'
+    }
+    if (currentPath.startsWith('/warehouses/') || currentPath.startsWith('/warehouse/')) {
+      return currentPath
+    }
+    // 交易管理子菜单：去掉 /react 前缀后匹配
+    const txPath = currentPath.replace(/^\/react/, '')
+    if (txPath.startsWith('/transactions/')) {
+      return txPath
     }
     return 'dashboard'
   })
@@ -45,7 +52,7 @@ const Sidebar = () => {
       key: 'dashboard',
       label: '仪表盘',
       icon: <FaTachometerAlt />,
-      path: '/spare_parts/'
+      path: '/warehouse/dashboard'
     },
     {
       key: 'spare_parts',
@@ -120,7 +127,15 @@ const Sidebar = () => {
       key: 'transactions',
       label: '交易管理',
       icon: <FaExchangeAlt />,
-      path: '/transactions/'
+      path: '#',
+      hasSubmenu: true,
+      submenu: [
+        { key: '/transactions/list', label: '交易列表', icon: <FaExchangeAlt />, path: '/transactions/list' },
+        { key: '/transactions/inbound', label: '入库单', icon: <FaDownload />, path: '/transactions/inbound' },
+        { key: '/transactions/outbound', label: '出库单', icon: <FaUpload />, path: '/transactions/outbound' },
+        { key: '/transactions/transfer', label: '调拨单', icon: <FaExchangeAlt />, path: '/transactions/transfer' },
+        { key: '/transactions/inventory', label: '盘点/差异', icon: <FaClipboardCheck />, path: '/transactions/inventory' },
+      ]
     },
     {
       key: 'equipment',
@@ -150,8 +165,13 @@ const Sidebar = () => {
 
   const [expandedMenus, setExpandedMenus] = useState(() => {
     // 如果当前路径是仓库管理的子页面，默认展开仓库管理菜单
-    if (currentPath.startsWith('/warehouses/')) {
+    if (currentPath.startsWith('/warehouses/') || currentPath.startsWith('/warehouse/')) {
       return ['warehouse']
+    }
+    // 如果当前路径是交易管理的子页面，默认展开交易管理菜单
+    const txPath = currentPath.replace(/^\/react/, '')
+    if (txPath.startsWith('/transactions/')) {
+      return ['transactions']
     }
     return []
   })

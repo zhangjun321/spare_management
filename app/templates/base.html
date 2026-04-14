@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}备件管理系统{% endblock %}</title>
     
-    <!-- Bootstrap CSS -->
+    <!-- 第三方资源预连接（减少 DNS/TLS 开销） -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <!-- Bootstrap CSS（使用 CSP 已允许源） -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    <!-- Font Awesome（使用 CSP 已允许源） -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Element Plus CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css">
     
     <style>
         :root {
@@ -870,13 +873,13 @@
                 </a>
             </li>
             <li>
-                <a href="{{ url_for('spare_parts.index') }}" data-tooltip="备件管理">
+                <a href="{{ url_for('spare_parts.index') }}" class="{% if request.endpoint and request.endpoint.startswith('spare_parts') %}active{% endif %}" data-tooltip="备件管理">
                     <i class="fas fa-box"></i>
                     <span class="menu-text">备件管理</span>
                 </a>
             </li>
             <li class="has-submenu">
-                <a href="#" class="{% if request.endpoint and request.endpoint.startswith('warehouses') %}active{% endif %}" data-tooltip="仓库管理">
+                <a href="javascript:void(0)" class="{% if request.endpoint and request.endpoint.startswith('warehouses') %}active{% endif %}" data-tooltip="仓库管理">
                     <i class="fas fa-warehouse"></i>
                     <span class="menu-text">仓库管理</span>
                     <i class="fas fa-chevron-down ms-auto"></i>
@@ -945,14 +948,43 @@
                     </li>
                 </ul>
             </li>
-            <li>
-                <a href="{{ url_for('transactions.index') }}" data-tooltip="交易管理">
+            <li class="has-submenu">
+                <a href="javascript:void(0)" class="{% if request.path.startswith('/transactions') %}active{% endif %}" data-tooltip="交易管理">
                     <i class="fas fa-exchange-alt"></i>
                     <span class="menu-text">交易管理</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
+                <ul class="submenu">
+                    <li>
+                        <a href="{{ url_for('transactions.list_page') }}" class="{% if request.path.startswith('/transactions/list') or request.endpoint == 'transactions.index' %}active{% endif %}">
+                            <i class="fas fa-list"></i>交易列表
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('transactions.inbound_page') }}" class="{% if request.path.startswith('/transactions/inbound') %}active{% endif %}">
+                            <i class="fas fa-download"></i>入库单
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('transactions.outbound_page') }}" class="{% if request.path.startswith('/transactions/outbound') %}active{% endif %}">
+                            <i class="fas fa-upload"></i>出库单
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('transactions.transfer') }}" class="{% if request.path.startswith('/transactions/transfer') %}active{% endif %}">
+                            <i class="fas fa-exchange-alt"></i>调拨单
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('transactions.inventory_page') }}" class="{% if request.path.startswith('/transactions/inventory') %}active{% endif %}">
+                            <i class="fas fa-clipboard-check"></i>盘点/差异
+                        </a>
+                    </li>
+                </ul>
             </li>
             <li>
                 <a href="{{ url_for('equipment.index') }}" data-tooltip="设备管理">
+
                     <i class="fas fa-cogs"></i>
                     <span class="menu-text">设备管理</span>
                 </a>
@@ -1000,7 +1032,7 @@
             <div class="d-flex align-items-center">
                 <!-- 通知 -->
                 <div class="dropdown me-3">
-                    <a href="#" class="notification-icon text-secondary" data-bs-toggle="dropdown" title="通知" id="notificationDropdown">
+                    <a href="javascript:void(0)" class="notification-icon text-secondary" data-bs-toggle="dropdown" title="通知" id="notificationDropdown">
                         <i class="fas fa-bell"></i>
                         <span class="badge bg-danger" id="unreadBadge">0</span>
                     </a>
@@ -1024,7 +1056,7 @@
                 
                 <!-- 用户菜单 -->
                 <div class="dropdown">
-                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" data-bs-toggle="dropdown">
+                    <a href="javascript:void(0)" class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" data-bs-toggle="dropdown">
                         <div class="rounded-circle bg-gradient-primary d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px; background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); color: white;">
                             <i class="fas fa-user"></i>
                         </div>
@@ -1150,39 +1182,11 @@
         </a>
     </div>
     
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS（非阻塞） -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- Vue 3 -->
-    <script src="https://cdn.staticfile.org/vue/3.3.4/vue.global.prod.min.js"></script>
-    <!-- Element Plus -->
-    <script src="https://cdn.staticfile.org/element-plus/2.3.8/index.full.min.js"></script>
-    <!-- Element Plus Icons -->
-    <script src="https://cdn.staticfile.org/element-plus-icons-vue/2.1.0/index.iife.min.js"></script>
-    
-    <script>
-        // 检查 Vue 和 Element Plus 是否加载成功
-        window.addEventListener('DOMContentLoaded', function() {
-            console.log('=== 检查 Vue 和 Element Plus 加载状态 ===');
-            console.log('Vue:', typeof Vue);
-            console.log('ElementPlus:', typeof ElementPlus);
-            console.log('ElementPlusIconsVue:', typeof ElementPlusIconsVue);
-            
-            if (typeof Vue !== 'undefined') {
-                console.log('✓ Vue 加载成功:', Vue.version);
-            } else {
-                console.error('✗ Vue 加载失败');
-                console.log('尝试访问 window.Vue:', window.Vue);
-            }
-            if (typeof ElementPlus !== 'undefined') {
-                console.log('✓ Element Plus 加载成功');
-            } else {
-                console.error('✗ Element Plus 加载失败');
-            }
-            console.log('===========================================');
-        });
-    </script>
+    {# Vue / Element Plus 改为页面按需引入，避免登录后全局等待外链资源 #}
         <script>
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
@@ -1279,15 +1283,15 @@
                 });
             });
             
-            // 页面加载时自动展开包含激活子菜单的父菜单
-            const activeSubmenu = document.querySelector('.submenu li a.active');
-            if (activeSubmenu) {
-                const parentSubmenu = activeSubmenu.closest('.submenu');
+            // 页面加载时自动展开所有包含激活子菜单的父菜单
+            const activeSubmenus = document.querySelectorAll('.submenu li a.active');
+            activeSubmenus.forEach((activeLink) => {
+                const parentSubmenu = activeLink.closest('.submenu');
                 if (parentSubmenu) {
                     parentSubmenu.classList.add('show');
                     parentSubmenu.parentElement.classList.add('open');
                 }
-            }
+            });
             
             // 子菜单点击高亮功能
             const submenuLinks = document.querySelectorAll('.submenu li a');
@@ -1308,7 +1312,7 @@
             });
             
             // 主菜单点击高亮功能
-            const mainMenuLinks = document.querySelectorAll('.sidebar-menu > li > a:not(.has-submenu > a)');
+            const mainMenuLinks = document.querySelectorAll('.sidebar-menu > li:not(.has-submenu) > a');
             mainMenuLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     // 移除所有主菜单的 active 类
@@ -1342,20 +1346,21 @@
             });
         }, 5000);
         
-        // 平滑滚动
+        // 平滑滚动（仅处理真正的页面锚点链接，跳过 Bootstrap 组件触发器）
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            // 跳过 Bootstrap dropdown/modal/tab/collapse 触发器
+            if (anchor.hasAttribute('data-bs-toggle') || anchor.hasAttribute('data-toggle')) return;
+            // 跳过只有 # 或 javascript: 的链接
+            const href = anchor.getAttribute('href');
+            if (!href || href === '#' || href.length < 2) return;
+            // 检查目标元素是否存在
+            let target;
+            try { target = document.querySelector(href); } catch(e) { return; }
+            if (!target) return;
+
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
-                const href = this.getAttribute('href');
-                // 跳过空链接或只有 # 的链接
-                if (!href || href === '#' || href.length < 2) return;
-                
-                const target = document.querySelector(href);
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                }
+                target.scrollIntoView({ behavior: 'smooth' });
             });
         });
         
@@ -1385,13 +1390,24 @@
         
         // 加载通知
         function loadNotifications() {
+            // 页面隐藏时跳过请求，避免无效轮询
+            if (document.hidden) return;
+
             fetch('/notification/api/recent')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
                 .then(data => {
                     const notificationList = document.getElementById('notificationList');
                     const unreadBadge = document.getElementById('unreadBadge');
                     const unreadCountInMenu = document.getElementById('unreadCountInMenu');
                     
+                    // 更新未读数（合并在同一响应中，无需第二次请求）
+                    const count = data.unread_count || 0;
+                    if (unreadBadge) unreadBadge.textContent = count;
+                    if (unreadCountInMenu) unreadCountInMenu.textContent = count;
+
                     if (data.notifications && data.notifications.length > 0) {
                         let html = '';
                         data.notifications.forEach(n => {
@@ -1423,24 +1439,26 @@
                     } else {
                         notificationList.innerHTML = '<div class="text-center py-4"><i class="fas fa-bell-slash text-muted" style="font-size: 2rem;"></i><p class="text-muted small mt-2 mb-0">暂无通知</p></div>';
                     }
-                    
-                    // 加载未读数
-                    fetch('/notification/api/unread-count')
-                        .then(response => response.json())
-                        .then(countData => {
-                            if (unreadBadge) unreadBadge.textContent = countData.count || 0;
-                            if (unreadCountInMenu) unreadCountInMenu.textContent = countData.count || 0;
-                        });
                 })
                 .catch(error => {
                     console.error('加载通知失败:', error);
-                    document.getElementById('notificationList').innerHTML = '<div class="text-center py-4 text-muted small">加载失败</div>';
+                    const notificationList = document.getElementById('notificationList');
+                    if (notificationList) {
+                        notificationList.innerHTML = '<div class="text-center py-4 text-muted small">加载失败</div>';
+                    }
                 });
         }
         
         // 标记全部已读
         function markAllAsRead() {
-            fetch('/notification/mark-all-as-read', {method: 'POST'})
+            fetch('/notification/mark-all-as-read', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+                .then(response => response.json())
                 .then(() => {
                     loadNotifications();
                 })
@@ -1448,12 +1466,28 @@
         }
         
         // 页面加载时获取通知
-        window.onload = function() {
+        window.addEventListener('load', function() {
             loadNotifications();
             
-            // 每 30 秒刷新一次通知
-            setInterval(loadNotifications, 30000);
-        }
+            // 每 60 秒刷新一次通知（延长间隔，减少无效请求）
+            setInterval(loadNotifications, 60000);
+        });
+
+        // 浏览器后退/前进恢复页面时，清理可能遗留的遮罩层，避免菜单无法点击
+        window.addEventListener('pageshow', function() {
+            document.querySelectorAll('.el-loading-mask, .v-modal, .modal-backdrop').forEach((el) => {
+                if (el && el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            });
+            document.body.classList.remove('modal-open');
+            document.body.style.pointerEvents = '';
+            document.body.style.overflow = '';
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.style.pointerEvents = '';
+            }
+        });
     </script>
     
     {% block extra_js %}{% endblock %}

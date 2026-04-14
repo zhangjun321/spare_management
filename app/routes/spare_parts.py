@@ -35,18 +35,15 @@ csrf.exempt(spare_parts_bp)
 def index():
     """备件列表页面"""
     from flask import current_app
-    
+
     form = SparePartSearchForm()
-    
+
     # 使用 joinedload 预加载关联数据，避免 N+1 查询
     query = SparePart.query.options(
         joinedload(SparePart.category),
         joinedload(SparePart.supplier)
     )
-    
-    # 调试：输出表单数据
-    current_app.logger.info(f"表单数据 - keyword: {form.keyword.data}, category_id: {form.category_id.data}, supplier_id: {form.supplier_id.data}, stock_status: {form.stock_status.data}, is_active: {form.is_active.data}")
-    
+
     if form.keyword.data:
         keyword = f'%{form.keyword.data}%'
         query = query.filter(
@@ -56,65 +53,44 @@ def index():
                 SparePart.specification.like(keyword)
             )
         )
-        current_app.logger.info(f"应用 keyword 过滤：{form.keyword.data}")
-    
+
     if form.category_id.data and form.category_id.data != 0:
         query = query.filter(SparePart.category_id == form.category_id.data)
-        current_app.logger.info(f"应用 category_id 过滤：{form.category_id.data}")
-    
+
     if form.supplier_id.data and form.supplier_id.data != 0:
         query = query.filter(SparePart.supplier_id == form.supplier_id.data)
-        current_app.logger.info(f"应用 supplier_id 过滤：{form.supplier_id.data}")
-    
+
     if form.stock_status.data and form.stock_status.data != '':
         query = query.filter(SparePart.stock_status == form.stock_status.data)
-        current_app.logger.info(f"应用 stock_status 过滤：{form.stock_status.data}")
-    
+
     if form.is_active.data == '1':
         query = query.filter(SparePart.is_active == True)
-        current_app.logger.info("应用 is_active 过滤：启用")
     elif form.is_active.data == '0':
         query = query.filter(SparePart.is_active == False)
-        current_app.logger.info("应用 is_active 过滤：停用")
-    
-    # 获取每页显示数量，默认 20
+
     try:
         per_page = int(request.args.get('per_page', 20))
         if per_page not in [10, 20, 50]:
             per_page = 20
     except (TypeError, ValueError):
         per_page = 20
-    
-    # 调试：输出查询前的记录数
-    total_count = query.count()
-    current_app.logger.info(f"查询总记录数：{total_count}")
-    
+
     pagination = paginate_query(query, per_page=per_page)
-    
-    # 调试：输出分页结果
-    current_app.logger.info(f"分页结果 - 总记录数：{pagination.total}, 当前页记录数：{len(pagination.items)}")
-    
-    # 调试：输出第一个备件的信息
-    if pagination.items:
-        first_part = pagination.items[0]
-        current_app.logger.info(f"第一个备件：ID={first_part.id}, code={first_part.part_code}, name={first_part.name}")
-    else:
-        current_app.logger.warning("查询结果为空！")
-    
+
     @cache('categories:active', expire=3600)
     def get_active_categories():
         return Category.query.filter_by(is_active=True).all()
-    
+
     @cache('suppliers:active', expire=3600)
     def get_active_suppliers():
         return Supplier.query.filter_by(is_active=True).all()
-    
-    return render_template('spare_parts/list.html', 
-                         pagination=pagination, 
-                         form=form,
-                         per_page=per_page,
-                         categories=get_active_categories(),
-                         suppliers=get_active_suppliers())
+
+    return render_template('spare_parts/list.html',
+                           pagination=pagination,
+                           form=form,
+                           per_page=per_page,
+                           categories=get_active_categories(),
+                           suppliers=get_active_suppliers())
 
 
 @spare_parts_bp.route('/new', methods=['GET', 'POST'])
@@ -123,7 +99,7 @@ def index():
 def new():
     """新增备件"""
     form = SparePartForm()
-    
+
     if form.validate_on_submit():
         spare_part = SparePart(
             part_code=form.part_code.data,
@@ -153,19 +129,15 @@ def new():
             is_active=form.is_active.data,
             created_by=current_user.id
         )
-        
+
         spare_part.update_stock_status()
-        
+
         db.session.add(spare_part)
         db.session.commit()
-        
-        # 清除相关缓存
-        clear_cache('categories:*')
-        clear_cache('suppliers:*')
-        
+
         flash('备件创建成功！', 'success')
         return redirect(url_for('spare_parts.index'))
-    
+
     return render_template('spare_parts/form.html', form=form, title='新增备件')
 
 
@@ -221,10 +193,6 @@ def edit(id):
         spare_part.update_stock_status()
         
         db.session.commit()
-        
-        # 清除相关缓存
-        clear_cache('categories:*')
-        clear_cache('suppliers:*')
         
         flash('备件更新成功！', 'success')
         return redirect(url_for('spare_parts.detail', id=spare_part.id))

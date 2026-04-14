@@ -53,7 +53,13 @@ class Warehouse(db.Model):
     zones = db.relationship('WarehouseZone', back_populates='warehouse', lazy='dynamic', cascade='all, delete-orphan')
     locations = db.relationship('WarehouseLocation', back_populates='warehouse', lazy='dynamic')
     batches = db.relationship('Batch', back_populates='warehouse', lazy='dynamic')
-    transactions = db.relationship('Transaction', back_populates='warehouse', lazy='dynamic')
+    # 交易关联拆分，避免双外键歧义
+    transactions_from = db.relationship(
+        'Transaction', foreign_keys='Transaction.source_warehouse_id', back_populates='source_warehouse', lazy='dynamic'
+    )
+    transactions_to = db.relationship(
+        'Transaction', foreign_keys='Transaction.target_warehouse_id', back_populates='target_warehouse', lazy='dynamic'
+    )
     spare_parts = db.relationship('SparePart', back_populates='warehouse', lazy='dynamic')
     inventory_records = db.relationship('InventoryRecord', back_populates='warehouse', lazy='dynamic')
     

@@ -18,10 +18,11 @@
 
 /* 激活状态的菜单项 */
 .sidebar-nav-link.active {
-  background: linear-gradient(135deg, #4e73df 0%, #375a7f 100%) !important;
+  background: linear-gradient(90deg, rgba(78, 115, 223, 0.2) 0%, transparent 100%) !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 8px rgba(78, 115, 223, 0.3);
-  transform: translateX(2px);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(78, 115, 223, 0.3);
+  padding-left: 1.25rem;
 }
 
 /* 激活状态的左侧高亮条 */
@@ -58,10 +59,10 @@
 
 /* 子菜单激活状态 */
 .sidebar-submenu-link.active {
-  background: linear-gradient(135deg, #4e73df 0%, #375a7f 100%) !important;
+  background: linear-gradient(90deg, rgba(78, 115, 223, 0.2) 0%, transparent 100%) !important;
   color: #ffffff !important;
+  font-weight: 600;
   box-shadow: 0 2px 6px rgba(78, 115, 223, 0.25);
-  transform: translateX(2px);
 }
 
 /* 子菜单激活状态的左侧高亮条 */

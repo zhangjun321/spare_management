@@ -1000,10 +1000,17 @@ async function generateImages(partId, btn) {
 // 扫码枪监听功能
 let barcodeBuffer = '';
 let lastInputTime = 0;
-const BARCODE_TIMEOUT = 50; // 扫码枪输入间隔（毫秒）
+const BARCODE_TIMEOUT = 100; // 扫码枪输入间隔（毫秒），适当放宽避免误判
+const BARCODE_MIN_LENGTH = 4; // 条码最短长度，防止单字符误触发
 
 // 全局监听键盘事件（扫码枪模拟键盘输入）
 document.addEventListener('keypress', function(e) {
+    // 如果焦点在输入框/文本域/选择框内，不拦截（避免干扰正常输入）
+    const activeTag = document.activeElement && document.activeElement.tagName;
+    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
+        return;
+    }
+    
     const currentTime = Date.now();
     
     // 如果两次输入间隔超过超时时间，认为是新的条码
@@ -1014,7 +1021,8 @@ document.addEventListener('keypress', function(e) {
     lastInputTime = currentTime;
     
     // 如果是 Enter 键，认为条码输入完成
-    if (e.key === 'Enter' && barcodeBuffer.length > 0) {
+    if (e.key === 'Enter' && barcodeBuffer.length >= BARCODE_MIN_LENGTH) {
+        e.preventDefault(); // 阻止 Enter 默认行为（防止表单提交或页面滚动）
         searchByBarcode(barcodeBuffer);
         barcodeBuffer = '';
         return;

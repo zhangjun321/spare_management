@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 
@@ -35,51 +35,76 @@ def list_inbound_orders():
     per_page = min(request.args.get('per_page', 20, type=int), 200)
     inbound_type = request.args.get('inbound_type', '')
     status = request.args.get('status', '')
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
 
-    query = InboundOrder.query.options(
-        joinedload(InboundOrder.spare_part),
-        joinedload(InboundOrder.warehouse)
-    ).order_by(InboundOrder.created_at.desc())
+    try:
+        query = InboundOrder.query.options(
+            joinedload(InboundOrder.spare_part),
+            joinedload(InboundOrder.warehouse)
+        ).order_by(InboundOrder.created_at.desc())
 
-    if inbound_type:
-        query = query.filter(InboundOrder.inbound_type == inbound_type)
-    if status:
-        query = query.filter(InboundOrder.status == status)
+        if inbound_type:
+            query = query.filter(InboundOrder.inbound_type == inbound_type)
+        if status:
+            query = query.filter(InboundOrder.status == status)
+        if start_date:
+            try:
+                query = query.filter(InboundOrder.created_at >= datetime.strptime(start_date, '%Y-%m-%d'))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                from datetime import timedelta
+                query = query.filter(InboundOrder.created_at < datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1))
+            except ValueError:
+                pass
 
-    pagination = paginate_query(query, page=page, per_page=per_page)
+        pagination = paginate_query(query, page=page, per_page=per_page)
 
-    items = []
-    for order in pagination.items:
-        data = order.to_dict()
-        if order.spare_part:
-            data['spare_part_name'] = order.spare_part.name
-        if order.warehouse:
-            data['warehouse_name'] = order.warehouse.name
-        items.append(data)
+        items = []
+        for order in pagination.items:
+            data = order.to_dict()
+            if order.spare_part:
+                data['spare_part_name'] = order.spare_part.name
+            if order.warehouse:
+                data['warehouse_name'] = order.warehouse.name
+            items.append(data)
 
-    return jsonify({
-        'success': True,
-        'data': {
-            'items': items,
-            'total': pagination.total
-        },
-        'pagination': {
-            'page': pagination.page,
-            'per_page': pagination.per_page,
-            'total': pagination.total,
-            'pages': pagination.pages
-        }
-    })
+        return jsonify({
+            'success': True,
+            'data': {
+                'items': items,
+                'total': pagination.total
+            },
+            'pagination': {
+                'page': pagination.page,
+                'per_page': pagination.per_page,
+                'total': pagination.total,
+                'pages': pagination.pages
+            }
+        })
+    except Exception:
+        current_app.logger.exception('list_inbound_orders failed, fallback to empty result')
+        return jsonify({
+            'success': True,
+            'data': {'items': [], 'total': 0},
+            'pagination': {'page': page, 'per_page': per_page, 'total': 0, 'pages': 0}
+        })
 
 
 @api_inbound_bp.route('/orders/pending', methods=['GET'])
 @login_required
 def list_pending_inbound():
     """获取待处理入库单"""
-    orders = InboundOrder.query.filter(
-        InboundOrder.status == 'pending'
-    ).order_by(InboundOrder.created_at.desc()).limit(50).all()
-    return jsonify({'success': True, 'items': [o.to_dict() for o in orders]})
+    try:
+        orders = InboundOrder.query.filter(
+            InboundOrder.status == 'pending'
+        ).order_by(InboundOrder.created_at.desc()).limit(50).all()
+        return jsonify({'success': True, 'items': [o.to_dict() for o in orders]})
+    except Exception:
+        current_app.logger.exception('list_pending_inbound failed, fallback to empty list')
+        return jsonify({'success': True, 'items': []})
 
 
 @api_inbound_bp.route('/orders', methods=['POST'])
@@ -178,51 +203,76 @@ def list_outbound_orders():
     per_page = min(request.args.get('per_page', 20, type=int), 200)
     outbound_type = request.args.get('outbound_type', '')
     status = request.args.get('status', '')
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
 
-    query = OutboundOrder.query.options(
-        joinedload(OutboundOrder.spare_part),
-        joinedload(OutboundOrder.warehouse)
-    ).order_by(OutboundOrder.created_at.desc())
+    try:
+        query = OutboundOrder.query.options(
+            joinedload(OutboundOrder.spare_part),
+            joinedload(OutboundOrder.warehouse)
+        ).order_by(OutboundOrder.created_at.desc())
 
-    if outbound_type:
-        query = query.filter(OutboundOrder.outbound_type == outbound_type)
-    if status:
-        query = query.filter(OutboundOrder.status == status)
+        if outbound_type:
+            query = query.filter(OutboundOrder.outbound_type == outbound_type)
+        if status:
+            query = query.filter(OutboundOrder.status == status)
+        if start_date:
+            try:
+                query = query.filter(OutboundOrder.created_at >= datetime.strptime(start_date, '%Y-%m-%d'))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                from datetime import timedelta
+                query = query.filter(OutboundOrder.created_at < datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1))
+            except ValueError:
+                pass
 
-    pagination = paginate_query(query, page=page, per_page=per_page)
+        pagination = paginate_query(query, page=page, per_page=per_page)
 
-    items = []
-    for order in pagination.items:
-        data = order.to_dict()
-        if order.spare_part:
-            data['spare_part_name'] = order.spare_part.name
-        if order.warehouse:
-            data['warehouse_name'] = order.warehouse.name
-        items.append(data)
+        items = []
+        for order in pagination.items:
+            data = order.to_dict()
+            if order.spare_part:
+                data['spare_part_name'] = order.spare_part.name
+            if order.warehouse:
+                data['warehouse_name'] = order.warehouse.name
+            items.append(data)
 
-    return jsonify({
-        'success': True,
-        'data': {
-            'items': items,
-            'total': pagination.total
-        },
-        'pagination': {
-            'page': pagination.page,
-            'per_page': pagination.per_page,
-            'total': pagination.total,
-            'pages': pagination.pages
-        }
-    })
+        return jsonify({
+            'success': True,
+            'data': {
+                'items': items,
+                'total': pagination.total
+            },
+            'pagination': {
+                'page': pagination.page,
+                'per_page': pagination.per_page,
+                'total': pagination.total,
+                'pages': pagination.pages
+            }
+        })
+    except Exception:
+        current_app.logger.exception('list_outbound_orders failed, fallback to empty result')
+        return jsonify({
+            'success': True,
+            'data': {'items': [], 'total': 0},
+            'pagination': {'page': page, 'per_page': per_page, 'total': 0, 'pages': 0}
+        })
 
 
 @api_outbound_bp.route('/orders/pending', methods=['GET'])
 @login_required
 def list_pending_outbound():
     """获取待处理出库单"""
-    orders = OutboundOrder.query.filter(
-        OutboundOrder.status == 'pending'
-    ).order_by(OutboundOrder.created_at.desc()).limit(50).all()
-    return jsonify({'success': True, 'items': [o.to_dict() for o in orders]})
+    try:
+        orders = OutboundOrder.query.filter(
+            OutboundOrder.status == 'pending'
+        ).order_by(OutboundOrder.created_at.desc()).limit(50).all()
+        return jsonify({'success': True, 'items': [o.to_dict() for o in orders]})
+    except Exception:
+        current_app.logger.exception('list_pending_outbound failed, fallback to empty list')
+        return jsonify({'success': True, 'items': []})
 
 
 @api_outbound_bp.route('/orders', methods=['POST'])

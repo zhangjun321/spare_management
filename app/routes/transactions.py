@@ -29,6 +29,34 @@ def index():
                            pagination=pagination)
 
 
+@transactions_bp.route('/list')
+@login_required
+def list_page():
+    """交易列表别名路由（用于统一侧边栏子菜单）"""
+    return index()
+
+
+@transactions_bp.route('/inbound')
+@login_required
+def inbound_page():
+    """入库单页面（复用统一布局与侧边栏）"""
+    return render_template('warehouses/inbound.html')
+
+
+@transactions_bp.route('/outbound')
+@login_required
+def outbound_page():
+    """出库单页面（复用统一布局与侧边栏）"""
+    return render_template('warehouses/outbound.html')
+
+
+@transactions_bp.route('/inventory')
+@login_required
+def inventory_page():
+    """盘点/差异页面（复用统一布局与侧边栏）"""
+    return render_template('warehouses/inventory.html')
+
+
 @transactions_bp.route('/transfer', methods=['GET', 'POST'])
 @login_required
 @permission_required('transaction', 'create')

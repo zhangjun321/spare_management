@@ -4,208 +4,217 @@
 
 {% block page_title %}入库管理{% endblock %}
 
+{% block carousel %}
+{% set carousel_id = 'inboundCarousel' %}
+{% set image_prefix = 'inbound' %}
+{% include 'components/carousel_transactions.html' %}
+{% endblock %}
+
 {% block content %}
-<div id="app">
-    <style>
-        .search-form {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .data-table {
-            background: #fff;
-            border-radius: 8px;
-            padding: 20px;
-        }
-    </style>
-
-    {% raw %}
-    <div class="search-form">
-        <el-form :inline="true" :model="searchForm" class="search-form">
-            <el-form-item label="入库类型">
-                <el-select v-model="searchForm.inbound_type" placeholder="请选择" clearable>
-                    <el-option label="采购入库" value="purchase"></el-option>
-                    <el-option label="退货入库" value="return"></el-option>
-                    <el-option label="调拨入库" value="transfer"></el-option>
-                    <el-option label="其他入库" value="other"></el-option>
-                </el-select>
-            </el-form-item>
-            <el-form-item label="状态">
-                <el-select v-model="searchForm.status" placeholder="请选择" clearable>
-                    <el-option label="待处理" value="pending"></el-option>
-                    <el-option label="处理中" value="processing"></el-option>
-                    <el-option label="已完成" value="completed"></el-option>
-                    <el-option label="已取消" value="cancelled"></el-option>
-                </el-select>
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" @click="handleSearch">查询</el-button>
-                <el-button @click="handleReset">重置</el-button>
-            </el-form-item>
-        </el-form>
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 text-primary"><i class="fas fa-arrow-down me-2"></i>入库单列表</h5>
     </div>
+    <div class="card-body">
+        <form id="inboundSearchForm" class="row g-3 align-items-end mb-3">
+            <div class="col-md-3">
+                <label for="inboundType" class="form-label">入库类型</label>
+                <select id="inboundType" class="form-select">
+                    <option value="">全部</option>
+                    <option value="purchase">采购入库</option>
+                    <option value="return">退货入库</option>
+                    <option value="transfer">调拨入库</option>
+                    <option value="other">其他入库</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="inboundStatus" class="form-label">状态</label>
+                <select id="inboundStatus" class="form-select">
+                    <option value="">全部</option>
+                    <option value="pending">待处理</option>
+                    <option value="processing">处理中</option>
+                    <option value="completed">已完成</option>
+                    <option value="cancelled">已取消</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="inboundPerPage" class="form-label">每页数量</label>
+                <select id="inboundPerPage" class="form-select">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search me-1"></i>查询
+                </button>
+                <button type="button" id="inboundResetBtn" class="btn btn-outline-secondary">重置</button>
+            </div>
+        </form>
 
-    <div class="data-table">
-        <el-table :data="tableData" border stripe style="width: 100%" v-loading="loading">
-            <el-table-column prop="order_no" label="入库单号" width="180"></el-table-column>
-            <el-table-column prop="inbound_type" label="入库类型" width="120">
-                <template #default="scope">
-                    <el-tag :type="getInboundTypeTag(scope.row.inbound_type)">
-                        {{ getInboundTypeText(scope.row.inbound_type) }}
-                    </el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column prop="spare_part_id" label="备件 ID" width="100"></el-table-column>
-            <el-table-column prop="warehouse_id" label="仓库 ID" width="100"></el-table-column>
-            <el-table-column prop="quantity" label="入库数量" width="100"></el-table-column>
-            <el-table-column prop="actual_quantity" label="实收数量" width="100"></el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
-                <template #default="scope">
-                    <el-tag :type="getStatusTag(scope.row.status)">
-                        {{ getStatusText(scope.row.status) }}
-                    </el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
-            <el-table-column label="操作" fixed="right" width="200">
-                <template #default="scope">
-                    <el-button size="small" type="primary" @click="handleView(scope.row)">查看</el-button>
-                    <el-button size="small" type="success" @click="handleEdit(scope.row)">编辑</el-button>
-                </template>
-            </el-table-column>
-        </el-table>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>入库单号</th>
+                        <th>入库类型</th>
+                        <th>备件 ID</th>
+                        <th>仓库 ID</th>
+                        <th>入库数量</th>
+                        <th>实收数量</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody id="inboundTableBody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-        <el-pagination
-            v-model:current-page="pagination.page"
-            v-model:page-size="pagination.per_page"
-            :total="pagination.total"
-            :page-sizes="[10, 20, 50, 100]"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="handleSizeChange"
-            @current-change="handlePageChange"
-            style="margin-top: 20px; justify-content: flex-end;"
-        />
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span id="inboundPaginationInfo" class="text-muted small">共 0 条记录</span>
+            <div class="btn-group">
+                <button id="inboundPrevBtn" class="btn btn-outline-primary btn-sm">上一页</button>
+                <button id="inboundNextBtn" class="btn btn-outline-primary btn-sm">下一页</button>
+            </div>
+        </div>
     </div>
-    {% endraw %}
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.css">
-<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.full.min.js"></script>
-
 <script>
-const { createApp } = Vue;
+function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
 
-createApp({
-    data() {
-        return {
-            loading: false,
-            searchForm: {
-                inbound_type: '',
-                status: ''
-            },
-            tableData: [],
-            pagination: {
-                page: 1,
-                per_page: 20,
-                total: 0
-            }
-        };
-    },
-    methods: {
-        async loadData() {
-            this.loading = true;
-            try {
-                const params = new URLSearchParams({
-                    page: this.pagination.page,
-                    per_page: this.pagination.per_page,
-                    ...this.searchForm
-                });
-                
-                const response = await fetch(`/api/warehouse/inbound/list?${params}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    this.tableData = data.data.items || [];
-                    this.pagination.total = data.data.total || 0;
-                } else {
-                    this.$message.error('加载数据失败');
-                }
-            } catch (error) {
-                console.error('加载数据失败:', error);
-                this.$message.error('加载数据失败');
-            } finally {
-                this.loading = false;
-            }
-        },
-        handleSearch() {
-            this.pagination.page = 1;
-            this.loadData();
-        },
-        handleReset() {
-            this.searchForm = {
-                inbound_type: '',
-                status: ''
-            };
-            this.pagination.page = 1;
-            this.loadData();
-        },
-        handleSizeChange(size) {
-            this.pagination.per_page = size;
-            this.pagination.page = 1;
-            this.loadData();
-        },
-        handlePageChange(page) {
-            this.pagination.page = page;
-            this.loadData();
-        },
-        getInboundTypeTag(type) {
-            const tags = {
-                'purchase': 'primary',
-                'return': 'success',
-                'transfer': 'warning',
-                'other': 'info'
-            };
-            return tags[type] || 'info';
-        },
-        getInboundTypeText(type) {
-            const texts = {
-                'purchase': '采购入库',
-                'return': '退货入库',
-                'transfer': '调拨入库',
-                'other': '其他入库'
-            };
-            return texts[type] || type;
-        },
-        getStatusTag(status) {
-            const tags = {
-                'pending': 'warning',
-                'processing': 'primary',
-                'completed': 'success',
-                'cancelled': 'danger'
-            };
-            return tags[status] || 'info';
-        },
-        getStatusText(status) {
-            const texts = {
-                'pending': '待处理',
-                'processing': '处理中',
-                'completed': '已完成',
-                'cancelled': '已取消'
-            };
-            return texts[status] || status;
-        },
-        handleView(row) {
-            this.$message.info('查看功能开发中');
-        },
-        handleEdit(row) {
-            this.$message.info('编辑功能开发中');
-        }
-    },
-    mounted() {
-        this.loadData();
+const state = {
+    page: 1,
+    perPage: 20,
+    total: 0,
+    loading: false
+};
+
+function getInboundTypeText(type) {
+    const map = { purchase: '采购入库', return: '退货入库', transfer: '调拨入库', other: '其他入库' };
+    return map[type] || (type || '-');
+}
+
+function getInboundTypeBadge(type) {
+    const map = { purchase: 'primary', return: 'success', transfer: 'warning', other: 'secondary' };
+    return map[type] || 'secondary';
+}
+
+function getStatusText(status) {
+    const map = { pending: '待处理', processing: '处理中', completed: '已完成', cancelled: '已取消' };
+    return map[status] || (status || '-');
+}
+
+function getStatusBadge(status) {
+    const map = { pending: 'warning', processing: 'info', completed: 'success', cancelled: 'danger' };
+    return map[status] || 'secondary';
+}
+
+function renderRows(items) {
+    const tbody = document.getElementById('inboundTableBody');
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无入库记录</td></tr>';
+        return;
     }
-}).use(ElementPlus).mount('#app');
+
+    tbody.innerHTML = items.map((row) => `
+        <tr>
+            <td class="fw-semibold">${row.order_no || '-'}</td>
+            <td><span class="badge text-bg-${getInboundTypeBadge(row.inbound_type)}">${getInboundTypeText(row.inbound_type)}</span></td>
+            <td>${row.spare_part_id ?? '-'}</td>
+            <td>${row.warehouse_id ?? '-'}</td>
+            <td>${row.quantity ?? '-'}</td>
+            <td>${row.actual_quantity ?? '-'}</td>
+            <td><span class="badge text-bg-${getStatusBadge(row.status)}">${getStatusText(row.status)}</span></td>
+            <td class="text-muted">${row.created_at || '-'}</td>
+        </tr>
+    `).join('');
+}
+
+function updatePagination() {
+    const totalPages = Math.max(1, Math.ceil(state.total / state.perPage));
+    document.getElementById('inboundPaginationInfo').textContent = `共 ${state.total} 条记录，第 ${state.page} / ${totalPages} 页`;
+    document.getElementById('inboundPrevBtn').disabled = state.page <= 1 || state.loading;
+    document.getElementById('inboundNextBtn').disabled = state.page >= totalPages || state.loading;
+}
+
+async function loadInboundData() {
+    if (state.loading) return;
+    state.loading = true;
+    updatePagination();
+
+    const inboundType = document.getElementById('inboundType').value;
+    const status = document.getElementById('inboundStatus').value;
+    const params = new URLSearchParams({
+        page: String(state.page),
+        per_page: String(state.perPage),
+        inbound_type: inboundType,
+        status: status
+    });
+
+    try {
+        const response = await fetchWithTimeout(`/api/inbound/orders?${params.toString()}`);
+        const data = await response.json();
+        if (data.success) {
+            renderRows(data.data.items || []);
+            state.total = data.data.total || 0;
+        } else {
+            renderRows([]);
+        }
+    } catch (error) {
+        console.error('加载入库数据失败:', error);
+        renderRows([]);
+    } finally {
+        state.loading = false;
+        updatePagination();
+    }
+}
+
+document.getElementById('inboundSearchForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    state.page = 1;
+    state.perPage = Number(document.getElementById('inboundPerPage').value || 20);
+    loadInboundData();
+});
+
+document.getElementById('inboundPerPage').addEventListener('change', () => {
+    state.page = 1;
+    state.perPage = Number(document.getElementById('inboundPerPage').value || 20);
+    loadInboundData();
+});
+
+document.getElementById('inboundResetBtn').addEventListener('click', () => {
+    document.getElementById('inboundType').value = '';
+    document.getElementById('inboundStatus').value = '';
+    document.getElementById('inboundPerPage').value = '20';
+    state.page = 1;
+    state.perPage = 20;
+    loadInboundData();
+});
+
+document.getElementById('inboundPrevBtn').addEventListener('click', () => {
+    if (state.page > 1) {
+        state.page -= 1;
+        loadInboundData();
+    }
+});
+
+document.getElementById('inboundNextBtn').addEventListener('click', () => {
+    const totalPages = Math.max(1, Math.ceil(state.total / state.perPage));
+    if (state.page < totalPages) {
+        state.page += 1;
+        loadInboundData();
+    }
+});
+
+loadInboundData();
 </script>
 {% endblock %}

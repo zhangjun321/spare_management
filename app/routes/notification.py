@@ -57,6 +57,11 @@ def mark_all_as_read():
         'read_at': datetime.now()
     })
     db.session.commit()
+
+    # 判断是否为 AJAX 请求，返回 JSON 避免 fetch 跟随重定向
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+       request.accept_mimetypes.accept_json:
+        return jsonify({'success': True, 'message': '所有通知已标记为已读'})
     
     flash('所有通知已标记为已读', 'success')
     return redirect(url_for('notification.index'))
@@ -85,10 +90,11 @@ def unread_count():
 @notification_bp.route('/api/recent')
 @login_required
 def get_recent():
-    """获取最近的通知（用于顶部导航栏下拉菜单）"""
+    """获取最近的通知（用于顶部导航栏下拉菜单），同时返回未读数"""
     notifications = Notification.query.filter_by(user_id=current_user.id)\
                                       .order_by(Notification.created_at.desc())\
                                       .limit(5).all()
+    unread_count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
     
     result = []
     for n in notifications:
@@ -102,4 +108,4 @@ def get_recent():
             'created_at': n.created_at.strftime('%Y-%m-%d %H:%M')
         })
     
-    return jsonify({'notifications': result})
+    return jsonify({'notifications': result, 'unread_count': unread_count})

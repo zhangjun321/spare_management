@@ -4,7 +4,7 @@
 为 React 前端提供完整的 CRUD API 接口
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 from app.extensions import db
@@ -50,99 +50,90 @@ def list_warehouses():
     sort_by = request.args.get('sort_by', 'created_at')
     order = request.args.get('order', 'desc')
     
-    # 生成缓存键
-    from app.services.cache_service import cache_service
-    cache_key = cache_service.generate_key(
-        'warehouse_list',
-        current_user.id,
-        page=page,
-        per_page=per_page,
-        keyword=keyword,
-        warehouse_type=warehouse_type,
-        is_active=is_active,
-        sort_by=sort_by,
-        order=order
-    )
-    
-    # 尝试从缓存获取（如果 Redis 可用）
-    if cache_service.redis_client:
-        cached_result = cache_service.get(cache_key)
-        if cached_result:
-            return jsonify(cached_result)
-    
-    # 构建查询 - 使用 joinedload 预加载关联数据，避免 N+1 查询
-    query = Warehouse.query.options(
-        joinedload(Warehouse.manager),
-        joinedload(Warehouse.locations),
-        joinedload(Warehouse.inventory_records)
-    )
-    
-    # 关键词搜索
-    if keyword:
-        keyword = f'%{keyword}%'
-        query = query.filter(
-            db.or_(
-                Warehouse.name.like(keyword),
-                Warehouse.code.like(keyword),
-                Warehouse.address.like(keyword)
-            )
+    try:
+        # 生成缓存键
+        from app.services.cache_service import cache_service
+        cache_key = cache_service.generate_key(
+            'warehouse_list',
+            current_user.id,
+            page=page,
+            per_page=per_page,
+            keyword=keyword,
+            warehouse_type=warehouse_type,
+            is_active=is_active,
+            sort_by=sort_by,
+            order=order
         )
-    
-    # 类型筛选
-    if warehouse_type:
-        query = query.filter(Warehouse.type == warehouse_type)
-    
-    # 启用状态筛选
-    if is_active is not None:
-        is_active_bool = is_active.lower() == 'true'
-        query = query.filter(Warehouse.is_active == is_active_bool)
-    
-    # 排序
-    if hasattr(Warehouse, sort_by):
-        sort_column = getattr(Warehouse, sort_by)
-        if order.lower() == 'desc':
-            query = query.order_by(sort_column.desc())
-        else:
-            query = query.order_by(sort_column.asc())
-    
-    # 分页
-    pagination = paginate_query(query, page=page, per_page=per_page)
-    
-    # 转换为 JSON - 使用已预加载的数据，避免额外查询
-    warehouses = []
-    for warehouse in pagination.items:
-        warehouse_data = warehouse.to_dict()
         
-        # 使用已加载的关系计算数量（不产生额外查询）
-        warehouse_data['location_count'] = len(list(warehouse.locations))
-        warehouse_data['inventory_count'] = len(list(warehouse.inventory_records))
+        # 尝试从缓存获取（如果 Redis 可用）
+        if cache_service.redis_client:
+            cached_result = cache_service.get(cache_key)
+            if cached_result:
+                return jsonify(cached_result)
         
-        # 添加管理员信息
-        if warehouse.manager:
-            warehouse_data['manager_name'] = warehouse.manager.real_name
-        else:
-            warehouse_data['manager_name'] = '未分配'
+        # 构建查询：仅预加载非 dynamic 关系，避免 500
+        query = Warehouse.query.options(joinedload(Warehouse.manager))
         
-        warehouses.append(warehouse_data)
-    
-    result = {
-        'success': True,
-        'data': warehouses,
-        'pagination': {
-            'page': pagination.page,
-            'per_page': pagination.per_page,
-            'total': pagination.total,
-            'pages': pagination.pages,
-            'has_next': pagination.has_next,
-            'has_prev': pagination.has_prev
+        # 关键词搜索
+        if keyword:
+            keyword = f'%{keyword}%'
+            query = query.filter(
+                db.or_(
+                    Warehouse.name.like(keyword),
+                    Warehouse.code.like(keyword),
+                    Warehouse.address.like(keyword)
+                )
+            )
+        
+        # 类型筛选
+        if warehouse_type:
+            query = query.filter(Warehouse.type == warehouse_type)
+        
+        # 启用状态筛选
+        if is_active is not None:
+            is_active_bool = is_active.lower() == 'true'
+            query = query.filter(Warehouse.is_active == is_active_bool)
+        
+        # 排序
+        if hasattr(Warehouse, sort_by):
+            sort_column = getattr(Warehouse, sort_by)
+            if order.lower() == 'desc':
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column.asc())
+        
+        # 分页
+        pagination = paginate_query(query, page=page, per_page=per_page)
+        
+        warehouses = []
+        for warehouse in pagination.items:
+            warehouse_data = warehouse.to_dict()
+            warehouse_data['location_count'] = warehouse.locations.count()
+            warehouse_data['inventory_count'] = warehouse.inventory_records.count()
+            warehouse_data['manager_name'] = warehouse.manager.real_name if warehouse.manager else '未分配'
+            warehouses.append(warehouse_data)
+        
+        result = {
+            'success': True,
+            'data': warehouses,
+            'pagination': {
+                'page': pagination.page,
+                'per_page': pagination.per_page,
+                'total': pagination.total,
+                'pages': pagination.pages,
+                'has_next': pagination.has_next,
+                'has_prev': pagination.has_prev
+            }
         }
-    }
-    
-    # 存入缓存（5 分钟）
-    if cache_service.redis_client:
-        cache_service.set(cache_key, result, timeout=300)
-    
-    return jsonify(result)
+        
+        # 存入缓存（5 分钟）
+        if cache_service.redis_client:
+            cache_service.set(cache_key, result, timeout=300)
+        
+        return jsonify(result)
+    except Exception as e:
+        current_app.logger.exception('list_warehouses failed')
+        return jsonify({'success': False, 'error': f'加载仓库列表失败: {str(e)}'}), 500
 
 
 @api_warehouses_bp.route('/<int:id>', methods=['GET'])
@@ -1035,6 +1026,21 @@ def list_inventory_records():
     })
 
 
+@api_inventory_bp.route('/warehouses', methods=['GET'])
+@login_required
+def get_inventory_warehouses():
+    """库存页面专用仓库下拉接口（轻量稳定）"""
+    try:
+        warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.id.asc()).all()
+        return jsonify({
+            'success': True,
+            'data': [{'id': w.id, 'name': w.name} for w in warehouses]
+        })
+    except Exception as e:
+        current_app.logger.exception('get_inventory_warehouses failed')
+        return jsonify({'success': False, 'error': f'加载仓库下拉失败: {str(e)}'}), 500
+
+
 @api_inventory_bp.route('/stats', methods=['GET'])
 @login_required
 def get_inventory_stats():
@@ -1050,33 +1056,60 @@ def get_inventory_stats():
         }
     """
     from sqlalchemy import func, case
+    from app.models.spare_part import SparePart
 
     warehouse_id = request.args.get('warehouse_id', type=int)
 
-    base_q = db.session.query(
-        func.count(InventoryRecord.id).label('total'),
-        func.sum(
-            case((InventoryRecord.stock_status == 'low', 1), else_=0)
-        ).label('low_stock'),
-        func.sum(
-            case((InventoryRecord.stock_status == 'out', 1), else_=0)
-        ).label('out_of_stock'),
-        func.sum(
-            case((InventoryRecord.stock_status == 'normal', 1), else_=0)
-        ).label('normal')
-    )
+    try:
+        base_q = db.session.query(
+            func.count(InventoryRecord.id).label('total'),
+            func.sum(
+                case((InventoryRecord.stock_status == 'low', 1), else_=0)
+            ).label('low_stock'),
+            func.sum(
+                case((InventoryRecord.stock_status == 'out', 1), else_=0)
+            ).label('out_of_stock'),
+            func.sum(
+                case((InventoryRecord.stock_status == 'normal', 1), else_=0)
+            ).label('normal')
+        )
 
-    if warehouse_id:
-        base_q = base_q.filter(InventoryRecord.warehouse_id == warehouse_id)
+        if warehouse_id:
+            base_q = base_q.filter(InventoryRecord.warehouse_id == warehouse_id)
 
-    result = base_q.one()
+        result = base_q.one()
 
-    return jsonify({
-        'success': True,
-        'data': {
-            'total': result.total or 0,
-            'low_stock': int(result.low_stock or 0),
-            'out_of_stock': int(result.out_of_stock or 0),
-            'normal': int(result.normal or 0)
-        }
-    })
+        return jsonify({
+            'success': True,
+            'data': {
+                'total': result.total or 0,
+                'low_stock': int(result.low_stock or 0),
+                'out_of_stock': int(result.out_of_stock or 0),
+                'normal': int(result.normal or 0)
+            }
+        })
+    except Exception:
+        # 兼容历史库结构：InventoryRecord 字段缺失时，降级使用 SparePart 统计，避免前端 500
+        current_app.logger.exception('get_inventory_stats failed on inventory_record, fallback to spare_part')
+
+        sp_query = SparePart.query.filter(SparePart.is_active == True)
+        if warehouse_id:
+            sp_query = sp_query.filter(SparePart.warehouse_id == warehouse_id)
+
+        total = sp_query.count()
+        low_stock = sp_query.filter(
+            SparePart.current_stock > 0,
+            SparePart.current_stock <= SparePart.min_stock
+        ).count()
+        out_of_stock = sp_query.filter(SparePart.current_stock <= 0).count()
+        normal = max(total - low_stock - out_of_stock, 0)
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'total': total,
+                'low_stock': low_stock,
+                'out_of_stock': out_of_stock,
+                'normal': normal
+            }
+        })

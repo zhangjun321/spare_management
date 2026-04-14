@@ -141,7 +141,8 @@
                             per_page: pagination.value.per_page,
                             ...searchForm.value
                         };
-                        const response = await axios.get('/api/warehouse/inbound/list', { params });
+                        // 统一走当前已启用的入库 API
+                        const response = await axios.get('/api/inbound/orders', { params });
                         if (response.data.success) {
                             tableData.value = response.data.data.items;
                             pagination.value.total = response.data.data.total;
@@ -173,7 +174,7 @@
                 const completeInbound = async (row) => {
                     try {
                         await ElementPlus.ElMessageBox.confirm('确定要完成入库吗？', '提示', { type: 'warning' });
-                        const response = await axios.post(`/api/warehouse/inbound/${row.id}/complete`);
+                        const response = await axios.post(`/api/inbound/orders/${row.id}/complete`);
                         if (response.data.success) {
                             ElementPlus.ElMessage.success('入库完成');
                             loadData();
@@ -190,7 +191,7 @@
                 const cancelInbound = async (row) => {
                     try {
                         await ElementPlus.ElMessageBox.confirm('确定要取消入库单吗？', '提示', { type: 'warning' });
-                        const response = await axios.post(`/api/warehouse/inbound/${row.id}/cancel`);
+                        const response = await axios.post(`/api/inbound/orders/${row.id}/cancel`);
                         if (response.data.success) {
                             ElementPlus.ElMessage.success('已取消');
                             loadData();

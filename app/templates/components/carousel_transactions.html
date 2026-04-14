@@ -1,0 +1,48 @@
+{# 交易管理统一轮播图组件
+   需要在调用前设置变量：
+   - carousel_id
+   - image_prefix (transaction/inbound/outbound/inventory)
+#}
+<div id="{{ carousel_id }}" class="carousel slide carousel-section" data-bs-ride="carousel">
+    <div class="carousel-indicators">
+        <button type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide-to="0" class="active"></button>
+        <button type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide-to="1"></button>
+        <button type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide-to="2"></button>
+        <button type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide-to="3"></button>
+        <button type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide-to="4"></button>
+        <button type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide-to="5"></button>
+    </div>
+
+    <div class="carousel-inner">
+        {% if image_prefix == 'inbound' %}
+            {% set slide_titles = ['高效入库协同', '批次追溯管理', '智能收货分拣', '质检流程闭环', '库位上架优化', '实时入库看板'] %}
+            {% set slide_descs = ['采购到货快速登记，减少等待时间', '批次信息全链路记录，提升可追溯性', '自动化分拣策略，提升吞吐效率', '收货质检一体化，保障入库质量', '动态推荐上架库位，提高空间利用率', '入库状态实时监控，管理一目了然'] %}
+        {% elif image_prefix == 'outbound' %}
+            {% set slide_titles = ['精准出库执行', '波次任务优化', '拣货路径智能化', '库存扣减同步', '异常复核机制', '发运时效提升'] %}
+            {% set slide_descs = ['订单驱动执行，出库流程更稳更快', '波次调度与任务分配更高效', '智能路径减少拣货行走距离', '出库与库存状态实时同步', '多节点复核降低出库差错率', '提升发运效率，保障交付时效'] %}
+        {% elif image_prefix == 'inventory' %}
+            {% set slide_titles = ['库存全景可视化', '盘点差异闭环', '安全库存预警', '周转效率提升', '多仓库存联动', '数据驱动决策'] %}
+            {% set slide_descs = ['库存状态统一可视，快速定位问题', '盘点差异自动归集与处理', '阈值预警提前发现缺货风险', '优化周转结构，降低资金占用', '跨仓数据联动，调拨更及时', '基于数据洞察优化补货与备货'] %}
+        {% else %}
+            {% set slide_titles = ['交易全流程管控', '入出库协同联动', '调拨效率提升', '审批轨迹透明', '多维度统计分析', '智能运营优化'] %}
+            {% set slide_descs = ['统一管理交易状态与执行进度', '入库、出库、库存数据实时一致', '跨仓调拨流程标准化、可追踪', '关键节点可审计，风险可控', '交易趋势与结构分析更直观', '持续优化流程，提升运营效率'] %}
+        {% endif %}
+
+        {% for i in range(1, 7) %}
+        <div class="carousel-item {% if i == 1 %}active{% endif %}">
+            <img src="/static/images/carousel/{{ image_prefix }}_{{ '%02d'|format(i) }}.jpg" alt="{{ image_prefix }} 图片{{ i }}" loading="lazy">
+            <div class="carousel-caption">
+                <h5><i class="fas fa-exchange-alt me-2"></i>{{ slide_titles[i - 1] }}</h5>
+                <p>{{ slide_descs[i - 1] }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <button class="carousel-control-prev" type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+    </button>
+</div>

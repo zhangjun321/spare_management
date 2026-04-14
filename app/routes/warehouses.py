@@ -14,6 +14,7 @@ from app.models.user import User
 from app.models.spare_part import SparePart
 from app.models import Warehouse
 from app.extensions import db
+from sqlalchemy import func
 from app.utils.decorators import permission_required
 from datetime import datetime
 from datetime import timedelta
@@ -46,12 +47,26 @@ def index():
     
     # 获取所有启用的仓库（用于智能管理）
     warehouses = Warehouse.query.filter_by(is_active=True).all()
+
+    # 一次性查询每个仓库的备件种类数，避免模板中逐行 count() 导致 N+1 查询卡顿
+    warehouse_ids = [warehouse.id for warehouse in warehouses]
+    warehouse_part_counts = {}
+    if warehouse_ids:
+        counts = db.session.query(
+            SparePart.warehouse_id,
+            func.count(SparePart.id)
+        ).filter(
+            SparePart.warehouse_id.in_(warehouse_ids),
+            SparePart.is_active == True
+        ).group_by(SparePart.warehouse_id).all()
+        warehouse_part_counts = {warehouse_id: count for warehouse_id, count in counts}
     
     return render_template('warehouses/index.html', 
                          pagination=pagination,
                          filters=filters,
                          statistics=statistics,
-                         warehouses=warehouses or [])
+                         warehouses=warehouses or [],
+                         warehouse_part_counts=warehouse_part_counts)
 
 
 @warehouses_bp.route('/dashboard')

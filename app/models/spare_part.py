@@ -48,7 +48,6 @@ class SparePart(db.Model):
     warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id], back_populates='spare_parts')
     warehouse_location = db.relationship('WarehouseLocation', foreign_keys=[location_id], back_populates='spare_parts')
     batches = db.relationship('Batch', foreign_keys='Batch.spare_part_id', back_populates='spare_part', lazy='dynamic')
-    transactions = db.relationship('Transaction', foreign_keys='Transaction.spare_part_id', back_populates='spare_part', lazy='dynamic')
     serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.spare_part_id', back_populates='spare_part', lazy='dynamic')
     inventory_records = db.relationship('InventoryRecord', back_populates='spare_part', lazy='dynamic')
     

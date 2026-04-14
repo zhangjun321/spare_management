@@ -169,7 +169,7 @@
                             </td>
                             <td>{{ warehouse.area or 0 }}</td>
                             <td>{{ warehouse.capacity or 0 }}</td>
-                            <td>{{ warehouse.spare_parts.count() if warehouse.spare_parts else 0 }}</td>
+                            <td>{{ warehouse_part_counts.get(warehouse.id, 0) }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <a href="#" 
