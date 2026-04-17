@@ -28,8 +28,8 @@ class SparePart(db.Model):
     perspective_image_url = db.Column(db.String(500), comment='透视图 URL')
     remark = db.Column(db.Text, comment='备注')
     is_active = db.Column(db.Boolean, default=True, comment='是否启用')
-    created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
-    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, comment='更新时间')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, comment='创建时间')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), comment='创建人 ID')
     
     brand = db.Column(db.String(100), index=True, comment='品牌')
@@ -55,9 +55,11 @@ class SparePart(db.Model):
         """更新库存状态并触发预警"""
         old_status = self.stock_status
         
-        # 更新库存状态
+        # 更新库存状态（safety_stock 优先于 min_stock）
         if self.current_stock == 0:
             self.stock_status = 'out'  # 缺货
+        elif self.safety_stock and self.current_stock <= self.safety_stock:
+            self.stock_status = 'low'  # 低于安全库存
         elif self.current_stock <= self.min_stock:
             self.stock_status = 'low'  # 低库存
         elif self.max_stock and self.current_stock >= self.max_stock:

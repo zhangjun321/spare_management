@@ -304,7 +304,7 @@
             margin-left: var(--sidebar-collapsed-width);
         }
         
-        /* 顶部导航栏 */
+        /* 顶部导航栏 - 旧版保留 */
         .top-navbar {
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
             border-radius: 12px;
@@ -325,6 +325,241 @@
             font-weight: 700;
             color: #2c3e50;
             margin: 0;
+        }
+        
+        /* 现代化顶部导航栏 */
+        .top-navbar-modern {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            padding: 1rem 0;
+            margin-bottom: var(--spacing-lg);
+            position: relative;
+            z-index: 100;
+            border-radius: 0 0 20px 20px;
+        }
+        
+        .top-navbar-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.05" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,138.7C960,139,1056,117,1152,96C1248,75,1344,53,1392,42.7L1440,32L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+            background-size: cover;
+            opacity: 0.3;
+        }
+        
+        .page-header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .page-title-modern {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.5px;
+        }
+        
+        .breadcrumb {
+            background: transparent;
+            padding: 0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .breadcrumb-item a {
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .breadcrumb-item a:hover {
+            color: #ffffff !important;
+        }
+        
+        /* 现代化按钮样式 */
+        .btn-modern {
+            border: none;
+            border-radius: 10px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-modern:hover::before {
+            left: 100%;
+        }
+        
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            color: #ffffff;
+        }
+        
+        .btn-modern-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-modern-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .btn-modern-info {
+            background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+        }
+        
+        .btn-modern-light {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-modern-notification {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .btn-modern-notification .badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(231, 74, 59, 0.4);
+        }
+        
+        /* 搜索框 */
+        .search-box-modern {
+            position: relative;
+            width: 280px;
+        }
+        
+        .search-box-modern .form-control {
+            border: none;
+            border-radius: 25px;
+            padding: 0.6rem 1.2rem 0.6rem 2.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .search-box-modern .form-control:focus {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .search-box-modern .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #667eea;
+            font-size: 1rem;
+        }
+        
+        /* 现代化下拉菜单 */
+        .dropdown-menu-modern {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 0;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .dropdown-header-modern {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .notification-list-modern {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .dropdown-user-modern {
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dropdown-user-modern:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .user-avatar-modern {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+        }
+        
+        .dropdown-user-modern:hover .user-avatar-modern {
+            transform: scale(1.1) rotate(5deg);
+        }
+        
+        .user-info-modern {
+            margin-left: 0.75rem;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+        
+        .dropdown-user-menu .user-name {
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .user-email {
+            font-size: 0.8rem;
+        }
+        
+        .dropdown-item {
+            padding: 0.75rem 1.25rem;
+            transition: all 0.3s;
+            border-radius: 8px;
+            margin: 0.25rem 0.5rem;
+        }
+        
+        .dropdown-item:hover {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transform: translateX(5px);
+        }
+        
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
         }
         
         /* 卡片样式优化 */
@@ -1021,59 +1256,113 @@
     <!-- 主内容区域 -->
     <div class="main-content">
         <!-- 顶部导航栏 -->
-        <div class="top-navbar">
-            <div class="d-flex align-items-center">
-                <button class="btn btn-link d-none d-md-block me-3" id="mainContentToggle" style="font-size: 1.25rem;">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h1 class="page-title">{% block page_title %}仪表盘{% endblock %}</h1>
-            </div>
-            
-            <div class="d-flex align-items-center">
-                <!-- 通知 -->
-                <div class="dropdown me-3">
-                    <a href="javascript:void(0)" class="notification-icon text-secondary" data-bs-toggle="dropdown" title="通知" id="notificationDropdown">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge bg-danger" id="unreadBadge">0</span>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-end" style="width: 350px;" id="notificationMenu">
-                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                            <h6 class="mb-0 fw-600">通知 <span class="badge bg-danger ms-2" id="unreadCountInMenu">0</span></h6>
-                            <a href="javascript:void(0)" class="small text-decoration-none" onclick="markAllAsRead()">标记全部已读</a>
+        <header class="top-navbar-modern">
+            <div class="container-fluid px-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <!-- 左侧：页面标题和面包屑 -->
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-link text-white d-none d-md-block me-3" id="mainContentToggle" style="font-size: 1.1rem;">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <div class="page-header-content">
+                            <nav aria-label="breadcrumb" class="d-none d-md-block">
+                                <ol class="breadcrumb mb-1">
+                                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-white-50"><i class="fas fa-home me-1"></i>首页</a></li>
+                                    <li class="breadcrumb-item active text-white" aria-current="page">{{ self.page_title() }}</li>
+                                </ol>
+                            </nav>
+                            <h1 class="page-title-modern mb-0">{{ self.page_title() }}</h1>
                         </div>
-                        <div id="notificationList">
-                            <div class="text-center py-4">
-                                <i class="fas fa-spinner fa-spin text-muted"></i>
-                                <p class="text-muted small mt-2 mb-0">加载中...</p>
+                    </div>
+                    
+                    <!-- 右侧：功能按钮和用户菜单 -->
+                    <div class="d-flex align-items-center">
+                        <!-- 快捷操作 - 根据当前页面动态显示 -->
+                        <div class="d-none d-lg-flex me-3" id="quickActions">
+                            <!-- 通过 JavaScript 动态生成 -->
+                        </div>
+                        
+                        <!-- 搜索框 -->
+                        <div class="search-box-modern me-3 d-none d-md-block">
+                            <input type="text" class="form-control" placeholder="搜索备件、仓库..." id="globalSearch">
+                            <i class="fas fa-search search-icon"></i>
+                        </div>
+                        
+                        <!-- 通知中心 -->
+                        <div class="dropdown me-3">
+                            <a href="javascript:void(0)" class="btn btn-modern btn-modern-notification position-relative" data-bs-toggle="dropdown" title="通知" id="notificationDropdown">
+                                <i class="fas fa-bell"></i>
+                                <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="unreadBadge">0</span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-modern" style="width: 400px;" id="notificationMenu">
+                                <div class="dropdown-header-modern">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-600"><i class="fas fa-bell me-2 text-primary"></i>通知中心</h6>
+                                        <div>
+                                            <a href="javascript:void(0)" class="small text-decoration-none me-2" onclick="markAllAsRead()">
+                                                <i class="fas fa-check-double"></i> 全部已读
+                                            </a>
+                                            <a href="{{ url_for('notification.index') }}" class="small text-decoration-none">
+                                                <i class="fas fa-list"></i> 查看全部
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="notificationList" class="notification-list-modern">
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-spinner fa-spin text-muted" style="font-size: 2rem;"></i>
+                                        <p class="text-muted small mt-2 mb-0">加载中...</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item text-center py-2" href="{{ url_for('notification.index') }}">
-                            <i class="fas fa-list me-2"></i>查看全部通知
-                        </a>
+                        
+                        <!-- 全屏切换 -->
+                        <button class="btn btn-modern btn-modern-light me-3 d-none d-md-block" onclick="toggleFullscreen()" title="全屏">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        
+                        <!-- 用户菜单 -->
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" class="d-flex align-items-center text-decoration-none dropdown-toggle dropdown-user-modern" data-bs-toggle="dropdown">
+                                <div class="user-avatar-modern">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="user-info-modern d-none d-lg-block">
+                                    <div class="user-name">{{ current_user.real_name }}</div>
+                                    <div class="user-role text-white-50 small">
+                                        {% if current_user.is_admin %}
+                                            <i class="fas fa-shield-alt me-1"></i>管理员
+                                        {% else %}
+                                            <i class="fas fa-user me-1"></i>用户
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-modern dropdown-user-menu">
+                                <li class="dropdown-header-modern">
+                                    <div class="text-center py-3">
+                                        <div class="user-avatar-modern mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div class="user-name fw-600">{{ current_user.real_name }}</div>
+                                        <div class="user-email small text-muted">{{ current_user.username }}</div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}"><i class="fas fa-user-circle me-2 text-primary"></i>个人资料</a></li>
+                                {% if current_user.is_admin %}
+                                <li><a class="dropdown-item" href="{{ url_for('user_email.my_email_config') }}"><i class="fas fa-envelope me-2 text-success"></i>邮箱配置</a></li>
+                                {% endif %}
+                                <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}"><i class="fas fa-key me-2 text-warning"></i>修改密码</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>退出登录</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- 用户菜单 -->
-                <div class="dropdown">
-                    <a href="javascript:void(0)" class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" data-bs-toggle="dropdown">
-                        <div class="rounded-circle bg-gradient-primary d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px; background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); color: white;">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <span class="fw-600">{{ current_user.real_name }}</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}"><i class="fas fa-user me-2 text-primary"></i>个人资料</a></li>
-                        {% if current_user.is_admin %}
-                        <li><a class="dropdown-item" href="{{ url_for('user_email.my_email_config') }}"><i class="fas fa-envelope me-2 text-success"></i>我的邮箱配置</a></li>
-                        {% endif %}
-                        <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}"><i class="fas fa-key me-2 text-warning"></i>修改密码</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2 text-danger"></i>退出登录</a></li>
-                    </ul>
-                </div>
             </div>
-        </div>
+        </header>
         
         <!-- 轮播图区域 -->
         {% block carousel %}{% endblock %}
@@ -1448,6 +1737,170 @@
                     }
                 });
         }
+        
+        // 全屏切换
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('无法进入全屏模式:', err);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+        
+        // 动态生成快捷操作按钮
+        function renderQuickActions() {
+            const currentPath = window.location.pathname;
+            const quickActionsContainer = document.getElementById('quickActions');
+            
+            // 定义各模块的快捷操作配置
+            const moduleActions = {
+                // 仓库管理模块
+                'warehouses': {
+                    actions: [
+                        { url: '/warehouses/create', icon: 'fa-warehouse', label: '新建仓库', class: 'btn-modern-primary' },
+                        { url: '/warehouses/inbound', icon: 'fa-dolly', label: '入库管理', class: 'btn-modern-success' },
+                        { url: '/warehouses/outbound', icon: 'fa-box-open', label: '出库管理', class: 'btn-modern-info' }
+                    ]
+                },
+                // 入库管理
+                'inbound': {
+                    actions: [
+                        { url: '/warehouses/inbound/create', icon: 'fa-plus-circle', label: '新建入库', class: 'btn-modern-success' },
+                        { url: '/warehouses/inbound', icon: 'fa-list', label: '入库列表', class: 'btn-modern-primary' },
+                        { url: '/warehouses', icon: 'fa-warehouse', label: '仓库列表', class: 'btn-modern-light' }
+                    ]
+                },
+                // 出库管理
+                'outbound': {
+                    actions: [
+                        { url: '/warehouses/outbound/create', icon: 'fa-plus-circle', label: '新建出库', class: 'btn-modern-info' },
+                        { url: '/warehouses/outbound', icon: 'fa-list', label: '出库列表', class: 'btn-modern-primary' },
+                        { url: '/warehouses/inbound', icon: 'fa-dolly', label: '入库管理', class: 'btn-modern-success' }
+                    ]
+                },
+                // 库存管理
+                'inventory': {
+                    actions: [
+                        { url: '/warehouses/inbound/create', icon: 'fa-arrow-down', label: '入库', class: 'btn-modern-success' },
+                        { url: '/warehouses/outbound/create', icon: 'fa-arrow-up', label: '出库', class: 'btn-modern-info' },
+                        { url: '/warehouses/inventory/check', icon: 'fa-clipboard-check', label: '盘点', class: 'btn-modern-primary' }
+                    ]
+                },
+                // 备件管理
+                'spare_parts': {
+                    actions: [
+                        { url: '/spare_parts/new', icon: 'fa-plus', label: '新建备件', class: 'btn-modern-primary' },
+                        { url: '/spare_parts', icon: 'fa-list', label: '备件列表', class: 'btn-modern-success' },
+                        { url: '/quality-standard', icon: 'fa-clipboard-check', label: '质检标准', class: 'btn-modern-info' }
+                    ]
+                },
+                // 质检管理
+                'quality': {
+                    actions: [
+                        { url: '/quality-check/create', icon: 'fa-plus-circle', label: '创建质检单', class: 'btn-modern-primary' },
+                        { url: '/quality-check', icon: 'fa-list', label: '质检列表', class: 'btn-modern-success' },
+                        { url: '/quality-standard', icon: 'fa-book', label: '质量标准', class: 'btn-modern-info' }
+                    ]
+                },
+                // 质检标准
+                'quality-standard': {
+                    actions: [
+                        { url: '/quality-standard/create', icon: 'fa-plus', label: '新建标准', class: 'btn-modern-primary' },
+                        { url: '/quality-standard', icon: 'fa-list', label: '标准列表', class: 'btn-modern-success' },
+                        { url: '/quality-check', icon: 'fa-clipboard-check', label: '质检管理', class: 'btn-modern-info' }
+                    ]
+                },
+                // 交易管理
+                'transactions': {
+                    actions: [
+                        { url: '/transactions/create', icon: 'fa-plus', label: '新建交易', class: 'btn-modern-primary' },
+                        { url: '/transactions', icon: 'fa-list', label: '交易列表', class: 'btn-modern-success' },
+                        { url: '/warehouses', icon: 'fa-warehouse', label: '仓库管理', class: 'btn-modern-info' }
+                    ]
+                },
+                // 设备管理
+                'equipment': {
+                    actions: [
+                        { url: '/equipment/create', icon: 'fa-plus', label: '新建设备', class: 'btn-modern-primary' },
+                        { url: '/equipment', icon: 'fa-list', label: '设备列表', class: 'btn-modern-success' },
+                        { url: '/maintenance', icon: 'fa-tools', label: '维修管理', class: 'btn-modern-info' }
+                    ]
+                },
+                // 维修管理
+                'maintenance': {
+                    actions: [
+                        { url: '/maintenance/create', icon: 'fa-plus-circle', label: '新建维修', class: 'btn-modern-primary' },
+                        { url: '/maintenance', icon: 'fa-list', label: '维修列表', class: 'btn-modern-success' },
+                        { url: '/equipment', icon: 'fa-cogs', label: '设备管理', class: 'btn-modern-info' }
+                    ]
+                },
+                // 采购管理
+                'purchase': {
+                    actions: [
+                        { url: '/purchase/create', icon: 'fa-shopping-cart', label: '新建采购', class: 'btn-modern-primary' },
+                        { url: '/purchase', icon: 'fa-list', label: '采购列表', class: 'btn-modern-success' },
+                        { url: '/spare_parts', icon: 'fa-boxes', label: '备件管理', class: 'btn-modern-info' }
+                    ]
+                },
+                // 报表统计
+                'reports': {
+                    actions: [
+                        { url: '/reports/inventory', icon: 'fa-chart-pie', label: '库存报表', class: 'btn-modern-primary' },
+                        { url: '/reports/transaction', icon: 'fa-chart-line', label: '交易报表', class: 'btn-modern-success' },
+                        { url: '/dashboard', icon: 'fa-tachometer-alt', label: '仪表盘', class: 'btn-modern-info' }
+                    ]
+                },
+                // 系统管理
+                'system': {
+                    actions: [
+                        { url: '/users', icon: 'fa-users', label: '用户管理', class: 'btn-modern-primary' },
+                        { url: '/roles', icon: 'fa-user-tag', label: '角色管理', class: 'btn-modern-success' },
+                        { url: '/logs', icon: 'fa-file-alt', label: '日志管理', class: 'btn-modern-info' }
+                    ]
+                }
+            };
+            
+            // 匹配当前页面模块
+            let matchedModule = null;
+            for (const [module, config] of Object.entries(moduleActions)) {
+                if (currentPath.includes(module)) {
+                    matchedModule = config;
+                    break;
+                }
+            }
+            
+            // 如果没有匹配到模块，使用默认操作
+            if (!matchedModule) {
+                matchedModule = {
+                    actions: [
+                        { url: '/dashboard', icon: 'fa-home', label: '仪表盘', class: 'btn-modern-primary' },
+                        { url: '/warehouses', icon: 'fa-warehouse', label: '仓库管理', class: 'btn-modern-success' },
+                        { url: '/spare_parts', icon: 'fa-boxes', label: '备件管理', class: 'btn-modern-info' }
+                    ]
+                };
+            }
+            
+            // 生成按钮 HTML
+            let html = '';
+            matchedModule.actions.forEach(action => {
+                html += `
+                    <a href="${action.url}" class="btn btn-modern ${action.class} me-2" title="${action.label}">
+                        <i class="fas ${action.icon}"></i>
+                    </a>
+                `;
+            });
+            
+            quickActionsContainer.innerHTML = html;
+        }
+        
+        // 页面加载时渲染快捷操作
+        document.addEventListener('DOMContentLoaded', function() {
+            renderQuickActions();
+        });
         
         // 标记全部已读
         function markAllAsRead() {

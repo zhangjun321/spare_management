@@ -5,6 +5,70 @@
 {% block page_title %}AI 分析{% endblock %}
 
 {% block content %}
+    <!-- AI 分析轮播图 -->
+    <div id="aiAnalysisCarousel" class="carousel slide carousel-section" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide-to="0" class="active"></button>
+            <button type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide-to="1"></button>
+            <button type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide-to="2"></button>
+            <button type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide-to="3"></button>
+            <button type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide-to="4"></button>
+            <button type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide-to="5"></button>
+        </div>
+
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="/static/images/carousel/ai_analysis_01.jpg" alt="智能需求预测" loading="lazy">
+                <div class="carousel-caption">
+                    <h5><i class="fas fa-chart-line me-2"></i>智能需求预测</h5>
+                    <p>分析历史出库数据，预测未来需求趋势</p>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="/static/images/carousel/ai_analysis_02.jpg" alt="库存优化建议" loading="lazy">
+                <div class="carousel-caption">
+                    <h5><i class="fas fa-boxes me-2"></i>库存优化建议</h5>
+                    <p>智能分析库存结构，提供优化建议</p>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="/static/images/carousel/ai_analysis_03.jpg" alt="机器学习模型" loading="lazy">
+                <div class="carousel-caption">
+                    <h5><i class="fas fa-brain me-2"></i>机器学习模型</h5>
+                    <p>基于深度学习的智能算法持续优化</p>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="/static/images/carousel/ai_analysis_04.jpg" alt="数据驱动决策" loading="lazy">
+                <div class="carousel-caption">
+                    <h5><i class="fas fa-lightbulb me-2"></i>数据驱动决策</h5>
+                    <p>AI 辅助决策，提升运营效率</p>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="/static/images/carousel/ai_analysis_05.jpg" alt="智能预警系统" loading="lazy">
+                <div class="carousel-caption">
+                    <h5><i class="fas fa-bell me-2"></i>智能预警系统</h5>
+                    <p>实时监测异常，提前预警风险</p>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="/static/images/carousel/ai_analysis_06.jpg" alt="预测性维护" loading="lazy">
+                <div class="carousel-caption">
+                    <h5><i class="fas fa-tools me-2"></i>预测性维护</h5>
+                    <p>预测设备故障，优化维护计划</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="carousel-control-prev" type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#aiAnalysisCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+        </button>
+    </div>
+
     <div id="app">
         <div class="page-header">
             <h2>🤖 AI 智能分析</h2>

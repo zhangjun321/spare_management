@@ -12,6 +12,18 @@ from app.models.inventory import OutboundOrderItem, OutboundSourceLocation, Oper
 from app.models.warehouse import Warehouse
 
 
+def _get_operator_name(operator_id):
+    """根据 operator_id 获取操作人姓名"""
+    if not operator_id:
+        return 'Unknown'
+    try:
+        from app.models.user import User
+        user = User.query.get(operator_id)
+        return user.real_name or user.username if user else 'Unknown'
+    except Exception:
+        return 'Unknown'
+
+
 class OutboundService:
     """出库管理服务类"""
     
@@ -33,9 +45,9 @@ class OutboundService:
         
         # 创建出库单
         order = OutboundOrder(
-            order_number=order_number,
+            order_no=order_number,
             warehouse_id=warehouse_id,
-            type=kwargs.get('type', 'requisition'),
+            outbound_type=kwargs.get('outbound_type', kwargs.get('type', 'requisition')),
             strategy=kwargs.get('strategy', 'fifo'),
             requester_id=kwargs.get('requester_id'),
             department=kwargs.get('department'),
@@ -144,11 +156,11 @@ class OutboundService:
             list: 分配的库位列表 [{inventory_record_id, location_id, quantity}, ...]
         """
         # 查询库存记录，按入库时间正序
-        inventory_records = InventoryRecord.query.filter_by(
-            warehouse_id=warehouse_id,
-            spare_part_id=spare_part_id,
-            status='normal'
-        ).order_by(InventoryRecord.entry_date.asc()).all()
+        inventory_records = InventoryRecord.query.filter(
+            InventoryRecord.warehouse_id == warehouse_id,
+            InventoryRecord.spare_part_id == spare_part_id,
+            InventoryRecord.stock_status != 'out'
+        ).order_by(InventoryRecord.last_inbound_time.asc()).all()
         
         return OutboundService._allocate_from_records(inventory_records, quantity)
     
@@ -157,11 +169,11 @@ class OutboundService:
         """
         LIFO 策略：按入库时间倒序分配
         """
-        inventory_records = InventoryRecord.query.filter_by(
-            warehouse_id=warehouse_id,
-            spare_part_id=spare_part_id,
-            status='normal'
-        ).order_by(InventoryRecord.entry_date.desc()).all()
+        inventory_records = InventoryRecord.query.filter(
+            InventoryRecord.warehouse_id == warehouse_id,
+            InventoryRecord.spare_part_id == spare_part_id,
+            InventoryRecord.stock_status != 'out'
+        ).order_by(InventoryRecord.last_inbound_time.desc()).all()
         
         return OutboundService._allocate_from_records(inventory_records, quantity)
     
@@ -171,13 +183,13 @@ class OutboundService:
         FEFO 策略：按有效期正序分配（先到期的先出）
         """
         # 有有效期的按有效期排序，没有的按入库时间
-        inventory_records = InventoryRecord.query.filter_by(
-            warehouse_id=warehouse_id,
-            spare_part_id=spare_part_id,
-            status='normal'
+        inventory_records = InventoryRecord.query.filter(
+            InventoryRecord.warehouse_id == warehouse_id,
+            InventoryRecord.spare_part_id == spare_part_id,
+            InventoryRecord.stock_status != 'out'
         ).order_by(
             InventoryRecord.expiry_date.asc().nullslast(),
-            InventoryRecord.entry_date.asc()
+            InventoryRecord.last_inbound_time.asc()
         ).all()
         
         return OutboundService._allocate_from_records(inventory_records, quantity)
@@ -201,8 +213,8 @@ class OutboundService:
             if remaining <= 0:
                 break
             
-            # 计算可用数量
-            available = record.available_quantity()
+            # 计算可用数量（available_quantity 为数据库列：quantity - locked_quantity）
+            available = record.available_quantity if record.available_quantity is not None else (record.quantity - record.locked_quantity)
             if available <= 0:
                 continue
             
@@ -272,14 +284,19 @@ class OutboundService:
                     
                     # 扣减库存
                     inventory.quantity -= source.quantity
-                    inventory.total_value -= (source.quantity * inventory.unit_price)
+                    inventory.total_value = (inventory.quantity * inventory.unit_cost) if inventory.unit_cost else None
+                    inventory.last_outbound_time = datetime.utcnow()
+                    inventory.update_available_quantity()
+                    inventory.update_stock_status()
                     
-                    # 如果库存为 0，删除记录并释放库位
+                    # 如果库存为 0，标记状态而非删除（保留历史记录以支持回滚）
                     if inventory.quantity <= 0:
-                        location = inventory.location
+                        inventory.quantity = 0
+                        inventory.available_quantity = 0
+                        inventory.stock_status = 'out'
+                        location = inventory.warehouse_location
                         if location:
-                            location.is_occupied = False
-                        db.session.delete(inventory)
+                            location.status = 'available'
                     
                     total_issued += source.quantity
                 
@@ -398,13 +415,16 @@ class OutboundService:
         
         for spare_part_id, quantity in spare_part_items:
             # 查询总可用库存
-            inventory_records = InventoryRecord.query.filter_by(
-                warehouse_id=warehouse_id,
-                spare_part_id=spare_part_id,
-                status='normal'
+            inventory_records = InventoryRecord.query.filter(
+                InventoryRecord.warehouse_id == warehouse_id,
+                InventoryRecord.spare_part_id == spare_part_id,
+                InventoryRecord.stock_status != 'out'
             ).all()
             
-            available = sum(record.available_quantity() for record in inventory_records)
+            available = sum(
+                (r.available_quantity if r.available_quantity is not None else (r.quantity - r.locked_quantity))
+                for r in inventory_records
+            )
             sufficient = available >= quantity
             
             if not sufficient:
@@ -430,11 +450,11 @@ class OutboundService:
         
         # 获取今日最后一个单号
         last_order = OutboundOrder.query.filter(
-            OutboundOrder.order_number.like(f'{prefix}{date_str}%')
+            OutboundOrder.order_no.like(f'{prefix}{date_str}%')
         ).order_by(OutboundOrder.id.desc()).first()
         
         if last_order:
-            seq = int(last_order.order_number[-4:]) + 1
+            seq = int(last_order.order_no[-4:]) + 1
         else:
             seq = 1
         
@@ -450,7 +470,7 @@ class OutboundService:
             order_id=order.id,
             action=action,
             operator_id=operator_id,
-            operator_name=operator_id.user.real_name if operator_id and operator_id.user else 'Unknown',
+            operator_name=_get_operator_name(operator_id),
             ip_address=request.remote_addr if request else '',
             details=kwargs.get('details'),
             before_data=kwargs.get('before_data'),

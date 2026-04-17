@@ -12,18 +12,7 @@
 {% block page_title %}仓库仪表盘{% endblock %}
 
 {% block carousel %}
-<div class="container-fluid">
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="alert alert-info d-flex align-items-center" role="alert">
-                <i class="fas fa-chart-line me-2"></i>
-                <div>
-                    <strong>欢迎使用智能仓库管理系统！</strong> 实时数据监控 · AI 智能分析 · 自动化决策
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'components/carousel_dashboard.html' %}
 {% endblock %}
 
 {% block content %}

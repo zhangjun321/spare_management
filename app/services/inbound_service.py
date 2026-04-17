@@ -16,6 +16,18 @@ from app.models.spare_part import SparePart
 from app.services.intelligent_warehouse_service import intelligent_warehouse_service
 
 
+def _get_operator_name(operator_id):
+    """根据 operator_id 获取操作人姓名"""
+    if not operator_id:
+        return 'Unknown'
+    try:
+        from app.models.user import User
+        user = User.query.get(operator_id)
+        return user.real_name or user.username if user else 'Unknown'
+    except Exception:
+        return 'Unknown'
+
+
 class InboundService:
     """入库管理服务类"""
     
@@ -38,9 +50,9 @@ class InboundService:
         
         # 创建入库单
         order = InboundOrder(
-            order_number=order_number,
+            order_no=order_number,
             warehouse_id=warehouse_id,
-            type=kwargs.get('type', 'purchase'),
+            inbound_type=kwargs.get('inbound_type', kwargs.get('type', 'purchase')),
             supplier_id=kwargs.get('supplier_id'),
             created_by=kwargs.get('created_by'),
             remark=kwargs.get('remark')
@@ -195,7 +207,10 @@ class InboundService:
         # 5. 如果没有完全匹配的库位，返回第一个可用库位
         for zone in suitable_zones:
             for rack in zone.racks.all():
-                for location in rack.locations.filter_by(is_occupied=False).first():
+                location = rack.locations.filter(
+                        StorageLocation.status == 'available'
+                    ).first()
+                if location:
                     return {
                         'location_id': location.id,
                         'reason': '默认推荐可用库位'
@@ -249,7 +264,10 @@ class InboundService:
                 if inventory:
                     # 更新现有库存
                     inventory.quantity += item.actual_quantity
-                    inventory.total_value += item.total_value
+                    inventory.total_amount = (inventory.quantity * inventory.unit_cost) if inventory.unit_cost else None
+                    inventory.last_inbound_time = datetime.utcnow()
+                    inventory.update_available_quantity()
+                    inventory.update_stock_status()
                 else:
                     # 创建新库存记录
                     inventory = InventoryRecord(
@@ -258,10 +276,10 @@ class InboundService:
                         spare_part_id=item.spare_part_id,
                         batch_number=item.batch_number,
                         quantity=item.actual_quantity,
-                        initial_quantity=item.actual_quantity,
-                        unit_price=item.unit_price,
-                        total_value=item.total_value,
-                        entry_date=datetime.utcnow(),
+                        available_quantity=item.actual_quantity,
+                        unit_cost=item.unit_price,
+                        total_amount=item.total_value,
+                        last_inbound_time=datetime.utcnow(),
                         created_by=operator_id
                     )
                     db.session.add(inventory)
@@ -269,7 +287,7 @@ class InboundService:
                 # 更新库位状态
                 location = StorageLocation.query.get(item.location_id)
                 if location:
-                    location.is_occupied = True
+                    location.status = 'occupied'
                 
                 # 更新明细状态
                 item.received_quantity = item.actual_quantity
@@ -349,14 +367,18 @@ class InboundService:
             if inventory:
                 # 扣减库存
                 inventory.quantity -= item.actual_quantity
-                inventory.total_value -= item.total_value
+                inventory.total_amount = (inventory.quantity * inventory.unit_cost) if inventory.unit_cost else None
+                inventory.update_available_quantity()
+                inventory.update_stock_status()
                 
-                # 如果库存为 0，删除记录并释放库位
+                # 如果库存为 0，释放库位（不删除记录，保留历史）
                 if inventory.quantity <= 0:
+                    inventory.quantity = 0
+                    inventory.available_quantity = 0
+                    inventory.stock_status = 'out'
                     location = StorageLocation.query.get(item.location_id)
                     if location:
-                        location.is_occupied = False
-                    db.session.delete(inventory)
+                        location.status = 'available'
         
         # 更新入库单状态
         order.status = 'cancelled'
@@ -382,11 +404,11 @@ class InboundService:
         
         # 获取今日最后一个单号
         last_order = InboundOrder.query.filter(
-            InboundOrder.order_number.like(f'{prefix}{date_str}%')
+            InboundOrder.order_no.like(f'{prefix}{date_str}%')
         ).order_by(InboundOrder.id.desc()).first()
         
         if last_order:
-            seq = int(last_order.order_number[-4:]) + 1
+            seq = int(last_order.order_no[-4:]) + 1
         else:
             seq = 1
         
@@ -402,7 +424,7 @@ class InboundService:
             order_id=order.id,
             action=action,
             operator_id=operator_id,
-            operator_name=operator_id.user.real_name if operator_id and operator_id.user else 'Unknown',
+            operator_name=_get_operator_name(operator_id),
             ip_address=request.remote_addr if request else '',
             details=kwargs.get('details'),
             before_data=kwargs.get('before_data'),

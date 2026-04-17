@@ -110,14 +110,14 @@ class WarehouseService:
         stats = {
             'total_locations': warehouse.locations.count(),
             'occupied_locations': warehouse.locations.filter(
-                WarehouseLocation.occupied == True
+                WarehouseLocation.status == 'occupied'
             ).count(),
             'total_inventory': warehouse.inventory_records.count(),
             'total_quantity': db.session.query(
                 db.func.sum(InventoryRecord.quantity)
             ).filter_by(warehouse_id=warehouse_id).scalar() or 0,
             'total_value': db.session.query(
-                db.func.sum(InventoryRecord.total_value)
+                db.func.sum(InventoryRecord.total_amount)
             ).filter_by(warehouse_id=warehouse_id).scalar() or 0,
             'inbound_orders': warehouse.inbound_orders.count(),
             'outbound_orders': warehouse.outbound_orders.count(),
@@ -145,26 +145,11 @@ class WarehouseService:
     
     @staticmethod
     def get_total_inventory(warehouse_id):
-        """获取仓库总库存"""
-        from app.models.transaction import Transaction, TransactionDetail
-        
-        # 计算入库总量
-        in_total = db.session.query(db.func.sum(TransactionDetail.quantity)).join(
-            Transaction
-        ).filter(
-            Transaction.warehouse_id == warehouse_id,
-            Transaction.transaction_type.in_(['in', 'adjust_in'])
-        ).scalar() or 0
-        
-        # 计算出库总量
-        out_total = db.session.query(db.func.sum(TransactionDetail.quantity)).join(
-            Transaction
-        ).filter(
-            Transaction.warehouse_id == warehouse_id,
-            Transaction.transaction_type.in_(['out', 'adjust_out'])
-        ).scalar() or 0
-        
-        return in_total - out_total
+        """获取仓库总库存（直接从 InventoryRecord 聚合）"""
+        total = db.session.query(
+            db.func.sum(InventoryRecord.quantity)
+        ).filter_by(warehouse_id=warehouse_id).scalar() or 0
+        return total
     
     @staticmethod
     def get_utilization_rate(warehouse_id):
@@ -180,13 +165,15 @@ class WarehouseService:
     def get_operations_count(warehouse_id):
         """获取操作次数"""
         from app.models.transaction import Transaction
-        return Transaction.query.filter_by(warehouse_id=warehouse_id).count()
+        return Transaction.query.filter(
+            (Transaction.source_warehouse_id == warehouse_id) |
+            (Transaction.target_warehouse_id == warehouse_id)
+        ).count()
     
     @staticmethod
     def check_warehouse_inventory_alerts(warehouse_id):
         """检查仓库库存预警"""
         from app.models.spare_part import SparePart
-        from app.models.transaction import Transaction, TransactionDetail
         from app.models.system import Alert, Notification
         from app.models.user import User
         from app.utils.email_service import email_service
@@ -195,22 +182,14 @@ class WarehouseService:
         logger = logging.getLogger(__name__)
         alerts = []
         
-        # 获取仓库中的所有备件及其在该仓库的库存
+        # 从 InventoryRecord 聚合每个备件在该仓库的实际库存
         warehouse_spare_parts = db.session.query(
             SparePart,
-            db.func.sum(
-                db.case(
-                    (Transaction.transaction_type.in_(['in', 'adjust_in']), TransactionDetail.quantity),
-                    (Transaction.transaction_type.in_(['out', 'adjust_out']), -TransactionDetail.quantity),
-                    else_=0
-                )
-            ).label('warehouse_stock')
+            db.func.sum(InventoryRecord.quantity).label('warehouse_stock')
         ).join(
-            Transaction, Transaction.spare_part_id == SparePart.id
-        ).join(
-            TransactionDetail, TransactionDetail.transaction_id == Transaction.id
+            InventoryRecord, InventoryRecord.spare_part_id == SparePart.id
         ).filter(
-            Transaction.warehouse_id == warehouse_id,
+            InventoryRecord.warehouse_id == warehouse_id,
             SparePart.is_active == True
         ).group_by(
             SparePart.id

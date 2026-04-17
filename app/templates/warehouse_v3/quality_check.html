@@ -10,6 +10,70 @@
 <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/element-plus@2.4.2/dist/index.full.min.js"></script>
 
+<!-- 质检管理轮播图 -->
+<div id="qualityCheckCarousel" class="carousel slide carousel-section" data-bs-ride="carousel" style="margin-bottom: 20px;">
+    <div class="carousel-indicators">
+        <button type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide-to="0" class="active"></button>
+        <button type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide-to="1"></button>
+        <button type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide-to="2"></button>
+        <button type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide-to="3"></button>
+        <button type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide-to="4"></button>
+        <button type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide-to="5"></button>
+    </div>
+
+    <div class="carousel-inner">
+        <div class="carousel-item active">
+            <img src="/static/images/carousel/quality_check_01.jpg" alt="入库质检管理" loading="lazy" style="max-height: 400px; width: 100%; object-fit: cover;">
+            <div class="carousel-caption">
+                <h5><i class="fas fa-clipboard-check me-2"></i>入库质检管理</h5>
+                <p>严格入库检验，确保物料质量</p>
+            </div>
+        </div>
+        <div class="carousel-item">
+            <img src="/static/images/carousel/quality_check_02.jpg" alt="质检流程标准化" loading="lazy" style="max-height: 400px; width: 100%; object-fit: cover;">
+            <div class="carousel-caption">
+                <h5><i class="fas fa-list-check me-2"></i>质检流程标准化</h5>
+                <p>标准化作业，提升检验效率</p>
+            </div>
+        </div>
+        <div class="carousel-item">
+            <img src="/static/images/carousel/quality_check_03.jpg" alt="不合格品处理" loading="lazy" style="max-height: 400px; width: 100%; object-fit: cover;">
+            <div class="carousel-caption">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i>不合格品处理</h5>
+                <p>严格隔离处理，防止不良流出</p>
+            </div>
+        </div>
+        <div class="carousel-item">
+            <img src="/static/images/carousel/quality_check_04.jpg" alt="质检数据追溯" loading="lazy" style="max-height: 400px; width: 100%; object-fit: cover;">
+            <div class="carousel-caption">
+                <h5><i class="fas fa-database me-2"></i>质检数据追溯</h5>
+                <p>全流程数据记录，质量可追溯</p>
+            </div>
+        </div>
+        <div class="carousel-item">
+            <img src="/static/images/carousel/quality_check_05.jpg" alt="智能检测设备" loading="lazy" style="max-height: 400px; width: 100%; object-fit: cover;">
+            <div class="carousel-caption">
+                <h5><i class="fas fa-robot me-2"></i>智能检测设备</h5>
+                <p>自动化检测，提高检验精度</p>
+            </div>
+        </div>
+        <div class="carousel-item">
+            <img src="/static/images/carousel/quality_check_06.jpg" alt="质量分析报告" loading="lazy" style="max-height: 400px; width: 100%; object-fit: cover;">
+            <div class="carousel-caption">
+                <h5><i class="fas fa-chart-pie me-2"></i>质量分析报告</h5>
+                <p>多维度数据分析，持续改进质量</p>
+            </div>
+        </div>
+    </div>
+
+    <button class="carousel-control-prev" type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#qualityCheckCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+    </button>
+</div>
+
 <div id="qualityCheckApp" v-cloak>
     <!-- Loading 状态 -->
     <div v-if="!vueLoaded" class="loading-container">

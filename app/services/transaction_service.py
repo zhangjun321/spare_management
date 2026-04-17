@@ -103,57 +103,121 @@ class TransactionService:
             if tx.tx_type == 'transfer':
                 # 出
                 TransactionService._write_ledger(tx, detail, -qty, tx.source_warehouse_id, detail.source_location_id)
-                TransactionService._apply_stock(detail.spare_part_id, -qty)
+                TransactionService._apply_stock(detail.spare_part_id, -qty, tx.source_warehouse_id, detail.source_location_id)
                 # 入
                 TransactionService._write_ledger(tx, detail, qty, tx.target_warehouse_id, detail.target_location_id)
-                TransactionService._apply_stock(detail.spare_part_id, qty)
+                TransactionService._apply_stock(detail.spare_part_id, qty, tx.target_warehouse_id, detail.target_location_id)
             elif tx.tx_type == 'outbound':
                 TransactionService._write_ledger(tx, detail, -qty, tx.source_warehouse_id, detail.source_location_id)
-                TransactionService._apply_stock(detail.spare_part_id, -qty)
+                TransactionService._apply_stock(detail.spare_part_id, -qty, tx.source_warehouse_id, detail.source_location_id)
             else:  # inbound / inventory_adjust
-                TransactionService._write_ledger(tx, detail, qty, tx.target_warehouse_id or tx.source_warehouse_id, detail.target_location_id)
-                TransactionService._apply_stock(detail.spare_part_id, qty)
+                wh_id = tx.target_warehouse_id or tx.source_warehouse_id
+                TransactionService._write_ledger(tx, detail, qty, wh_id, detail.target_location_id)
+                TransactionService._apply_stock(detail.spare_part_id, qty, wh_id, detail.target_location_id)
 
         tx.status = 'approved'
         tx.approved_at = datetime.utcnow()
+        # 记录审批人
+        if hasattr(tx, 'approver_id'):
+            tx.approver_id = approver_id
         db.session.commit()
         return tx
 
     @staticmethod
-    def reject_transaction(tx_id: int, reason: str = None) -> Transaction:
+    def reject_transaction(tx_id: int, reason: str = None, approver_id: int = None) -> Transaction:
         tx = Transaction.query.get(tx_id)
         if not tx:
             raise ValueError('交易不存在')
         if tx.status != 'submitted':
             raise ValueError('当前状态不可拒绝')
         tx.status = 'rejected'
-        tx.remark = f"{tx.remark or ''} [驳回原因: {reason}]" if reason else tx.remark
+        if hasattr(tx, 'reject_reason'):
+            tx.reject_reason = reason
+        else:
+            tx.remark = f"{tx.remark or ''} [驳回原因: {reason}]" if reason else tx.remark
+        if hasattr(tx, 'approver_id') and approver_id:
+            tx.approver_id = approver_id
         db.session.commit()
         return tx
 
     @staticmethod
     def validate_stock(payload: dict):
+        """库存校验（仓库维度）"""
         tx_type = payload.get('tx_type')
+        source_wh_id = payload.get('source_warehouse_id')
         items = payload.get('items', [])
         if tx_type in ['outbound', 'transfer']:
+            if not source_wh_id:
+                raise ValueError('出库/调拨必须指定来源仓库')
             for item in items:
                 spare_part = SparePart.query.get(item['spare_part_id'])
                 if not spare_part:
                     raise ValueError('备件不存在')
                 qty = TransactionService._dec(item['quantity'])
-                if TransactionService._dec(spare_part.current_stock) < qty:
-                    raise ValueError(f"备件 {spare_part.name} 库存不足")
+                # 按仓库维度校验可用库存
+                from app.models.inventory_record import InventoryRecord
+                wh_qty = db.session.query(
+                    db.func.sum(InventoryRecord.quantity)
+                ).filter_by(
+                    warehouse_id=source_wh_id,
+                    spare_part_id=item['spare_part_id']
+                ).scalar() or 0
+                if TransactionService._dec(wh_qty) < qty:
+                    raise ValueError(
+                        f"仓库库存不足：{spare_part.name}，"
+                        f"仓库可用 {wh_qty}，需出 {item['quantity']}"
+                    )
         return True
 
     @staticmethod
-    def _apply_stock(spare_part_id: int, delta: Decimal):
+    def _apply_stock(spare_part_id: int, delta: Decimal, warehouse_id: int = None, location_id: int = None):
+        """
+        更新备件库存。
+        优先通过 InventoryRecord 更新（触发 ORM 事件监听器自动同步 SparePart.current_stock）。
+        若无对应 InventoryRecord，则直接修改 SparePart.current_stock（降级路径）。
+        """
+        from app.models.inventory_record import InventoryRecord
+
+        if warehouse_id:
+            # 通过 InventoryRecord 更新，事件监听器会自动同步 SparePart.current_stock
+            query = InventoryRecord.query.filter_by(
+                spare_part_id=spare_part_id,
+                warehouse_id=warehouse_id
+            )
+            if location_id:
+                query = query.filter_by(location_id=location_id)
+            records = query.all()
+
+            if records:
+                # 按数量比例分配 delta（优先从有库存的记录扣减）
+                remaining = delta
+                for record in records:
+                    if remaining == 0:
+                        break
+                    if delta < 0:
+                        # 出库：从每条记录扣减，不超过其库存
+                        deduct = max(remaining, -Decimal(str(record.quantity)))
+                        record.quantity = int(Decimal(str(record.quantity)) + deduct)
+                    else:
+                        # 入库：加到第一条有效记录
+                        record.quantity = int(Decimal(str(record.quantity)) + remaining)
+                        remaining = Decimal('0')
+                        break
+                    remaining -= deduct
+                    record.available_quantity = record.quantity - record.locked_quantity
+                    record.update_stock_status()
+                    record.last_inbound_time = datetime.utcnow() if delta > 0 else record.last_inbound_time
+                    record.last_outbound_time = datetime.utcnow() if delta < 0 else record.last_outbound_time
+                return  # 事件监听器会自动同步 SparePart.current_stock
+
+        # 降级路径：直接修改 SparePart
         part = SparePart.query.get(spare_part_id)
         if not part:
             raise ValueError('备件不存在')
         new_stock = TransactionService._dec(part.current_stock) + delta
         if new_stock < 0:
             raise ValueError('库存不足')
-        part.current_stock = new_stock
+        part.current_stock = int(new_stock)
         part.update_stock_status()
 
     @staticmethod

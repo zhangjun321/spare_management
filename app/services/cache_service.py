@@ -374,7 +374,7 @@ def cache(key=None, timeout=300, prefix='default', expire=None):
             result = func(*args, **kwargs)
             
             # 存入缓存（使用 expire 参数名以兼容两种实现）
-            cache_service.set(cache_key, result, expire=timeout)
+            cache_service.set(cache_key, result, timeout=timeout)
             
             return result
         
