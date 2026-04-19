@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block page_title %}编辑设备{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('equipment.view', id=equipment.id) }}" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left me-1"></i>返回
+                </a>
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-edit text-primary me-2"></i>编辑设备
+                    </h2>
+                    <p class="text-muted mb-0">修改设备信息：{{ equipment.equipment_code }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备表单 -->
+    <form action="{{ url_for('equipment.update', id=equipment.id) }}" method="POST">
+        <div class="row">
+            <!-- 左侧：基本信息和技术参数 -->
+            <div class="col-lg-8">
+                <!-- 基础信息 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>基础信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">设备编号 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="equipment_code" required 
+                                       value="{{ equipment.equipment_code }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">设备名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="name" required 
+                                       value="{{ equipment.name }}">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">设备系列 <span class="text-danger">*</span></label>
+                                <select class="form-select" name="series" id="series" required onchange="updateModels()">
+                                    <option value="">请选择系列</option>
+                                    {% for option in series_options %}
+                                    <option value="{{ option.value }}" {% if equipment.series == option.value %}selected{% endif %}>
+                                        {{ option.label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">设备型号 <span class="text-danger">*</span></label>
+                                <select class="form-select" name="model" id="model" required>
+                                    <option value="{{ equipment.model }}">{{ equipment.model }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">类别</label>
+                                <input type="text" class="form-control" name="category" 
+                                       value="{{ equipment.category or '' }}">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">生产厂家</label>
+                                <input type="text" class="form-control" name="manufacturer" 
+                                       value="{{ equipment.manufacturer or '同方威视' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">出厂编号</label>
+                                <input type="text" class="form-control" name="serial_number" 
+                                       value="{{ equipment.serial_number or '' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 技术参数 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>技术参数
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">射线源类型</label>
+                                <select class="form-select" name="radiation_source">
+                                    <option value="">请选择</option>
+                                    <option value="电子直线加速器" {% if equipment.specs and equipment.specs.radiation_source == '电子直线加速器' %}selected{% endif %}>电子直线加速器</option>
+                                    <option value="X 射线管" {% if equipment.specs and equipment.specs.radiation_source == 'X 射线管' %}selected{% endif %}>X 射线管</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">能量 (MeV)</label>
+                                <input type="text" class="form-control" name="energy" 
+                                       value="{{ equipment.specs.energy if equipment.specs else '' }}">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">穿透力 (mm 钢板)</label>
+                                <input type="text" class="form-control" name="penetration" 
+                                       value="{{ equipment.specs.penetration if equipment.specs else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">分辨率 (mm)</label>
+                                <input type="text" class="form-control" name="resolution" 
+                                       value="{{ equipment.specs.resolution if equipment.specs else '' }}">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">检查速度</label>
+                                <input type="text" class="form-control" name="check_speed" 
+                                       value="{{ equipment.specs.check_speed if equipment.specs else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">通道尺寸</label>
+                                <input type="text" class="form-control" name="channel_size" 
+                                       value="{{ equipment.specs.channel_size if equipment.specs else '' }}">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">成像方式</label>
+                                <select class="form-select" name="imaging_mode">
+                                    <option value="">请选择</option>
+                                    <option value="双能成像" {% if equipment.specs and equipment.specs.imaging_mode == '双能成像' %}selected{% endif %}>双能成像</option>
+                                    <option value="CT 成像" {% if equipment.specs and equipment.specs.imaging_mode == 'CT 成像' %}selected{% endif %}>CT 成像</option>
+                                    <option value="顶视成像" {% if equipment.specs and equipment.specs.imaging_mode == '顶视成像' %}selected{% endif %}>顶视成像</option>
+                                    <option value="背散射成像" {% if equipment.specs and equipment.specs.imaging_mode == '背散射成像' %}selected{% endif %}>背散射成像</option>
+                                    <option value="交替双能成像" {% if equipment.specs and equipment.specs.imaging_mode == '交替双能成像' %}selected{% endif %}>交替双能成像</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">屏蔽方式</label>
+                                <select class="form-select" name="shielding_mode">
+                                    <option value="">请选择</option>
+                                    <option value="自屏蔽" {% if equipment.specs and equipment.specs.shielding_mode == '自屏蔽' %}selected{% endif %}>自屏蔽</option>
+                                    <option value="混凝土屏蔽" {% if equipment.specs and equipment.specs.shielding_mode == '混凝土屏蔽' %}selected{% endif %}>混凝土屏蔽</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：管理信息 -->
+            <div class="col-lg-4">
+                <!-- 管理信息 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-clipboard-list me-2"></i>管理信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">使用部门</label>
+                            <select class="form-select" name="department_id">
+                                <option value="">请选择部门</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}" {% if equipment.department_id == dept.id %}selected{% endif %}>
+                                    {{ dept.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">责任人</label>
+                            <input type="text" class="form-control" name="responsible_person" 
+                                   value="{{ equipment.responsible_person or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">安装位置</label>
+                            <input type="text" class="form-control" name="location" 
+                                   value="{{ equipment.location or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">设备状态</label>
+                            <select class="form-select" name="status">
+                                <option value="running" {% if equipment.status == 'running' %}selected{% endif %}>运行中</option>
+                                <option value="stopped" {% if equipment.status == 'stopped' %}selected{% endif %}>停机</option>
+                                <option value="maintenance" {% if equipment.status == 'maintenance' %}selected{% endif %}>维修中</option>
+                                <option value="scrapped" {% if equipment.status == 'scrapped' %}selected{% endif %}>已报废</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">是否启用</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" 
+                                       {% if equipment.is_active %}checked{% endif %}>
+                                <label class="form-check-label">启用此设备</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 采购信息 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-shopping-cart me-2"></i>采购信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">供应商</label>
+                            <select class="form-select" name="supplier_id">
+                                <option value="">请选择供应商</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}" {% if equipment.supplier_id == supplier.id %}selected{% endif %}>
+                                    {{ supplier.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">采购日期</label>
+                            <input type="date" class="form-control" name="purchase_date" 
+                                   value="{{ equipment.purchase_date.strftime('%Y-%m-%d') if equipment.purchase_date else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">安装日期</label>
+                            <input type="date" class="form-control" name="install_date" 
+                                   value="{{ equipment.install_date.strftime('%Y-%m-%d') if equipment.install_date else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">保修到期日期</label>
+                            <input type="date" class="form-control" name="warranty_expiry" 
+                                   value="{{ equipment.warranty_expiry.strftime('%Y-%m-%d') if equipment.warranty_expiry else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">采购价格 (元)</label>
+                            <input type="number" class="form-control" name="purchase_price" 
+                                   step="0.01" value="{{ equipment.purchase_price or '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-2"></i>保存修改
+                            </button>
+                            <a href="{{ url_for('equipment.view', id=equipment.id) }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>取消
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 预定义型号数据（与创建页面相同）
+const modelData = {
+    'FS': [
+        {'model': 'FS6000', 'name': '固定式快速检查系统'},
+        {'model': 'FS6000MF', 'name': '多视角固定式检查系统'},
+        {'model': 'FS0200BX', 'name': '背散射检查系统'}
+    ],
+    'MT': [
+        {'model': 'MT1213LT', 'name': '车载移动式检查系统 (低能)'},
+        {'model': 'MT1213LH', 'name': '车载移动式检查系统 (高能)'},
+        {'model': 'MT1213LC', 'name': '车载移动式检查系统 (紧凑型)'},
+        {'model': 'MT1213DE', 'name': '车载移动式检查系统 (出口型)'}
+    ],
+    'CS': [
+        {'model': 'CS0300T', 'name': '小型车辆检查系统'},
+        {'model': 'CS1000T', 'name': '小型车辆检查系统 (增强型)'},
+        {'model': 'CS0200T', 'name': '小型车辆检查系统 (紧凑型)'},
+        {'model': 'CS0300TS', 'name': '小型车辆检查系统 (高分辨率)'}
+    ],
+    'MB': [
+        {'model': 'MB1215CV', 'name': '组合移动式集装箱检查系统'}
+    ],
+    'FG': [
+        {'model': 'FG9000DE', 'name': '固定式集装箱检查系统'}
+    ]
+};
+
+function updateModels() {
+    const series = document.getElementById('series').value;
+    const modelSelect = document.getElementById('model');
+    
+    // 清空型号选项
+    modelSelect.innerHTML = '<option value="">请选择型号</option>';
+    
+    if (series && modelData[series]) {
+        modelData[series].forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.model;
+            option.textContent = `${item.model} - ${item.name}`;
+            modelSelect.appendChild(option);
+        });
+    }
+}
+
+// 页面加载时初始化型号选项
+document.addEventListener('DOMContentLoaded', function() {
+    updateModels();
+});
+</script>
+{% endblock %}

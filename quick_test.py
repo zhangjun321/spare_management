@@ -1,41 +1,43 @@
-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+快速测试脚本
+"""
+import sys
 import os
-import requests
-from dotenv import load_dotenv
 
-load_dotenv()
-API_KEY = os.getenv('BAIDU_API_KEY', '')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-print('=== Testing Chat ===')
-url = "https://qianfan.baidubce.com/v2/chat/completions"
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {API_KEY}"
-}
-payload = {
-    "model": "ernie-4.0-turbo-8k",
-    "messages": [{"role": "user", "content": "hello"}],
-    "max_completion_tokens": 30
-}
+from app import create_app
+app = create_app()
 
-try:
-    response = requests.post(url, headers=headers, json=payload, timeout=30)
-    print('Status:', response.status_code)
-    print('Response:', response.text)
-except Exception as e:
-    print('Error:', e)
-
-print('\n=== Testing Image ===')
-img_url = "https://qianfan.baidubce.com/v2/images/generations"
-img_payload = {
-    "model": "irag-1.0",
-    "prompt": "a bearing"
-}
-
-try:
-    img_response = requests.post(img_url, headers=headers, json=img_payload, timeout=60)
-    print('Image Status:', img_response.status_code)
-    print('Image Response:', img_response.text)
-except Exception as e:
-    print('Image Error:', e)
-
+with app.app_context():
+    print("App created successfully!\n")
+    
+    print("Testing KPI module...")
+    from app.services.kpi_service import get_kpi_service
+    kpi_service = get_kpi_service()
+    kpi_service.init_default_kpis()
+    
+    from app.models.kpi import KPIConfig
+    kpis = KPIConfig.query.all()
+    print(f"  KPI configs: {len(kpis)}")
+    for kpi in kpis:
+        print(f"  - {kpi.name} ({kpi.code})")
+    
+    print("\nTesting AI module...")
+    from app.services.dashboard_ai_service import get_dashboard_ai_service
+    ai_service = get_dashboard_ai_service()
+    
+    health_result = ai_service.get_inventory_health_score()
+    print(f"  Health score: {health_result['health_score']}")
+    print(f"  Summary: {health_result['summary']}")
+    
+    print("\nTesting KPI summary...")
+    summary = kpi_service.get_kpi_summary()
+    print(f"  KPI summary has {len(summary)} metrics:")
+    for kpi in summary:
+        print(f"  - {kpi['name']}: {kpi['actual_value']} {kpi['unit']}")
+    
+    print("\nAll features tested successfully!")
+    print("\nProject is ready! You can visit: http://127.0.0.1:5000")

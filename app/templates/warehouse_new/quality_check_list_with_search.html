@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+
+{% block title %}质检单列表{% endblock %}
+
+{% block page_title %}质检单列表{% endblock %}
+
+{% block content %}
+<div id="qualityCheckListApp" v-cloak>
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总质检单</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">待质检</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.pending }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">合格</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.qualified }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">不合格</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.unqualified }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索面板 -->
+    {% include 'components/list_search_panel.html' %}
+
+    <!-- 列表区域 -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="120">质检单号</th>
+                            <th>备件名称</th>
+                            <th>仓库</th>
+                            <th width="80">数量</th>
+                            <th width="80">合格</th>
+                            <th width="80">不合格</th>
+                            <th width="100">合格率</th>
+                            <th width="100">状态</th>
+                            <th width="100">结果</th>
+                            <th width="150">创建时间</th>
+                            <th width="150">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for check in checks %}
+                        <tr>
+                            <td><strong>{{ check.check_code }}</strong></td>
+                            <td>
+                                {{ check.spare_part.name if check.spare_part else '-' }}
+                                <br><small class="text-muted">{{ check.spare_part.code if check.spare_part else '' }}</small>
+                            </td>
+                            <td>{{ check.warehouse.name if check.warehouse else '-' }}</td>
+                            <td>{{ check.quantity }}</td>
+                            <td class="text-success">{{ check.qualified_quantity or 0 }}</td>
+                            <td class="text-danger">{{ check.unqualified_quantity or 0 }}</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if check.qualification_rate and check.qualification_rate < 90 %}bg-danger{% elif check.qualification_rate and check.qualification_rate < 95 %}bg-warning{% else %}bg-success{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ check.qualification_rate or 0 }}%;">
+                                        {{ "%.1f"|format(check.qualification_rate or 0) }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if check.status == 'pending' %}
+                                <span class="badge bg-warning">待质检</span>
+                                {% elif check.status == 'completed' %}
+                                <span class="badge bg-success">已完成</span>
+                                {% else %}
+                                <span class="badge bg-info">{{ check.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if check.result == 'qualified' %}
+                                <span class="badge bg-success">合格</span>
+                                {% elif check.result == 'unqualified' %}
+                                <span class="badge bg-danger">不合格</span>
+                                {% else %}
+                                <span class="badge bg-secondary">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ check.created_at.strftime('%Y-%m-%d') if check.created_at else '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('warehouse_new.quality_check_detail', check_id=check.id) }}" 
+                                   class="btn btn-sm btn-primary" title="查看详情">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if check.status == 'pending' %}
+                                <a href="{{ url_for('warehouse_new.quality_check_complete', check_id=check.id) }}" 
+                                   class="btn btn-sm btn-success" title="完成质检">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <p class="lead">暂无质检单数据</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('quality_check_api.list_page', page=pagination.prev_num, **search_params) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num == pagination.page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('quality_check_api.list_page', page=page_num, **search_params) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('quality_check_api.list_page', page=pagination.next_num, **search_params) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({}).mount('#qualityCheckListApp');
+</script>
+
+<style>
+[v-cloak] { display: none; }
+.border-left-primary { border-left: 4px solid #4e73df; }
+.border-left-warning { border-left: 4px solid #f6c23e; }
+.border-left-success { border-left: 4px solid #1cc88a; }
+.border-left-danger { border-left: 4px solid #e74a3b; }
+</style>
+{% endblock %}

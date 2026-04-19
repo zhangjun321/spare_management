@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block page_title %}新建设备{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('equipment.index') }}" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left me-1"></i>返回
+                </a>
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-plus-circle text-primary me-2"></i>新建设备
+                    </h2>
+                    <p class="text-muted mb-0">添加同方威视车辆扫描设备</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备表单 -->
+    <form action="{{ url_for('equipment.save') }}" method="POST">
+        <div class="row">
+            <!-- 左侧：基本信息 -->
+            <div class="col-lg-8">
+                <!-- 基础信息 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>基础信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">设备编号 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="equipment_code" required 
+                                       placeholder="如：NUC-MT-2024-001">
+                                <small class="text-muted">格式：NUC-{系列}-{年份}-{序号}</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">设备名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="name" required 
+                                       placeholder="如：车载移动式检查系统">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">设备系列 <span class="text-danger">*</span></label>
+                                <select class="form-select" name="series" id="series" required onchange="updateModels()">
+                                    <option value="">请选择系列</option>
+                                    {% for option in series_options %}
+                                    <option value="{{ option.value }}">{{ option.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">设备型号 <span class="text-danger">*</span></label>
+                                <select class="form-select" name="model" id="model" required>
+                                    <option value="">请先选择系列</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">类别</label>
+                                <input type="text" class="form-control" name="category" 
+                                       placeholder="如：安检设备">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">生产厂家</label>
+                                <input type="text" class="form-control" name="manufacturer" 
+                                       value="同方威视" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">出厂编号</label>
+                                <input type="text" class="form-control" name="serial_number" 
+                                       placeholder="设备出厂序列号">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 技术参数 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>技术参数
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">射线源类型</label>
+                                <select class="form-select" name="radiation_source">
+                                    <option value="">请选择</option>
+                                    <option value="电子直线加速器">电子直线加速器</option>
+                                    <option value="X 射线管">X 射线管</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">能量 (MeV)</label>
+                                <input type="text" class="form-control" name="energy" 
+                                       placeholder="如：6 MeV 或 4-6 MeV">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">穿透力 (mm 钢板)</label>
+                                <input type="text" class="form-control" name="penetration" 
+                                       placeholder="如：320mm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">分辨率 (mm)</label>
+                                <input type="text" class="form-control" name="resolution" 
+                                       placeholder="如：3.5mm">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">检查速度</label>
+                                <input type="text" class="form-control" name="check_speed" 
+                                       placeholder="如：120-200 辆/小时">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">通道尺寸</label>
+                                <input type="text" class="form-control" name="channel_size" 
+                                       placeholder="如：4.5m×4.5m">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">成像方式</label>
+                                <select class="form-select" name="imaging_mode">
+                                    <option value="">请选择</option>
+                                    <option value="双能成像">双能成像</option>
+                                    <option value="CT 成像">CT 成像</option>
+                                    <option value="顶视成像">顶视成像</option>
+                                    <option value="背散射成像">背散射成像</option>
+                                    <option value="交替双能成像">交替双能成像</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">屏蔽方式</label>
+                                <select class="form-select" name="shielding_mode">
+                                    <option value="">请选择</option>
+                                    <option value="自屏蔽">自屏蔽</option>
+                                    <option value="混凝土屏蔽">混凝土屏蔽</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：管理信息 -->
+            <div class="col-lg-4">
+                <!-- 管理信息 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-clipboard-list me-2"></i>管理信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">使用部门</label>
+                            <select class="form-select" name="department_id">
+                                <option value="">请选择部门</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">责任人</label>
+                            <input type="text" class="form-control" name="responsible_person" 
+                                   placeholder="责任人姓名">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">安装位置</label>
+                            <input type="text" class="form-control" name="location" 
+                                   placeholder="设备安装位置">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">设备状态</label>
+                            <select class="form-select" name="status">
+                                <option value="running" selected>运行中</option>
+                                <option value="stopped">停机</option>
+                                <option value="maintenance">维修中</option>
+                                <option value="scrapped">已报废</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">是否启用</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" checked>
+                                <label class="form-check-label">启用此设备</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 采购信息 -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-shopping-cart me-2"></i>采购信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">供应商</label>
+                            <select class="form-select" name="supplier_id">
+                                <option value="">请选择供应商</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">采购日期</label>
+                            <input type="date" class="form-control" name="purchase_date">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">安装日期</label>
+                            <input type="date" class="form-control" name="install_date">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">保修到期日期</label>
+                            <input type="date" class="form-control" name="warranty_expiry">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">采购价格 (元)</label>
+                            <input type="number" class="form-control" name="purchase_price" 
+                                   step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-2"></i>保存设备
+                            </button>
+                            <a href="{{ url_for('equipment.index') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>取消
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 预定义型号数据
+const modelData = {{ model_data | tojson }};
+
+function updateModels() {
+    const series = document.getElementById('series').value;
+    const modelSelect = document.getElementById('model');
+    
+    // 清空型号选项
+    modelSelect.innerHTML = '<option value="">请选择型号</option>';
+    
+    if (series && modelData[series]) {
+        modelData[series].forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.model;
+            option.textContent = `${item.model} - ${item.name}`;
+            modelSelect.appendChild(option);
+        });
+    }
+}
+</script>
+{% endblock %}

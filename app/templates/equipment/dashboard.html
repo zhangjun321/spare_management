@@ -1,0 +1,646 @@
+{% extends "base.html" %}
+
+{% block title %}设备仪表盘 - 备件管理系统{% endblock %}
+
+{% block page_title %}设备仪表盘{% endblock %}
+
+{% block extra_css %}
+<style>
+    #mapContainer {
+        width: 100%;
+        height: 600px;
+        border-radius: 12px;
+    }
+    
+    .map-toggle-btn {
+        background: #f0f0f0;
+        border: none;
+        padding: 6px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #666;
+        transition: all 0.3s;
+    }
+    
+    .map-toggle-btn:hover {
+        background: #e0e0e0;
+    }
+    
+    .map-toggle-btn.active {
+        background: #4e73df;
+        color: white;
+    }
+    
+    .legend-container {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 20px;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .legend-item:hover {
+        background: #f5f5f5;
+    }
+    
+    .legend-item.hidden {
+        opacity: 0.4;
+    }
+    
+    .legend-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .legend-count {
+        font-weight: 600;
+        color: #666;
+        margin-left: 6px;
+    }
+    
+    .filter-container {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .filter-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 6px;
+    }
+    
+    .filter-select {
+        width: 180px;
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 统计卡片 -->
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">设备总数</h6>
+                <h2 class="mb-0 text-white" id="totalCount">-</h2>
+                <i class="fas fa-cogs stat-icon text-white"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('equipment.index') }}" class="text-white text-decoration-none">
+                    查看详情 <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #52c41a 0%, #23780d 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">运行中</h6>
+                <h2 class="mb-0 text-white" id="runningCount">-</h2>
+                <i class="fas fa-check-circle stat-icon text-white"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #faad14 0%, #ad6800 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">维修中</h6>
+                <h2 class="mb-0 text-white" id="maintenanceCount">-</h2>
+                <i class="fas fa-tool stat-icon text-white"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #86909c 0%, #4c535c 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">停机</h6>
+                <h2 class="mb-0 text-white" id="stoppedCount">-</h2>
+                <i class="fas fa-pause-circle stat-icon text-white"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">保修即将到期</h6>
+                <h2 class="mb-0 text-white" id="warrantySoonCount">-</h2>
+                <i class="fas fa-exclamation-triangle stat-icon text-white"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <span class="text-white small">30天内</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card h-100" style="background: linear-gradient(135deg, #9775fa 0%, #5f3dc4 100%);">
+            <div class="card-body position-relative">
+                <h6 class="card-title text-white-50">已过保修</h6>
+                <h2 class="mb-0 text-white" id="warrantyExpiredCount">-</h2>
+                <i class="fas fa-shield-alt stat-icon text-white"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 地图区域 -->
+<div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+    <div class="card-header bg-white border-0" style="border-radius: 12px 12px 0 0; padding: 1rem var(--spacing-md);">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="mb-0 fw-600">
+                    <i class="fas fa-map-marked-alt me-2 text-primary"></i>设备分布地图
+                    <span class="badge bg-info ms-2" id="mapDeviceCount">0 台设备</span>
+                </h5>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <!-- 筛选器 -->
+                <div class="filter-container">
+                    <div class="row g-3">
+                        <div class="col-auto">
+                            <div class="filter-label"><i class="fas fa-location-dot me-1"></i>站点名称</div>
+                            <select class="form-select filter-select" id="siteNameFilter" onchange="applyFilters()">
+                                <option value="">全部站点</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <div class="filter-label"><i class="fas fa-microchip me-1"></i>设备类型</div>
+                            <select class="form-select filter-select" id="seriesFilter" onchange="applyFilters()">
+                                <option value="">全部类型</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <div class="filter-label">&nbsp;</div>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">
+                                <i class="fas fa-redo"></i> 重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 状态图例 -->
+                <div class="legend-container">
+                    <div class="legend-item" data-status="running" id="legend-running">
+                        <div class="legend-dot" style="background: #52c41a;"></div>
+                        <span>运行中</span>
+                        <span class="legend-count" id="legend-running-count">0</span>
+                    </div>
+                    <div class="legend-item" data-status="stopped" id="legend-stopped">
+                        <div class="legend-dot" style="background: #86909c;"></div>
+                        <span>停机</span>
+                        <span class="legend-count" id="legend-stopped-count">0</span>
+                    </div>
+                    <div class="legend-item" data-status="maintenance" id="legend-maintenance">
+                        <div class="legend-dot" style="background: #faad14;"></div>
+                        <span>维修中</span>
+                        <span class="legend-count" id="legend-maintenance-count">0</span>
+                    </div>
+                    <div class="legend-item" data-status="scrapped" id="legend-scrapped">
+                        <div class="legend-dot" style="background: #ff4d4f;"></div>
+                        <span>已报废</span>
+                        <span class="legend-count" id="legend-scrapped-count">0</span>
+                    </div>
+                </div>
+                
+                <!-- 地图切换 -->
+                <div class="btn-group">
+                    <button class="map-toggle-btn active" id="btnNormal" onclick="switchMap('normal')">
+                        <i class="fas fa-map me-1"></i>标准地图
+                    </button>
+                    <button class="map-toggle-btn" id="btnSatellite" onclick="switchMap('satellite')">
+                        <i class="fas fa-satellite me-1"></i>卫星地图
+                    </button>
+                </div>
+                
+                <!-- 刷新按钮 -->
+                <button class="btn btn-primary rounded-pill px-3" onclick="loadDevices()">
+                    <i class="fas fa-sync-alt"></i> 刷新
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div id="mapContainer"></div>
+    </div>
+</div>
+
+<!-- 设备详情模态框 -->
+<div class="modal fade" id="deviceModal" tabindex="-1" aria-labelledby="deviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deviceModalLabel">设备详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="deviceModalBody">
+                <!-- 动态加载设备详情 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <a href="#" class="btn btn-primary" id="viewDeviceBtn">查看详情</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 高德地图 API -->
+<script type="text/javascript">
+    window._AMapSecurityConfig = {
+        securityJsCode: '2dde894eb622b4650b1f691029abf5ce'
+    };
+</script>
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=90691a64632bff38606380489aac80e9"></script>
+
+<script>
+    let map = null;
+    let markers = {}; // {status: [markers]}
+    let allDevices = [];
+    let currentMapType = 'normal';
+    let satelliteLayer = null;
+    let visibleStatus = {
+        running: true,
+        stopped: true,
+        maintenance: true,
+        scrapped: true
+    };
+    
+    // 过滤高德地图的内部警告
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    console.warn = function(...args) {
+        const message = args.join(' ');
+        if (message.includes('ReadFrequently') || 
+            message.includes('aria-hidden') ||
+            message.includes('flydata')) {
+            return;
+        }
+        originalWarn.apply(console, args);
+    };
+    console.error = function(...args) {
+        const message = args.join(' ');
+        if (message.includes('USERKEY') || 
+            message.includes('flydata')) {
+            return;
+        }
+        originalError.apply(console, args);
+    };
+    
+    // 创建自定义标记图标
+    function createMarkerIcon(color) {
+        return new AMap.Icon({
+            size: new AMap.Size(32, 32),
+            image: `data:image/svg+xml;base64,${btoa(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="14" fill="${color}" opacity="0.9"/>
+                    <circle cx="16" cy="16" r="10" fill="white" opacity="0.3"/>
+                    <circle cx="16" cy="16" r="6" fill="white"/>
+                </svg>
+            `)}`,
+            imageSize: new AMap.Size(32, 32),
+            anchor: new AMap.Pixel(16, 16)
+        });
+    }
+    
+    // 切换状态显示/隐藏
+    function toggleStatus(status) {
+        visibleStatus[status] = !visibleStatus[status];
+        
+        const legendItem = document.getElementById(`legend-${status}`);
+        if (visibleStatus[status]) {
+            legendItem.classList.remove('hidden');
+        } else {
+            legendItem.classList.add('hidden');
+        }
+        
+        // 更新标记可见性
+        if (markers[status]) {
+            markers[status].forEach(marker => {
+                if (visibleStatus[status]) {
+                    marker.show();
+                } else {
+                    marker.hide();
+                }
+            });
+        }
+    }
+    
+    // 页面加载完成后初始化地图
+    window.addEventListener('load', function() {
+        initMap();
+        
+        // 绑定图例点击事件
+        document.querySelectorAll('.legend-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const status = this.dataset.status;
+                toggleStatus(status);
+            });
+        });
+    });
+    
+    function initMap() {
+        if (typeof AMap === 'undefined') {
+            console.error('高德地图 API 加载失败');
+            return;
+        }
+        
+        map = new AMap.Map('mapContainer', {
+            zoom: 4,
+            center: [104.066544, 37.564716],
+            viewMode: '2D',
+            zoomControl: true,
+            scale: true
+        });
+        
+        // 创建卫星图层
+        satelliteLayer = new AMap.TileLayer.Satellite();
+        
+        // 地图加载完成后加载设备
+        map.on('complete', function() {
+            loadDevices();
+        });
+    }
+    
+    // 加载概览统计数据
+    function loadOverviewStats() {
+        fetch('/equipment/api/overview-stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('totalCount').textContent = data.total || 0;
+                document.getElementById('runningCount').textContent = data.running || 0;
+                document.getElementById('stoppedCount').textContent = data.stopped || 0;
+                document.getElementById('maintenanceCount').textContent = data.maintenance || 0;
+                document.getElementById('warrantySoonCount').textContent = data.warranty_soon || 0;
+                document.getElementById('warrantyExpiredCount').textContent = data.warranty_expired || 0;
+                
+                // 更新图例统计
+                document.getElementById('legend-running-count').textContent = `[${data.running || 0}]`;
+                document.getElementById('legend-stopped-count').textContent = `[${data.stopped || 0}]`;
+                document.getElementById('legend-maintenance-count').textContent = `[${data.maintenance || 0}]`;
+                document.getElementById('legend-scrapped-count').textContent = `[${data.scrapped || 0}]`;
+            });
+    }
+    
+    function loadDevices() {
+        // 获取筛选参数
+        const siteName = document.getElementById('siteNameFilter').value;
+        const series = document.getElementById('seriesFilter').value;
+        
+        // 构建查询字符串
+        let url = '/equipment/api/locations';
+        const params = [];
+        if (siteName) params.push(`site_name=${encodeURIComponent(siteName)}`);
+        if (series) params.push(`series=${encodeURIComponent(series)}`);
+        if (params.length > 0) {
+            url += `?${params.join('&')}`;
+        }
+        
+        // 同时加载概览统计
+        loadOverviewStats();
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                allDevices = data.locations || [];
+                
+                // 更新筛选选项
+                if (data.site_names) {
+                    updateSiteNameOptions(data.site_names);
+                }
+                if (data.series_options) {
+                    updateSeriesOptions(data.series_options);
+                }
+                
+                // 清除旧标记
+                Object.values(markers).forEach(statusMarkers => {
+                    statusMarkers.forEach(marker => map.remove(marker));
+                });
+                markers = {
+                    running: [],
+                    stopped: [],
+                    maintenance: [],
+                    scrapped: []
+                };
+                
+                document.getElementById('mapDeviceCount').textContent = (allDevices.length) + ' 台设备';
+                
+                if (allDevices.length > 0) {
+                    const allMarkers = [];
+                    
+                    allDevices.forEach(device => {
+                        const icon = createMarkerIcon(device.color);
+                        
+                        const marker = new AMap.Marker({
+                            position: [device.longitude, device.latitude],
+                            title: device.name,
+                            icon: icon,
+                            offset: new AMap.Pixel(-16, -16),
+                            zIndex: device.status === 'running' ? 10 : 5
+                        });
+                        
+                        const infoWindow = new AMap.InfoWindow({
+                            content: `
+                                <div style="min-width:220px; padding: 12px;">
+                                    <div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px;">${device.name}</div>
+                                    <div style="color: #666; font-size: 13px; margin-bottom: 6px;">${device.equipment_code}</div>
+                                    ${device.site_name ? `<div style="color: #1890ff; font-size: 12px; margin-bottom: 6px;"><i class="fas fa-location-dot me-1"></i>${device.site_name}</div>` : ''}
+                                    <div style="margin-bottom: 6px;">
+                                        <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; color: white; font-size: 12px; background: ${device.color};">${device.status_label}</span>
+                                    </div>
+                                    <div style="color: #888; font-size: 12px;">${device.map_address || '位置未知'}</div>
+                                    ${device.department ? `<div style="color: #888; font-size: 12px; margin-top: 4px;"><i class="fas fa-building me-1"></i>${device.department}</div>` : ''}
+                                </div>
+                            `,
+                            offset: new AMap.Pixel(0, -40)
+                        });
+                        
+                        marker.on('click', function() {
+                            showDeviceDetail(device);
+                            infoWindow.open(map, marker.getPosition());
+                            
+                            // 添加点击动画
+                            marker.setAnimation('AMAP_ANIMATION_BOUNCE');
+                            setTimeout(() => {
+                                marker.setAnimation(null);
+                            }, 1000);
+                        });
+                        
+                        // 添加鼠标悬停效果
+                        marker.on('mouseover', function() {
+                            marker.setzIndex(20);
+                        });
+                        marker.on('mouseout', function() {
+                            marker.setzIndex(device.status === 'running' ? 10 : 5);
+                        });
+                        
+                        // 根据可见性添加到地图
+                        if (visibleStatus[device.status]) {
+                            map.add(marker);
+                        }
+                        
+                        markers[device.status].push(marker);
+                        allMarkers.push(marker);
+                    });
+                    
+                    // 自动调整视野
+                    if (allMarkers.length > 1) {
+                        map.setFitView(allMarkers);
+                    }
+                }
+            })
+            .catch(error => console.error('加载设备数据失败:', error));
+    }
+    
+    // 更新站点名称选项
+    function updateSiteNameOptions(siteNames) {
+        const select = document.getElementById('siteNameFilter');
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">全部站点</option>';
+        siteNames.forEach(site => {
+            const option = document.createElement('option');
+            option.value = site;
+            option.textContent = site;
+            if (site === currentValue) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    }
+    
+    // 更新设备类型选项
+    function updateSeriesOptions(seriesOptions) {
+        const select = document.getElementById('seriesFilter');
+        const currentValue = select.value;
+        const seriesNames = {
+            'FS': 'FS - 固定式快速通道',
+            'MT': 'MT - 车载移动式',
+            'CS': 'CS - 小型车辆检查',
+            'MB': 'MB - 组合移动式',
+            'FG': 'FG - 固定式集装箱',
+            'PB': 'PB - 多用途移动式',
+            'RF': 'RF - 铁路检查'
+        };
+        select.innerHTML = '<option value="">全部类型</option>';
+        seriesOptions.forEach(series => {
+            const option = document.createElement('option');
+            option.value = series;
+            option.textContent = seriesNames[series] || series;
+            if (series === currentValue) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    }
+    
+    // 应用筛选
+    function applyFilters() {
+        loadDevices();
+    }
+    
+    // 重置筛选
+    function resetFilters() {
+        document.getElementById('siteNameFilter').value = '';
+        document.getElementById('seriesFilter').value = '';
+        loadDevices();
+    }
+    
+    function showDeviceDetail(device) {
+        const modalBody = document.getElementById('deviceModalBody');
+        modalBody.innerHTML = `
+            <div class="text-center mb-4">
+                <div style="width: 60px; height: 60px; margin: 0 auto 16px; border-radius: 50%; background: ${device.color}; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-${device.icon} fa-2x text-white"></i>
+                </div>
+                <h4 style="color: #333;">${device.name}</h4>
+                <span class="badge" style="background: ${device.color}; color: white; font-size: 14px; padding: 6px 16px;">${device.status_label}</span>
+            </div>
+            <div class="row mb-3">
+                <div class="col-sm-4 fw-bold text-secondary">设备编号</div>
+                <div class="col-sm-8">${device.equipment_code}</div>
+            </div>
+            ${device.site_name ? `
+            <div class="row mb-3">
+                <div class="col-sm-4 fw-bold text-secondary">站点名称</div>
+                <div class="col-sm-8"><i class="fas fa-location-dot me-1"></i>${device.site_name}</div>
+            </div>
+            ` : ''}
+            ${device.model ? `
+            <div class="row mb-3">
+                <div class="col-sm-4 fw-bold text-secondary">设备型号</div>
+                <div class="col-sm-8">${device.model}</div>
+            </div>
+            ` : ''}
+            ${device.map_address ? `
+            <div class="row mb-3">
+                <div class="col-sm-4 fw-bold text-secondary">安装位置</div>
+                <div class="col-sm-8"><i class="fas fa-map-marker-alt me-1"></i>${device.map_address}</div>
+            </div>
+            ` : ''}
+            ${device.department ? `
+            <div class="row mb-3">
+                <div class="col-sm-4 fw-bold text-secondary">使用部门</div>
+                <div class="col-sm-8">${device.department}</div>
+            </div>
+            ` : ''}
+            ${device.contact_person ? `
+            <div class="row mb-3">
+                <div class="col-sm-4 fw-bold text-secondary">负责人</div>
+                <div class="col-sm-8"><i class="fas fa-user me-1"></i>${device.contact_person}</div>
+            </div>
+            ` : ''}
+            ${device.contact_phone ? `
+            <div class="row mb-3">
+                <div class="col-sm-4 fw-bold text-secondary">联系电话</div>
+                <div class="col-sm-8"><i class="fas fa-phone me-1"></i>${device.contact_phone}</div>
+            </div>
+            ` : ''}
+        `;
+        
+        document.getElementById('viewDeviceBtn').href = '/equipment/' + device.id;
+        
+        const modal = new bootstrap.Modal(document.getElementById('deviceModal'));
+        modal.show();
+    }
+    
+    // 切换地图类型
+    function switchMap(type) {
+        if (type === currentMapType) return;
+        
+        const btnNormal = document.getElementById('btnNormal');
+        const btnSatellite = document.getElementById('btnSatellite');
+        
+        if (type === 'satellite') {
+            map.add(satelliteLayer);
+            btnNormal.classList.remove('active');
+            btnSatellite.classList.add('active');
+        } else {
+            map.remove(satelliteLayer);
+            btnSatellite.classList.remove('active');
+            btnNormal.classList.add('active');
+        }
+        
+        currentMapType = type;
+    }
+</script>
+{% endblock %}

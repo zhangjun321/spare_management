@@ -92,19 +92,19 @@ def create_app(config_name=None):
     # 注册模板过滤器
     register_template_filters(app)
     
-    # 创建数据库表
-    with app.app_context():
-        db.create_all()
+    # 创建数据库表 (暂时注释，避免索引重复错误)
+    # with app.app_context():
+    #     db.create_all()
         
-        # 创建管理员账户 (如果不存在)
-        from app.models.user import User
-        from app.models.role import Role
+    #     # 创建管理员账户 (如果不存在)
+    #     from app.models.user import User
+    #     from app.models.role import Role
         
-        # 创建系统角色
-        # create_system_roles()
+    #     # 创建系统角色
+    #     # create_system_roles()
         
-        # 创建默认管理员
-        # create_default_admin()
+    #     # 创建默认管理员
+    #     # create_default_admin()
     
     # 注册 Shell 上下文处理器
     @app.shell_context_processor
@@ -146,8 +146,8 @@ def create_app(config_name=None):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         # 防止点击劫持
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-        # 内容安全策略 - 允许 CDN 资源和内联样式
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.staticfile.org; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://jsdelivr.net https://unpkg.com https://cdn.staticfile.org; img-src 'self' data: https: blob:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.staticfile.org; connect-src 'self' http://localhost:* http://127.0.0.1:* https://* 'unsafe-inline'"
+        # 内容安全策略 - 临时放宽以允许高德地图底图加载
+        response.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; img-src * data: blob:; font-src *; connect-src *; worker-src * blob:; frame-src *"
         # 静态资源（带哈希文件名）可长期缓存；其余接口禁止缓存
         if request.path.startswith('/static/') and (
             request.path.endswith(('.js', '.css', '.woff', '.woff2', '.ttf'))
@@ -441,6 +441,42 @@ def register_blueprints(app):
     from app.routes.api_inbound_outbound import api_inbound_bp, api_outbound_bp
     app.register_blueprint(api_inbound_bp)
     app.register_blueprint(api_outbound_bp)
+    
+    # 全局搜索 API
+    from app.routes.search import search_bp
+    app.register_blueprint(search_bp)
+    
+    # 备件 API
+    from app.routes.spare_parts_api import spare_parts_api
+    app.register_blueprint(spare_parts_api)
+    
+    # 通用列表 API
+    from app.routes.list_api import list_api
+    app.register_blueprint(list_api)
+    
+    # 仓库 API
+    from app.routes.warehouse_api import warehouse_api
+    app.register_blueprint(warehouse_api)
+    
+    # 入库 API
+    from app.routes.inbound_api import inbound_api
+    app.register_blueprint(inbound_api)
+    
+    # 出库 API
+    from app.routes.outbound_api import outbound_api
+    app.register_blueprint(outbound_api)
+    
+    # 库存 API
+    from app.routes.inventory_api import inventory_api
+    app.register_blueprint(inventory_api)
+    
+    # 质检单 API
+    from app.routes.quality_check_api import quality_check_api
+    app.register_blueprint(quality_check_api)
+    
+    # 质检标准 API
+    from app.routes.quality_standard_api import quality_standard_api
+    app.register_blueprint(quality_standard_api)
     
     # 处理 favicon 请求，避免浏览器控制台 404
     @app.route('/favicon.ico')

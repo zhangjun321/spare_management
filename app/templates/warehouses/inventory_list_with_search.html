@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block title %}库存列表{% endblock %}
+
+{% block page_title %}库存列表{% endblock %}
+
+{% block content %}
+<div id="inventoryListApp" v-cloak>
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总库存项</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">低库存预警</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.low_stock }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">库存充足</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.sufficient }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">库存正常</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.normal }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-balance-scale fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索面板 -->
+    {% include 'components/list_search_panel.html' %}
+
+    <!-- 列表区域 -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="150">仓库</th>
+                            <th>备件名称</th>
+                            <th width="100">数量</th>
+                            <th width="100">单位</th>
+                            <th width="100">最低</th>
+                            <th width="100">最高</th>
+                            <th width="100">状态</th>
+                            <th width="120">库存价值</th>
+                            <th width="100">库位</th>
+                            <th width="150">更新时间</th>
+                            <th width="120">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inv in inventory_list %}
+                        <tr>
+                            <td>
+                                <strong>{{ inv.warehouse.name if inv.warehouse else '-' }}</strong>
+                                <br><small class="text-muted">{{ inv.warehouse.code if inv.warehouse else '' }}</small>
+                            </td>
+                            <td>
+                                {{ inv.spare_part.name if inv.spare_part else '-' }}
+                                <br><small class="text-muted">{{ inv.spare_part.code if inv.spare_part else '' }}</small>
+                            </td>
+                            <td>
+                                <span class="{% if inv.stock_status == 'low' %}text-danger font-weight-bold{% elif inv.stock_status == 'sufficient' %}text-success{% endif %}">
+                                    {{ inv.quantity }}
+                                </span>
+                            </td>
+                            <td>{{ inv.unit or '-' }}</td>
+                            <td>{{ inv.min_quantity or 0 }}</td>
+                            <td>{{ inv.max_quantity or 0 }}</td>
+                            <td>
+                                {% if inv.stock_status == 'low' %}
+                                <span class="badge bg-danger" title="库存不足">预警</span>
+                                {% elif inv.stock_status == 'sufficient' %}
+                                <span class="badge bg-success" title="库存充足">充足</span>
+                                {% else %}
+                                <span class="badge bg-info" title="库存正常">正常</span>
+                                {% endif %}
+                            </td>
+                            <td>¥{{ "%.2f"|format(inv.total_value or 0) }}</td>
+                            <td>{{ inv.location or '-' }}</td>
+                            <td>{{ inv.updated_at.strftime('%Y-%m-%d %H:%M') if inv.updated_at else '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('warehouses.inventory_detail', inventory_id=inv.id) }}" 
+                                   class="btn btn-sm btn-primary" title="查看详情">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if inv.stock_status == 'low' %}
+                                <a href="{{ url_for('warehouses.purchase_create', spare_part_id=inv.spare_part_id) }}" 
+                                   class="btn btn-sm btn-warning" title="立即采购">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <p class="lead">暂无库存数据</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('inventory_api.list_page', page=pagination.prev_num, **search_params) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num == pagination.page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('inventory_api.list_page', page=page_num, **search_params) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('inventory_api.list_page', page=pagination.next_num, **search_params) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({}).mount('#inventoryListApp');
+</script>
+
+<style>
+[v-cloak] { display: none; }
+.border-left-primary { border-left: 4px solid #4e73df; }
+.border-left-danger { border-left: 4px solid #e74a3b; }
+.border-left-success { border-left: 4px solid #1cc88a; }
+.border-left-info { border-left: 4px solid #36b9cc; }
+</style>
+{% endblock %}

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理仪表盘</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: '2dde894eb622b4650b1f691029abf5ce'
+        }
+    </script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=90691a64632bff38606380489aac80e9"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .header p {
+            opacity: 0.9;
+            margin: 0;
+        }
+        .container {
+            padding: 25px 30px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white !important;
+            padding: 25px 20px !important;
+            border-radius: 12px !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+            text-align: center;
+            border: none !important;
+        }
+        .stat-card h6 {
+            color: #666;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .stat-card h3 {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0;
+        }
+        .stat-card.primary h3 { color: #1890ff !important; }
+        .stat-card.success h3 { color: #52c41a !important; }
+        .stat-card.info h3 { color: #13c2c2 !important; }
+        .map-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .map-header {
+            padding: 18px 25px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .map-header h4 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .map-header .badge {
+            font-size: 14px;
+            padding: 6px 14px;
+        }
+        .map-header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .map-toggle-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .map-toggle-btn:hover {
+            background: #e0e0e0;
+        }
+        .map-toggle-btn.active {
+            background: #1890ff;
+            color: white;
+        }
+        #mapContainer {
+            width: 100%;
+            height: 600px;
+        }
+        .status-bar {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .status-bar.success { border-left: 4px solid #52c41a; background: #f6ffed; }
+        .status-bar.error { border-left: 4px solid #ff4d4f; background: #fff2f0; }
+        .status-bar.loading { border-left: 4px solid #1890ff; background: #e6f7ff; }
+        .status-bar i { font-size: 20px; }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary { background: #1890ff; color: white; }
+        .btn-primary:hover { background: #40a9ff; color: white; }
+        .btn-secondary { background: #666; color: white; }
+        .btn-secondary:hover { background: #888; color: white; }
+        .nav-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .d-flex { display: flex !important; }
+        .justify-content-between { justify-content: space-between !important; }
+        .align-items-center { align-items: center !important; }
+        .me-2 { margin-right: 0.5rem !important; }
+        .me-1 { margin-right: 0.25rem !important; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-chart-line me-2"></i>设备管理仪表盘</h1>
+                <p>基于高德地图的设备分布可视化</p>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-primary" onclick="location.reload()">
+                    <i class="fas fa-sync-alt me-1"></i>刷新
+                </button>
+                <a href="/equipment" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>返回列表
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="status-bar loading" id="statusBar">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span id="statusText">正在初始化地图...</span>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <h6>设备总数</h6>
+                <h3 id="totalCount">-</h3>
+            </div>
+            <div class="stat-card success">
+                <h6>运行中</h6>
+                <h3 id="runningCount">-</h3>
+            </div>
+            <div class="stat-card info">
+                <h6>有位置设备</h6>
+                <h3 id="locatedCount">-</h3>
+            </div>
+        </div>
+
+        <div class="map-section">
+            <div class="map-header">
+                <h4><i class="fas fa-map-marked-alt me-2"></i>设备分布地图</h4>
+                <div class="map-header-right">
+                    <div class="btn-group" role="group">
+                        <button class="map-toggle-btn active" id="btnNormal" onclick="switchMap('normal')">
+                            <i class="fas fa-map me-1"></i>标准地图
+                        </button>
+                        <button class="map-toggle-btn" id="btnSatellite" onclick="switchMap('satellite')">
+                            <i class="fas fa-satellite me-1"></i>卫星地图
+                        </button>
+                    </div>
+                    <span class="badge bg-info" id="mapDeviceCount">0 台设备</span>
+                </div>
+            </div>
+            <div id="mapContainer"></div>
+        </div>
+    </div>
+
+    <!-- 设备详情弹窗 -->
+    <div class="modal fade" id="deviceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>设备详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <a href="#" id="viewBtn" class="btn btn-primary">查看详情</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let map = null;
+        let markers = [];
+        let currentMapType = 'normal';
+        let satelliteLayer = null;
+
+        // 过滤高德地图的内部警告
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        console.warn = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('ReadFrequently') || 
+                message.includes('aria-hidden') ||
+                message.includes('flydata')) {
+                return;
+            }
+            originalWarn.apply(console, args);
+        };
+        console.error = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('USERKEY') || 
+                message.includes('flydata')) {
+                return;
+            }
+            originalError.apply(console, args);
+        };
+
+        console.log('📄 页面开始加载');
+
+        window.onload = function() {
+            console.log('✅ 页面加载完成');
+
+            const statusBar = document.getElementById('statusBar');
+            const statusText = document.getElementById('statusText');
+
+            if (typeof AMap === 'undefined') {
+                statusBar.className = 'status-bar error';
+                statusBar.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>❌ AMap 未定义 - API 脚本加载失败</span>';
+                console.error('❌ AMap is undefined');
+                return;
+            }
+
+            console.log('✅ AMap loaded');
+
+            try {
+                statusText.textContent = '正在创建地图...';
+                console.log('📍 Creating map...');
+                
+                map = new AMap.Map('mapContainer', {
+                    zoom: 4,
+                    center: [104.066544, 37.564716],
+                    viewMode: '2D',
+                    zoomControl: true,
+                    scale: true
+                });
+
+                // 创建卫星图层
+                satelliteLayer = new AMap.TileLayer.Satellite();
+
+                console.log('✅ Map created');
+                statusBar.className = 'status-bar success';
+                statusText.textContent = '地图创建成功！正在加载设备...';
+
+                map.on('complete', function() {
+                    console.log('🗺️ Map tiles loaded');
+                    statusText.textContent = '地图加载完成！';
+                });
+
+                loadDevices();
+
+            } catch (error) {
+                console.error('❌ Error:', error);
+                statusBar.className = 'status-bar error';
+                statusText.textContent = '地图创建失败：' + error.message;
+                document.getElementById('mapContainer').innerHTML = 
+                    '<div class="alert alert-danger m-4">地图初始化失败：' + error.message + '</div>';
+            }
+        };
+
+        function loadDevices() {
+            console.log('📡 Loading devices...');
+            
+            fetch('/equipment/api/locations')
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('✅ Devices loaded:', data.length);
+                    
+                    document.getElementById('totalCount').textContent = data.length;
+                    document.getElementById('locatedCount').textContent = data.length;
+                    document.getElementById('runningCount').textContent = 
+                        data.filter(d => d.status === 'running').length;
+                    document.getElementById('mapDeviceCount').textContent = data.length + ' 台设备';
+                    
+                    if (data.length === 0) {
+                        document.getElementById('mapContainer').innerHTML = 
+                            '<div class="alert alert-info m-4">暂无设备位置数据</div>';
+                        return;
+                    }
+                    
+                    data.forEach(device => {
+                        console.log('📍 Adding device:', device.name);
+                        
+                        const marker = new AMap.Marker({
+                            position: [device.longitude, device.latitude],
+                            title: device.name
+                        });
+                        
+                        const infoContent = `
+                            <div style="min-width:200px; padding: 8px;">
+                                <strong style="font-size: 15px;">${device.name}</strong><br>
+                                <small style="color: #666;">${device.equipment_code}</small><br>
+                                <span class="badge bg-${device.color}">${device.status_label}</span><br>
+                                <small style="color: #888;">${device.map_address || ''}</small>
+                            </div>
+                        `;
+                        
+                        const infoWindow = new AMap.InfoWindow({
+                            content: infoContent,
+                            offset: new AMap.Pixel(0, -30)
+                        });
+                        
+                        marker.on('click', function() {
+                            showDeviceDetail(device);
+                            infoWindow.open(map, marker.getPosition());
+                        });
+                        
+                        map.add(marker);
+                        markers.push(marker);
+                    });
+                    
+                    if (markers.length > 0) {
+                        map.setFitView(markers);
+                        console.log('✅ View fit complete');
+                    }
+                    
+                    document.getElementById('statusText').textContent = '加载完成！显示 ' + data.length + ' 台设备';
+                })
+                .catch(error => {
+                    console.error('❌ Load failed:', error);
+                    document.getElementById('statusBar').className = 'status-bar error';
+                    document.getElementById('statusText').textContent = '加载设备数据失败：' + error.message;
+                });
+        }
+
+        function showDeviceDetail(device) {
+            document.getElementById('modalBody').innerHTML = `
+                <div class="mb-2"><strong>设备编号:</strong> ${device.equipment_code}</div>
+                <div class="mb-2"><strong>设备名称:</strong> ${device.name}</div>
+                <div class="mb-2"><strong>型号:</strong> ${device.model}</div>
+                <div class="mb-2"><strong>系列:</strong> ${device.series}</div>
+                <div class="mb-2"><strong>状态:</strong> <span class="badge bg-${device.color}">${device.status_label}</span></div>
+                <div class="mb-2"><strong>位置:</strong> ${device.map_address || '-'}</div>
+            `;
+            document.getElementById('viewBtn').href = `/equipment/${device.id}`;
+            
+            const modal = new bootstrap.Modal(document.getElementById('deviceModal'));
+            modal.show();
+        }
+
+        // 切换地图类型
+        function switchMap(type) {
+            if (type === currentMapType) return;
+            
+            const btnNormal = document.getElementById('btnNormal');
+            const btnSatellite = document.getElementById('btnSatellite');
+            
+            if (type === 'satellite') {
+                // 切换到卫星地图
+                map.add(satelliteLayer);
+                btnNormal.classList.remove('active');
+                btnSatellite.classList.add('active');
+                console.log('🛰️ 已切换到卫星地图');
+            } else {
+                // 切换到标准地图
+                map.remove(satelliteLayer);
+                btnSatellite.classList.remove('active');
+                btnNormal.classList.add('active');
+                console.log('🗺️ 已切换到标准地图');
+            }
+            
+            currentMapType = type;
+        }
+    </script>
+</body>
+</html>

@@ -70,6 +70,15 @@ class WarehouseService:
         query = Warehouse.query
         
         if filters:
+            # 关键词搜索（支持名称和编码）
+            if filters.get('keyword'):
+                keyword = f"%{filters['keyword']}%"
+                query = query.filter(
+                    db.or_(
+                        Warehouse.name.like(keyword),
+                        Warehouse.code.like(keyword)
+                    )
+                )
             if filters.get('name'):
                 query = query.filter(Warehouse.name.like(f"%{filters['name']}%"))
             if filters.get('code'):

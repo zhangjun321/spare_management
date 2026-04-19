@@ -28,12 +28,17 @@ warehouses_bp = Blueprint('warehouses', __name__, template_folder='../templates/
 def index():
     """仓库列表 - 整合智能仓库功能"""
     # 获取筛选条件
+    keyword = request.args.get('keyword', '').strip()
     filters = {
         'name': request.args.get('name'),
         'code': request.args.get('code'),
         'type': request.args.get('type'),
-        'is_active': request.args.get('is_active') == 'true'
+        'is_active': request.args.get('is_active')
     }
+    
+    # 如果有搜索关键词，添加到筛选条件中
+    if keyword:
+        filters['keyword'] = keyword
     
     # 获取分页参数
     page = request.args.get('page', 1, type=int)

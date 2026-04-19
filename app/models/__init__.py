@@ -25,6 +25,13 @@ from app.models.batch import Batch
 from app.models.serial_number import SerialNumber
 from app.models.transaction import Transaction, TransactionDetail
 from app.models.equipment import Equipment
+from app.models.equipment_extensions import (
+    EquipmentStatusHistory,
+    EquipmentChecklist,
+    EquipmentAttachment,
+    EquipmentTag,
+    EquipmentMaintenancePlan
+)
 from app.models.maintenance import MaintenanceOrder, MaintenanceTask, MaintenanceRecord, MaintenanceCost
 from app.models.purchase import PurchasePlan, PurchaseRequest, PurchaseOrder, PurchaseOrderItem, PurchaseQuote
 from app.models.supplier_evaluation import SupplierEvaluation
@@ -37,6 +44,9 @@ from app.models.database_backup import DatabaseBackup
 from app.models.dictionary import DictType, DictItem
 from app.models.help import HelpCategory, HelpDocument
 from app.models.api import ApiCategory, ApiEndpoint, ApiLog
+
+# KPI管理和AI分析模型
+from app.models.kpi import KPIConfig, KPIHistory, AIAnalysisHistory
 
 # 新的仓库管理模块（核心联动模型）
 # InventoryRecord 在 inventory.py 中定义，避免重复导入
@@ -63,6 +73,11 @@ __all__ = [
     'Transaction',
     'TransactionDetail',
     'Equipment',
+    'EquipmentStatusHistory',
+    'EquipmentChecklist',
+    'EquipmentAttachment',
+    'EquipmentTag',
+    'EquipmentMaintenancePlan',
     'MaintenanceOrder',
     'MaintenanceTask',
     'MaintenanceRecord',
@@ -90,6 +105,10 @@ __all__ = [
     'ApiCategory',
     'ApiEndpoint',
     'ApiLog',
+    # KPI管理和AI分析
+    'KPIConfig',
+    'KPIHistory',
+    'AIAnalysisHistory',
     # 新的仓库管理模块
     'InventoryRecord',
     'InboundOrder',

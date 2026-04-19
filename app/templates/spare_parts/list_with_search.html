@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}备件列表{% endblock %}
+
+{% block page_title %}备件列表{% endblock %}
+
+{% block content %}
+<div id="sparePartsApp" v-cloak>
+    <el-card shadow="hover">
+        <!-- 搜索区域 -->
+        <div class="search-panel">
+            <el-form :inline="true" :model="searchForm" size="default">
+                <el-form-item label="关键词">
+                    <el-input 
+                        v-model="searchForm.keyword" 
+                        placeholder="搜索名称、编码、型号..."
+                        clearable
+                        @keyup.enter="handleSearch"
+                        style="width: 250px;">
+                        <template #prefix>
+                            <el-icon><Search /></el-icon>
+                        </template>
+                    </el-input>
+                </el-form-item>
+                
+                <el-form-item>
+                    <el-button type="primary" @click="handleSearch" :icon="Search">
+                        搜索
+                    </el-button>
+                </el-form-item>
+                <el-form-item>
+                    <el-button @click="handleReset" :icon="Refresh">
+                        重置
+                    </el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+        
+        <!-- 列表区域 -->
+        <el-table 
+            :data="tableData" 
+            v-loading="loading"
+            stripe
+            border
+            style="width: 100%; margin-top: 20px;"
+            @sort-change="handleSortChange">
+            
+            <el-table-column prop="code" label="备件编码" width="120" sortable></el-table-column>
+            <el-table-column prop="name" label="名称" width="200"></el-table-column>
+            <el-table-column prop="model" label="型号" width="150"></el-table-column>
+            <el-table-column prop="spec" label="规格" width="150"></el-table-column>
+            <el-table-column prop="category_name" label="分类" width="100"></el-table-column>
+            <el-table-column prop="stock_quantity" label="库存数量" width="100" sortable></el-table-column>
+            <el-table-column prop="unit" label="单位" width="80"></el-table-column>
+            <el-table-column prop="price" label="单价" width="100" sortable>
+                <template #default="scope">
+                    ¥{{ parseFloat(scope.row.price || 0).toFixed(2) }}
+                </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
+                <template #default="scope">
+                    <el-tag :type="getStatusType(scope.row.status)" size="small">
+                        {{ getStatusText(scope.row.status) }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" width="200">
+                <template #default="scope">
+                    <el-button size="small" type="primary" @click="handleView(scope.row)">
+                        查看
+                    </el-button>
+                    <el-button size="small" type="success" @click="handleEdit(scope.row)">
+                        编辑
+                    </el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        
+        <!-- 分页 -->
+        <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+            style="margin-top: 20px; justify-content: flex-end;">
+        </el-pagination>
+    </el-card>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+<script>
+const { createApp, ref, reactive, onMounted } = Vue;
+
+createApp({
+    setup() {
+        // 数据
+        const tableData = ref([]);
+        const loading = ref(false);
+        const searchForm = reactive({
+            keyword: ''
+        });
+        const pagination = reactive({
+            page: 1,
+            pageSize: 20,
+            total: 0
+        });
+        
+        // 获取列表
+        const fetchList = async () => {
+            loading.value = true;
+            try {
+                const params = new URLSearchParams({
+                    page: pagination.page,
+                    per_page: pagination.pageSize,
+                    keyword: searchForm.keyword
+                });
+                
+                const response = await fetch(`/api/spare-parts/list?${params}`);
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    tableData.value = result.data.list;
+                    pagination.total = result.data.total;
+                    pagination.page = result.data.page;
+                    pagination.pages = result.data.pages;
+                }
+            } catch (error) {
+                console.error('获取列表失败:', error);
+                ElementPlus.ElMessage.error('获取列表失败');
+            } finally {
+                loading.value = false;
+            }
+        };
+        
+        // 搜索
+        const handleSearch = () => {
+            pagination.page = 1;
+            fetchList();
+        };
+        
+        // 重置
+        const handleReset = () => {
+            searchForm.keyword = '';
+            handleSearch();
+        };
+        
+        // 分页
+        const handlePageChange = (page) => {
+            pagination.page = page;
+            fetchList();
+        };
+        
+        const handleSizeChange = (size) => {
+            pagination.pageSize = size;
+            pagination.page = 1;
+            fetchList();
+        };
+        
+        // 状态类型
+        const getStatusType = (status) => {
+            const types = {
+                'active': 'success',
+                'inactive': 'info',
+                'maintenance': 'warning',
+                'scrapped': 'danger'
+            };
+            return types[status] || 'info';
+        };
+        
+        // 状态文本
+        const getStatusText = (status) => {
+            const texts = {
+                'active': '正常',
+                'inactive': '停用',
+                'maintenance': '维修中',
+                'scrapped': '报废'
+            };
+            return texts[status] || status;
+        };
+        
+        // 操作
+        const handleView = (row) => {
+            window.location.href = `/spare_parts/${row.id}`;
+        };
+        
+        const handleEdit = (row) => {
+            window.location.href = `/spare_parts/${row.id}/edit`;
+        };
+        
+        // 生命周期
+        onMounted(() => {
+            fetchList();
+        });
+        
+        return {
+            tableData,
+            loading,
+            searchForm,
+            pagination,
+            handleSearch,
+            handleReset,
+            handlePageChange,
+            handleSizeChange,
+            getStatusType,
+            getStatusText,
+            handleView,
+            handleEdit
+        };
+    }
+}).use(ElementPlus).mount('#sparePartsApp');
+</script>
+
+<style scoped>
+[v-cloak] {
+    display: none;
+}
+
+.search-panel {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}

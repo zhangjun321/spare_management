@@ -1,0 +1,123 @@
+<!-- 通用列表搜索组件 -->
+<!-- 使用方法：{% include 'components/list_search_panel.html' with context %} -->
+
+<div class="search-panel-modern mb-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="GET" action="{{ search_action or request.path }}" class="search-form">
+                <div class="row g-3">
+                    <!-- 动态搜索字段 -->
+                    {% block search_fields %}
+                    {% endblock %}
+                    
+                    <!-- 关键词搜索 -->
+                    {% if show_keyword|default(true) %}
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="keyword" 
+                                   value="{{ request.args.get('keyword', '') }}"
+                                   placeholder="{{ keyword_placeholder or '搜索关键词...' }}">
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- 搜索按钮 -->
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>搜索
+                        </button>
+                    </div>
+                    <div class="col-md-auto">
+                        <a href="{{ request.path }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo me-1"></i>重置
+                        </a>
+                    </div>
+                    
+                    {% if show_export|default(false) %}
+                    <div class="col-md-auto ms-auto">
+                        <button type="button" class="btn btn-success" onclick="exportData()">
+                            <i class="fas fa-download me-1"></i>导出
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.search-panel-modern {
+    animation: fadeIn 0.3s ease-in;
+}
+
+.search-panel-modern .card {
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.search-panel-modern .card-body {
+    padding: 1.5rem;
+}
+
+.search-form .input-group-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px 0 0 8px;
+}
+
+.search-form .form-control {
+    border: 2px solid #e0e0e0;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    transition: all 0.3s;
+}
+
+.search-form .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.search-form .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s;
+}
+
+.search-form .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.search-form .btn-outline-secondary {
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+function exportData() {
+    // 导出功能，可在子类中重写
+    alert('导出功能开发中...');
+}
+</script>

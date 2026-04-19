@@ -562,6 +562,69 @@
             text-align: center;
         }
         
+        /* 搜索结果样式 */
+        .search-results-dropdown {
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 0.5rem;
+        }
+        
+        .search-category-header {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin: 0.5rem 0.5rem 0.25rem;
+        }
+        
+        .search-category-header .badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.4rem;
+        }
+        
+        .search-result-item {
+            padding: 0.75rem;
+            margin: 0.25rem 0;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .search-result-item:hover {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transform: translateX(3px);
+        }
+        
+        .search-icon-wrapper {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .search-title {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .search-description {
+            font-size: 0.75rem;
+            color: #6c757d;
+            line-height: 1.4;
+        }
+        
         /* 卡片样式优化 */
         .stat-card {
             border: none;
@@ -1102,9 +1165,9 @@
         </div>
         <ul class="sidebar-menu">
             <li>
-                <a href="{{ url_for('dashboard.index') }}" class="{% if request.endpoint == 'dashboard.index' %}active{% endif %}" data-tooltip="仪表盘">
+                <a href="{{ url_for('dashboard.index') }}" class="{% if request.endpoint == 'dashboard.index' %}active{% endif %}" data-tooltip="主仪表盘">
                     <i class="fas fa-tachometer-alt"></i>
-                    <span class="menu-text">仪表盘</span>
+                    <span class="menu-text">主仪表盘</span>
                 </a>
             </li>
             <li>
@@ -1217,12 +1280,32 @@
                     </li>
                 </ul>
             </li>
-            <li>
+            <li class="has-submenu">
                 <a href="{{ url_for('equipment.index') }}" data-tooltip="设备管理">
-
                     <i class="fas fa-cogs"></i>
                     <span class="menu-text">设备管理</span>
+                    <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
                 </a>
+                <ul class="submenu">
+                    <li>
+                        <a href="{{ url_for('equipment.dashboard') }}">
+                            <i class="fas fa-chart-line"></i>
+                            <span>设备仪表盘</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('equipment.index') }}">
+                            <i class="fas fa-list"></i>
+                            <span>设备列表</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('equipment.create') }}">
+                            <i class="fas fa-plus"></i>
+                            <span>新建设备</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
             <li>
                 <a href="{{ url_for('maintenance.index') }}" data-tooltip="维修管理">
@@ -1404,7 +1487,7 @@
                     <div class="col-lg-2 col-md-6 mb-4 mb-lg-0">
                         <h5>快速链接</h5>
                         <ul class="footer-links">
-                            <li><a href="{{ url_for('dashboard.index') }}"><i class="fas fa-angle-right"></i>仪表盘</a></li>
+                            <li><a href="{{ url_for('dashboard.index') }}"><i class="fas fa-angle-right"></i>主仪表盘</a></li>
                             <li><a href="{{ url_for('spare_parts.index') }}"><i class="fas fa-angle-right"></i>备件管理</a></li>
                             <li><a href="{{ url_for('warehouses.index') }}"><i class="fas fa-angle-right"></i>仓库管理</a></li>
                             <li><a href="{{ url_for('equipment.index') }}"><i class="fas fa-angle-right"></i>设备管理</a></li>
@@ -1825,9 +1908,9 @@
                 // 设备管理
                 'equipment': {
                     actions: [
-                        { url: '/equipment/create', icon: 'fa-plus', label: '新建设备', class: 'btn-modern-primary' },
-                        { url: '/equipment', icon: 'fa-list', label: '设备列表', class: 'btn-modern-success' },
-                        { url: '/maintenance', icon: 'fa-tools', label: '维修管理', class: 'btn-modern-info' }
+                        { url: '/equipment/dashboard', icon: 'fa-chart-line', label: '设备仪表盘', class: 'btn-modern-primary' },
+                        { url: '/equipment/create', icon: 'fa-plus', label: '新建设备', class: 'btn-modern-success' },
+                        { url: '/equipment', icon: 'fa-list', label: '设备列表', class: 'btn-modern-info' }
                     ]
                 },
                 // 维修管理
@@ -1851,7 +1934,7 @@
                     actions: [
                         { url: '/reports/inventory', icon: 'fa-chart-pie', label: '库存报表', class: 'btn-modern-primary' },
                         { url: '/reports/transaction', icon: 'fa-chart-line', label: '交易报表', class: 'btn-modern-success' },
-                        { url: '/dashboard', icon: 'fa-tachometer-alt', label: '仪表盘', class: 'btn-modern-info' }
+                        { url: '/dashboard', icon: 'fa-tachometer-alt', label: '主仪表盘', class: 'btn-modern-info' }
                     ]
                 },
                 // 系统管理
@@ -1877,7 +1960,7 @@
             if (!matchedModule) {
                 matchedModule = {
                     actions: [
-                        { url: '/dashboard', icon: 'fa-home', label: '仪表盘', class: 'btn-modern-primary' },
+                        { url: '/dashboard', icon: 'fa-home', label: '主仪表盘', class: 'btn-modern-primary' },
                         { url: '/warehouses', icon: 'fa-warehouse', label: '仓库管理', class: 'btn-modern-success' },
                         { url: '/spare_parts', icon: 'fa-boxes', label: '备件管理', class: 'btn-modern-info' }
                     ]
@@ -1900,6 +1983,151 @@
         // 页面加载时渲染快捷操作
         document.addEventListener('DOMContentLoaded', function() {
             renderQuickActions();
+            initGlobalSearch();
+        });
+        
+        // 初始化全局搜索
+        function initGlobalSearch() {
+            const searchInput = document.getElementById('globalSearch');
+            if (!searchInput) return;
+            
+            let searchTimeout = null;
+            
+            searchInput.addEventListener('input', function(e) {
+                const query = e.target.value.trim();
+                
+                // 清除之前的定时器
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+                
+                // 延迟搜索，避免频繁请求
+                searchTimeout = setTimeout(() => {
+                    if (query.length >= 2) {
+                        performSearch(query);
+                    } else {
+                        hideSearchResults();
+                    }
+                }, 300);
+            });
+            
+            // 回车键搜索
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const query = e.target.value.trim();
+                    if (query.length >= 2) {
+                        performSearch(query);
+                    }
+                }
+            });
+        }
+        
+        // 执行搜索
+        function performSearch(query) {
+            // 创建或显示搜索结果下拉框
+            let resultsDropdown = document.getElementById('searchResultsDropdown');
+            if (!resultsDropdown) {
+                resultsDropdown = document.createElement('div');
+                resultsDropdown.id = 'searchResultsDropdown';
+                resultsDropdown.className = 'dropdown-menu show search-results-dropdown';
+                resultsDropdown.style.cssText = 'width: 400px; max-height: 400px; overflow-y: auto;';
+                
+                const searchInput = document.getElementById('globalSearch');
+                searchInput.parentNode.style.position = 'relative';
+                searchInput.parentNode.appendChild(resultsDropdown);
+            }
+            
+            // 显示加载中
+            resultsDropdown.innerHTML = `
+                <div class="text-center py-3">
+                    <i class="fas fa-spinner fa-spin text-primary"></i>
+                    <p class="text-muted small mt-2 mb-0">搜索中...</p>
+                </div>
+            `;
+            
+            // 发送搜索请求
+            fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    displaySearchResults(data, resultsDropdown);
+                })
+                .catch(error => {
+                    console.error('搜索失败:', error);
+                    resultsDropdown.innerHTML = `
+                        <div class="text-center py-3">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                            <p class="text-muted small mt-2 mb-0">搜索失败，请稍后重试</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        // 显示搜索结果
+        function displaySearchResults(data, container) {
+            if (!data || data.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-3">
+                        <i class="fas fa-search text-muted" style="font-size: 2rem;"></i>
+                        <p class="text-muted small mt-2 mb-0">未找到相关结果</p>
+                        <p class="text-muted small mt-1 mb-0">试试搜索：仓库编码、备件名称、单据编号等</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 按类别分组
+            const grouped = {};
+            data.forEach(item => {
+                if (!grouped[item.category]) {
+                    grouped[item.category] = [];
+                }
+                grouped[item.category].push(item);
+            });
+            
+            let html = '';
+            
+            // 显示每个类别的结果
+            for (const [category, items] of Object.entries(grouped)) {
+                html += `<div class="search-category-header">${category} <span class="badge bg-primary ms-1">${items.length}</span></div>`;
+                
+                items.forEach(item => {
+                    html += `
+                        <a class="dropdown-item search-result-item" href="${item.url}">
+                            <div class="d-flex align-items-start">
+                                <div class="search-icon-wrapper me-2">
+                                    <i class="fas ${item.icon || 'fa-file'}"></i>
+                                </div>
+                                <div class="search-content flex-grow-1">
+                                    <div class="search-title">${item.title}</div>
+                                    <div class="search-description">${item.description}</div>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                });
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        // 隐藏搜索结果
+        function hideSearchResults() {
+            const resultsDropdown = document.getElementById('searchResultsDropdown');
+            if (resultsDropdown) {
+                resultsDropdown.classList.remove('show');
+            }
+        }
+        
+        // 点击页面其他地方关闭搜索结果
+        document.addEventListener('click', function(e) {
+            const searchInput = document.getElementById('globalSearch');
+            const resultsDropdown = document.getElementById('searchResultsDropdown');
+            
+            if (searchInput && resultsDropdown && 
+                !searchInput.contains(e.target) && 
+                !resultsDropdown.contains(e.target)) {
+                hideSearchResults();
+            }
         });
         
         // 标记全部已读

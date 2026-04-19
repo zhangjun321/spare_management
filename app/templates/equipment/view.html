@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+
+{% block page_title %}设备详情{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <a href="{{ url_for('equipment.index') }}" class="btn btn-outline-secondary me-3">
+                        <i class="fas fa-arrow-left me-1"></i>返回
+                    </a>
+                    <div>
+                        <h2 class="mb-1">
+                            <i class="fas fa-cogs text-primary me-2"></i>{{ equipment.name }}
+                        </h2>
+                        <p class="text-muted mb-0">
+                            设备编号：{{ equipment.equipment_code }} | 
+                            型号：{{ equipment.model }} | 
+                            系列：{{ equipment.series }}
+                        </p>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-exchange-alt me-2"></i>变更状态
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header">选择新状态</h6></li>
+                            <li><a class="dropdown-item status-change" href="#" data-status="running">
+                                <i class="fas fa-check-circle text-success me-2"></i>运行中
+                            </a></li>
+                            <li><a class="dropdown-item status-change" href="#" data-status="stopped">
+                                <i class="fas fa-pause-circle text-secondary me-2"></i>停机
+                            </a></li>
+                            <li><a class="dropdown-item status-change" href="#" data-status="maintenance">
+                                <i class="fas fa-tools text-warning me-2"></i>维修中
+                            </a></li>
+                            <li><a class="dropdown-item status-change" href="#" data-status="scrapped">
+                                <i class="fas fa-times-circle text-danger me-2"></i>已报废
+                            </a></li>
+                        </ul>
+                    </div>
+                    <a href="{{ url_for('equipment.edit', id=equipment.id) }}" class="btn btn-primary">
+                        <i class="fas fa-edit me-1"></i>编辑
+                    </a>
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                        <i class="fas fa-trash me-1"></i>删除
+                    </button>
+                    <form id="delete-form" action="{{ url_for('equipment.delete', id=equipment.id) }}" 
+                          method="POST" style="display: none;">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：设备信息 -->
+        <div class="col-lg-8">
+            <!-- 状态卡片 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                {% if equipment.status == 'running' %}
+                                <div class="avatar avatar-lg bg-success mb-2">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h6 class="mb-0">运行中</h6>
+                                {% elif equipment.status == 'stopped' %}
+                                <div class="avatar avatar-lg bg-secondary mb-2">
+                                    <i class="fas fa-pause-circle"></i>
+                                </div>
+                                <h6 class="mb-0">停机</h6>
+                                {% elif equipment.status == 'maintenance' %}
+                                <div class="avatar avatar-lg bg-warning mb-2">
+                                    <i class="fas fa-tools"></i>
+                                </div>
+                                <h6 class="mb-0">维修中</h6>
+                                {% elif equipment.status == 'scrapped' %}
+                                <div class="avatar avatar-lg bg-danger mb-2">
+                                    <i class="fas fa-times-circle"></i>
+                                </div>
+                                <h6 class="mb-0">已报废</h6>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="avatar avatar-lg bg-primary mb-2">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <h6 class="mb-0">{{ equipment.department.name if equipment.department else '未分配' }}</h6>
+                                <small class="text-muted">使用部门</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="avatar avatar-lg bg-info mb-2">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <h6 class="mb-0">{{ equipment.responsible_person or '未指定' }}</h6>
+                                <small class="text-muted">责任人</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="avatar avatar-lg bg-secondary mb-2">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <h6 class="mb-0">{{ equipment.location or '未指定' }}</h6>
+                                <small class="text-muted">安装位置</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基本信息 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>基本信息
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">设备编号</label>
+                            <div class="fw-bold">{{ equipment.equipment_code }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">设备名称</label>
+                            <div class="fw-bold">{{ equipment.name }}</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small">设备型号</label>
+                            <div><span class="badge bg-info">{{ equipment.model }}</span></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small">设备系列</label>
+                            <div>
+                                {% if equipment.series == 'FS' %}
+                                <span class="badge bg-primary">FS 系列</span>
+                                {% elif equipment.series == 'MT' %}
+                                <span class="badge bg-success">MT 系列</span>
+                                {% elif equipment.series == 'CS' %}
+                                <span class="badge bg-info">CS 系列</span>
+                                {% elif equipment.series == 'MB' %}
+                                <span class="badge bg-warning">MB 系列</span>
+                                {% elif equipment.series == 'FG' %}
+                                <span class="badge bg-danger">FG 系列</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ equipment.series or '未知' }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small">类别</label>
+                            <div>{{ equipment.category or '-' }}</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">生产厂家</label>
+                            <div>{{ equipment.manufacturer or '-' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">出厂编号</label>
+                            <div>{{ equipment.serial_number or '-' }}</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small">备注</label>
+                            <div>{{ equipment.remark or '无' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 技术参数 -->
+            {% if equipment.specs %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>技术参数
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">射线源类型</label>
+                            <div>{{ equipment.specs.radiation_source or '-' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">能量</label>
+                            <div>{{ equipment.specs.energy or '-' }}</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">穿透力</label>
+                            <div>{{ equipment.specs.penetration or '-' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">分辨率</label>
+                            <div>{{ equipment.specs.resolution or '-' }}</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">检查速度</label>
+                            <div>{{ equipment.specs.check_speed or '-' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">通道尺寸</label>
+                            <div>{{ equipment.specs.channel_size or '-' }}</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">成像方式</label>
+                            <div>{{ equipment.specs.imaging_mode or '-' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">屏蔽方式</label>
+                            <div>{{ equipment.specs.shielding_mode or '-' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 维修记录统计 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-tools me-2"></i>维修记录统计
+                        </h6>
+                        <a href="#" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus me-1"></i>新建维修工单
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h3 class="mb-0">{{ maintenance_stats.total }}</h3>
+                                <small class="text-muted">总工单数</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-warning bg-opacity-10 rounded">
+                                <h3 class="mb-0 text-warning">{{ maintenance_stats.pending }}</h3>
+                                <small class="text-muted">待处理</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                <h3 class="mb-0 text-primary">{{ maintenance_stats.in_progress }}</h3>
+                                <small class="text-muted">进行中</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                                <h3 class="mb-0 text-success">{{ maintenance_stats.completed }}</h3>
+                                <small class="text-muted">已完成</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最近维修记录 -->
+            {% if recent_maintenance %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-history me-2"></i>最近维修记录
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>工单编号</th>
+                                    <th>标题</th>
+                                    <th>类型</th>
+                                    <th>状态</th>
+                                    <th>优先级</th>
+                                    <th>创建时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_maintenance %}
+                                <tr>
+                                    <td>{{ order.order_number }}</td>
+                                    <td>{{ order.title }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ order.type or '-' }}</span>
+                                    </td>
+                                    <td>
+                                        {% if order.status == 'pending' %}
+                                        <span class="badge bg-warning">待处理</span>
+                                        {% elif order.status == 'in_progress' %}
+                                        <span class="badge bg-primary">进行中</span>
+                                        {% elif order.status == 'completed' %}
+                                        <span class="badge bg-success">已完成</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.priority == 'high' %}
+                                        <span class="badge bg-danger">高</span>
+                                        {% elif order.priority == 'medium' %}
+                                        <span class="badge bg-warning">中</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">低</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ order.created_at.strftime('%Y-%m-%d') if order.created_at else '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 状态变更历史 -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-history me-2"></i>状态变更历史
+                        </h6>
+                    </div>
+                </div>
+                <div class="card-body p-0" id="status-history-container">
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-spinner fa-spin me-2"></i>加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：时间轴 -->
+        <div class="col-lg-4">
+            <!-- 采购信息 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-shopping-cart me-2"></i>采购信息
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">采购日期</label>
+                        <div>{{ equipment.purchase_date.strftime('%Y-%m-%d') if equipment.purchase_date else '-' }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">安装日期</label>
+                        <div>{{ equipment.install_date.strftime('%Y-%m-%d') if equipment.install_date else '-' }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">保修到期</label>
+                        <div>
+                            {% if equipment.warranty_expiry %}
+                                {{ equipment.warranty_expiry.strftime('%Y-%m-%d') }}
+                                {% if equipment.warranty_expiry < now() %}
+                                <span class="badge bg-danger">已过期</span>
+                                {% endif %}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">供应商</label>
+                        <div>{{ equipment.supplier.name if equipment.supplier else '-' }}</div>
+                    </div>
+                    <div>
+                        <label class="form-label text-muted small">采购价格</label>
+                        <div class="fw-bold text-primary">
+                            ¥ {{ "%.2f"|format(equipment.purchase_price or 0) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统信息 -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>系统信息
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">创建时间</label>
+                        <div>{{ equipment.created_at.strftime('%Y-%m-%d %H:%M:%S') if equipment.created_at else '-' }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">更新时间</label>
+                        <div>{{ equipment.updated_at.strftime('%Y-%m-%d %H:%M:%S') if equipment.updated_at else '-' }}</div>
+                    </div>
+                    <div>
+                        <label class="form-label text-muted small">状态</label>
+                        <div>
+                            {% if equipment.is_active %}
+                            <span class="badge bg-success">已启用</span>
+                            {% else %}
+                            <span class="badge bg-secondary">已禁用</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete() {
+    if (confirm('确定要删除这台设备吗？此操作不可恢复！')) {
+        document.getElementById('delete-form').submit();
+    }
+}
+
+// 加载状态变更历史
+function loadStatusHistory() {
+    fetch('/equipment/{{ equipment.id }}/status-history')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('status-history-container');
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-muted">暂无状态变更记录</div>';
+                return;
+            }
+            
+            let html = '<div class="table-responsive"><table class="table table-hover mb-0"><thead class="bg-light"><tr><th>变更时间</th><th>变更前</th><th>变更后</th><th>变更原因</th></tr></thead><tbody>';
+            
+            data.forEach(item => {
+                html += `<tr>
+                    <td>${item.created_at}</td>
+                    <td><span class="badge bg-secondary">${item.old_status}</span></td>
+                    <td><span class="badge bg-primary">${item.new_status}</span></td>
+                    <td>${item.change_reason || '-'}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('status-history-container').innerHTML = 
+                '<div class="text-center py-4 text-muted">加载失败</div>';
+        });
+}
+
+// 状态变更功能
+function initStatusChange() {
+    document.querySelectorAll('.status-change').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const newStatus = this.dataset.status;
+            const statusLabels = {
+                'running': '运行中',
+                'stopped': '停机',
+                'maintenance': '维修中',
+                'scrapped': '已报废'
+            };
+            
+            const changeReason = prompt(`请输入状态变更原因（变更为${statusLabels[newStatus]}）：`);
+            if (changeReason !== null) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/equipment/{{ equipment.id }}/change-status';
+                
+                const statusInput = document.createElement('input');
+                statusInput.type = 'hidden';
+                statusInput.name = 'new_status';
+                statusInput.value = newStatus;
+                
+                const reasonInput = document.createElement('input');
+                reasonInput.type = 'hidden';
+                reasonInput.name = 'change_reason';
+                reasonInput.value = changeReason;
+                
+                form.appendChild(statusInput);
+                form.appendChild(reasonInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+}
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    loadStatusHistory();
+    initStatusChange();
+});
+</script>
+{% endblock %}

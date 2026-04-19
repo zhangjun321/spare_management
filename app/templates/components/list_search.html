@@ -1,0 +1,54 @@
+<!-- 列表搜索组件 -->
+<div class="search-panel-modern" v-if="showSearch">
+    <el-card shadow="hover" class="search-card">
+        <el-form :inline="true" :model="searchForm" size="default">
+            <!-- 动态搜索字段插槽 -->
+            <slot name="search-fields"></slot>
+            
+            <!-- 关键词搜索 -->
+            <el-form-item v-if="showKeywordSearch">
+                <el-input 
+                    v-model="searchForm.keyword" 
+                    placeholder="搜索关键词..."
+                    clearable
+                    @keyup.enter="handleSearch"
+                    prefix-icon="Search"
+                    style="width: 200px;">
+                </el-input>
+            </el-form-item>
+            
+            <!-- 搜索按钮 -->
+            <el-form-item>
+                <el-button type="primary" @click="handleSearch" :icon="Search">
+                    搜索
+                </el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button @click="handleReset" :icon="Refresh">
+                    重置
+                </el-button>
+            </el-form-item>
+        </el-form>
+    </el-card>
+</div>
+
+<style scoped>
+.search-panel-modern {
+    margin-bottom: 20px;
+}
+
+.search-card {
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.search-card :deep(.el-card__body) {
+    padding: 15px;
+}
+
+.search-panel-modern :deep(.el-form-item) {
+    margin-bottom: 0;
+    margin-right: 15px;
+}
+</style>

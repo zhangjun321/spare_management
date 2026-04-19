@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block page_title %}设备仪表盘{% endblock %}
+
+{% block head %}
+<!-- Leaflet CSS - 使用国内 CDN -->
+<link rel="stylesheet" href="https://lib.baomitu.com/leaflet/1.9.4/leaflet.css" />
+<style>
+#mapContainer {
+    height: 600px;
+    width: 100%;
+    background: #f0f0f0;
+    position: relative;
+}
+#mapContainer::before {
+    content: '加载中...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    font-size: 16px;
+    color: #666;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-chart-line text-primary me-2"></i>设备仪表盘
+                    </h2>
+                    <p class="text-muted mb-0">设备分布可视化</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="refreshMap()">
+                        <i class="fas fa-sync-alt me-1"></i>刷新
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <h6 class="text-muted small">设备总数</h6>
+                    <h3 class="mb-0 text-primary">{{ stats.total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <h6 class="text-muted small">运行中</h6>
+                    <h3 class="mb-0 text-success">{{ stats.running }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <h6 class="text-muted small">有位置设备</h6>
+                    <h3 class="mb-0 text-info" id="locatedCount">-</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 地图 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-map-marked-alt me-2"></i>设备分布地图
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div id="mapContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 设备详情弹窗 -->
+<div class="modal fade" id="deviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">设备详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <a href="#" id="viewBtn" class="btn btn-primary">查看详情</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Leaflet JS - 使用国内 CDN -->
+<script src="https://lib.baomitu.com/leaflet/1.9.4/leaflet.js"></script>
+<script>
+let map = null;
+
+// 初始化地图
+function initMap() {
+    console.log('开始初始化地图...');
+    
+    try {
+        // 创建地图
+        map = L.map('mapContainer').setView([37.564716, 104.066544], 4);
+        console.log('地图创建成功');
+        
+        // 添加地图图层 - 使用 OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap',
+            maxZoom: 18
+        }).addTo(map);
+        
+        console.log('地图图层添加成功');
+        
+        // 加载设备位置
+        loadDevices();
+        
+    } catch (error) {
+        console.error('初始化失败:', error);
+        document.getElementById('mapContainer').innerHTML = 
+            '<div class="alert alert-danger m-3">地图初始化失败：' + error.message + '</div>';
+    }
+}
+
+// 加载设备
+function loadDevices() {
+    console.log('开始加载设备...');
+    
+    fetch('/equipment/api/locations')
+        .then(res => res.json())
+        .then(data => {
+            console.log('设备数据加载成功:', data.length, '台设备');
+            document.getElementById('locatedCount').textContent = data.length;
+            
+            if (data.length === 0) {
+                document.getElementById('mapContainer').innerHTML = 
+                    '<div class="alert alert-info m-3">暂无设备位置数据</div>';
+                return;
+            }
+            
+            // 添加标记
+            const markers = [];
+            data.forEach(device => {
+                console.log('添加设备标记:', device.name, device.latitude, device.longitude);
+                
+                const marker = L.circleMarker([device.latitude, device.longitude], {
+                    radius: 10,
+                    fillColor: getDeviceColor(device.status),
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                // 绑定弹窗
+                marker.bindPopup(`
+                    <div style="min-width:200px">
+                        <strong>${device.name}</strong><br>
+                        <small>${device.equipment_code}</small><br>
+                        <span class="badge bg-${device.color}">${device.status_label}</span><br>
+                        <small>${device.map_address || ''}</small>
+                    </div>
+                `);
+                
+                // 点击显示详情
+                marker.on('click', () => showDeviceDetail(device));
+                
+                markers.push(marker);
+            });
+            
+            // 调整视野
+            if (markers.length > 0) {
+                const group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), {padding: [50, 50]});
+                console.log('视野调整完成');
+            }
+            
+        })
+        .catch(error => {
+            console.error('加载设备失败:', error);
+            document.getElementById('mapContainer').innerHTML = 
+                '<div class="alert alert-danger m-3">加载设备数据失败</div>';
+        });
+}
+
+// 获取设备颜色
+function getDeviceColor(status) {
+    const colors = {
+        'running': '#198754',
+        'stopped': '#6c757d',
+        'maintenance': '#ffc107',
+        'scrapped': '#dc3545'
+    };
+    return colors[status] || '#4e73df';
+}
+
+// 显示设备详情
+function showDeviceDetail(device) {
+    document.getElementById('modalBody').innerHTML = `
+        <div class="mb-2"><strong>设备编号:</strong> ${device.equipment_code}</div>
+        <div class="mb-2"><strong>设备名称:</strong> ${device.name}</div>
+        <div class="mb-2"><strong>型号:</strong> ${device.model}</div>
+        <div class="mb-2"><strong>系列:</strong> ${device.series}</div>
+        <div class="mb-2"><strong>状态:</strong> <span class="badge bg-${device.color}">${device.status_label}</span></div>
+        <div class="mb-2"><strong>位置:</strong> ${device.map_address || '-'}</div>
+        <div class="mb-2"><strong>坐标:</strong> ${device.latitude}, ${device.longitude}</div>
+    `;
+    document.getElementById('viewBtn').href = `/equipment/${device.id}`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deviceModal'));
+    modal.show();
+}
+
+// 刷新地图
+function refreshMap() {
+    location.reload();
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('页面加载完成，准备初始化...');
+    setTimeout(initMap, 500);
+});
+</script>
+{% endblock %}

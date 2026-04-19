@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block title %}质检标准列表{% endblock %}
+
+{% block page_title %}质检标准列表{% endblock %}
+
+{% block content %}
+<div id="qualityStandardListApp" v-cloak>
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总标准数</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-book fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">启用中</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">已禁用</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.inactive }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索面板 -->
+    {% include 'components/list_search_panel.html' %}
+
+    <!-- 列表区域 -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="120">标准编码</th>
+                            <th>标准名称</th>
+                            <th>适用备件</th>
+                            <th width="100">分类</th>
+                            <th width="100">标准值</th>
+                            <th width="100">公差</th>
+                            <th width="100">检验方法</th>
+                            <th width="80">状态</th>
+                            <th width="150">更新时间</th>
+                            <th width="150">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for std in standards %}
+                        <tr>
+                            <td><strong>{{ std.code }}</strong></td>
+                            <td>{{ std.name }}</td>
+                            <td>
+                                {% if std.spare_part %}
+                                {{ std.spare_part.name }}
+                                <br><small class="text-muted">{{ std.spare_part.code }}</small>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-info">{{ std.category or '-' }}</span></td>
+                            <td>{{ std.standard_value or '-' }} {{ std.unit or '' }}</td>
+                            <td>{{ std.tolerance or '-' }}</td>
+                            <td>{{ std.check_method or '-' }}</td>
+                            <td>
+                                {% if std.is_active %}
+                                <span class="badge bg-success">启用</span>
+                                {% else %}
+                                <span class="badge bg-secondary">禁用</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ std.updated_at.strftime('%Y-%m-%d') if std.updated_at else '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('warehouse_new.quality_standard_detail', standard_id=std.id) }}" 
+                                   class="btn btn-sm btn-primary" title="查看详情">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('warehouse_new.quality_standard_edit', standard_id=std.id) }}" 
+                                   class="btn btn-sm btn-success" title="编辑">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <p class="lead">暂无质检标准数据</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('quality_standard_api.list_page', page=pagination.prev_num, **search_params) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num == pagination.page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('quality_standard_api.list_page', page=page_num, **search_params) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('quality_standard_api.list_page', page=pagination.next_num, **search_params) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const { createApp } = Vue;
+createApp({}).mount('#qualityStandardListApp');
+</script>
+
+<style>
+[v-cloak] { display: none; }
+.border-left-primary { border-left: 4px solid #4e73df; }
+.border-left-success { border-left: 4px solid #1cc88a; }
+.border-left-secondary { border-left: 4px solid #858796; }
+</style>
+{% endblock %}

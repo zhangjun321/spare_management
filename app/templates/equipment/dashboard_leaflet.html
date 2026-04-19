@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block page_title %}设备仪表盘{% endblock %}
+
+{% block head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-chart-line text-primary me-2"></i>设备仪表盘
+                    </h2>
+                    <p class="text-muted mb-0">基于 OpenStreetMap 的设备分布可视化（Leaflet - 无需 API Key）</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="refreshMap()">
+                        <i class="fas fa-sync-alt me-1"></i>刷新地图
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">设备总数</h6>
+                    <h3 class="mb-0 text-primary">{{ stats.total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">运行中</h6>
+                    <h3 class="mb-0 text-success">{{ stats.running }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">停机</h6>
+                    <h3 class="mb-0 text-secondary">{{ stats.stopped }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">维修中</h6>
+                    <h3 class="mb-0 text-warning">{{ stats.maintenance }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">已报废</h6>
+                    <h3 class="mb-0 text-danger">{{ stats.scrapped }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted small">有位置设备</h6>
+                    <h3 class="mb-0 text-info" id="locatedCount">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 地图和图例 -->
+    <div class="row">
+        <!-- 左侧：地图 -->
+        <div class="col-lg-9">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-map-marked-alt me-2"></i>设备分布地图
+                        </h6>
+                        <span class="badge bg-info" id="mapDeviceCount">0 台设备</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="mapContainer" style="height: 600px; width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：图例和设备列表 -->
+        <div class="col-lg-3">
+            <!-- 图例 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list me-2"></i>图例
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="badge bg-success me-2" style="width: 20px; height: 20px; border-radius: 50%;"></span>
+                        <span class="small">运行中</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="badge bg-secondary me-2" style="width: 20px; height: 20px; border-radius: 50%;"></span>
+                        <span class="small">停机</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="badge bg-warning me-2" style="width: 20px; height: 20px; border-radius: 50%;"></span>
+                        <span class="small">维修中</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="badge bg-danger me-2" style="width: 20px; height: 20px; border-radius: 50%;"></span>
+                        <span class="small">已报废</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                        <span class="small">点击标记查看详情</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 设备系列统计 -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>按系列统计
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for series, count in stats.by_series.items() %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">
+                            {% if series == 'FS' %}
+                            <span class="badge bg-primary">FS 系列</span>
+                            {% elif series == 'MT' %}
+                            <span class="badge bg-success">MT 系列</span>
+                            {% elif series == 'CS' %}
+                            <span class="badge bg-info">CS 系列</span>
+                            {% elif series == 'MB' %}
+                            <span class="badge bg-warning">MB 系列</span>
+                            {% elif series == 'FG' %}
+                            <span class="badge bg-danger">FG 系列</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ series }}</span>
+                            {% endif %}
+                        </span>
+                        <strong>{{ count }}台</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 设备列表 -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list-ul me-2"></i>设备列表
+                    </h6>
+                </div>
+                <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                    <div id="deviceListContainer">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 设备详情弹窗 -->
+<div class="modal fade" id="deviceDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">设备详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="deviceDetailContent">
+                    <!-- 动态填充 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <a href="#" id="viewDeviceLink" class="btn btn-primary">查看详情</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Leaflet JS -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+let map = null;
+let markers = [];
+let deviceLocations = [];
+
+// 定义不同状态的标记颜色
+const markerColors = {
+    'green': '#198754',   // 运行中
+    'gray': '#6c757d',    // 停机
+    'orange': '#ffc107',  // 维修中
+    'red': '#dc3545'      // 已报废
+};
+
+// 初始化地图
+function initMap() {
+    // 创建地图实例（默认显示中国）
+    map = L.map('mapContainer').setView([37.564716, 104.066544], 4);
+    
+    // 添加 OpenStreetMap 图层
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(map);
+    
+    // 加载设备位置
+    loadDeviceLocations();
+}
+
+// 加载设备位置数据
+function loadDeviceLocations() {
+    fetch('/equipment/api/locations')
+        .then(response => response.json())
+        .then(data => {
+            deviceLocations = data;
+            displayMarkers(data);
+            updateDeviceList(data);
+            
+            // 更新统计
+            document.getElementById('locatedCount').textContent = data.length;
+            document.getElementById('mapDeviceCount').textContent = data.length + ' 台设备';
+        })
+        .catch(error => {
+            console.error('加载设备位置失败:', error);
+            showMessage('加载设备位置失败', 'danger');
+        });
+}
+
+// 在地图上显示标记
+function displayMarkers(locations) {
+    // 清除现有标记
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+    
+    if (locations.length === 0) {
+        showMessage('暂无设备位置数据', 'info');
+        return;
+    }
+    
+    // 创建标记
+    locations.forEach(device => {
+        const latlng = [device.latitude, device.longitude];
+        
+        // 创建自定义圆形标记
+        const marker = L.circleMarker(latlng, {
+            radius: 10,
+            fillColor: markerColors[device.color] || '#4e73df',
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        });
+        
+        map.addLayer(marker);
+        markers.push(marker);
+        
+        // 添加点击事件
+        marker.on('click', () => {
+            showDeviceDetail(device);
+        });
+        
+        // 添加弹窗
+        const popup = L.popup();
+        popup.setContent(`
+            <div style="min-width: 150px;">
+                <strong>${device.name}</strong><br>
+                <span class="badge bg-${device.color}">${device.status_label}</span><br>
+                <small>${device.map_address || '位置未知'}</small>
+            </div>
+        `);
+        
+        marker.bindPopup(popup);
+    });
+    
+    // 自动调整地图视野以显示所有标记
+    if (locations.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds(), {padding: [50, 50]});
+    }
+}
+
+// 显示设备详情
+function showDeviceDetail(device) {
+    const content = `
+        <div class="mb-3">
+            <h5>${device.name}</h5>
+            <p class="text-muted small">${device.equipment_code}</p>
+        </div>
+        <div class="mb-2">
+            <strong>型号:</strong> ${device.model}
+        </div>
+        <div class="mb-2">
+            <strong>系列:</strong> 
+            <span class="badge bg-${getSeriesColor(device.series)}">${device.series}</span>
+        </div>
+        <div class="mb-2">
+            <strong>状态:</strong> 
+            <span class="badge bg-${device.color}">${device.status_label}</span>
+        </div>
+        <div class="mb-2">
+            <strong>位置:</strong> ${device.map_address || '未知'}
+        </div>
+        <div class="mb-2">
+            <strong>部门:</strong> ${device.department || '未分配'}
+        </div>
+        <div class="mb-2">
+            <strong>责任人:</strong> ${device.responsible_person || '未指定'}
+        </div>
+        <div class="mb-2">
+            <strong>坐标:</strong> 
+            <small class="text-muted">${device.latitude}, ${device.longitude}</small>
+        </div>
+    `;
+    
+    document.getElementById('deviceDetailContent').innerHTML = content;
+    document.getElementById('viewDeviceLink').href = `/equipment/${device.id}`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deviceDetailModal'));
+    modal.show();
+}
+
+// 获取系列颜色
+function getSeriesColor(series) {
+    const colors = {
+        'FS': 'primary',
+        'MT': 'success',
+        'CS': 'info',
+        'MB': 'warning',
+        'FG': 'danger'
+    };
+    return colors[series] || 'secondary';
+}
+
+// 更新设备列表
+function updateDeviceList(locations) {
+    const container = document.getElementById('deviceListContainer');
+    
+    if (locations.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-muted">暂无设备位置数据</div>';
+        return;
+    }
+    
+    let html = '<ul class="list-group list-group-flush">';
+    locations.forEach(device => {
+        html += `
+            <li class="list-group-item list-group-item-action" 
+                style="cursor: pointer;" 
+                onclick="focusOnDevice(${device.id})">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="fw-bold">${device.name}</small><br>
+                        <small class="text-muted">${device.model}</small>
+                    </div>
+                    <span class="badge bg-${device.color}">${device.status_label}</span>
+                </div>
+            </li>
+        `;
+    });
+    html += '</ul>';
+    
+    container.innerHTML = html;
+}
+
+// 聚焦到指定设备
+function focusOnDevice(deviceId) {
+    const device = deviceLocations.find(d => d.id === deviceId);
+    if (device) {
+        const latlng = [device.latitude, device.longitude];
+        map.flyTo(latlng, 13, {
+            animate: true,
+            duration: 1.5
+        });
+        setTimeout(() => {
+            showDeviceDetail(device);
+        }, 1500);
+    }
+}
+
+// 刷新地图
+function refreshMap() {
+    loadDeviceLocations();
+    showMessage('地图已刷新', 'success');
+}
+
+// 显示消息
+function showMessage(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+
+// 页面加载完成后初始化地图
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+});
+</script>
+{% endblock %}

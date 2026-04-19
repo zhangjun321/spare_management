@@ -131,6 +131,49 @@
     </div>
 
     <!-- 仓库列表 -->
+    <!-- 搜索面板 -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('warehouses.index') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">关键词搜索</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" name="keyword" 
+                               value="{{ request.args.get('keyword', '') }}" 
+                               placeholder="搜索仓库名称、编码...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">仓库类型</label>
+                    <select class="form-select" name="type">
+                        <option value="">全部类型</option>
+                        <option value="general" {% if request.args.get('type') == 'general' %}selected{% endif %}>普通仓库</option>
+                        <option value="cold" {% if request.args.get('type') == 'cold' %}selected{% endif %}>冷藏仓库</option>
+                        <option value="hazardous" {% if request.args.get('type') == 'hazardous' %}selected{% endif %}>危险品仓库</option>
+                        <option value="valuable" {% if request.args.get('type') == 'valuable' %}selected{% endif %}>贵重物品仓库</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">状态</label>
+                    <select class="form-select" name="is_active">
+                        <option value="">全部状态</option>
+                        <option value="true" {% if request.args.get('is_active') == 'true' %}selected{% endif %}>启用</option>
+                        <option value="false" {% if request.args.get('is_active') == 'false' %}selected{% endif %}>禁用</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>搜索
+                    </button>
+                    <a href="{{ url_for('warehouses.index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo me-1"></i>重置
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>仓库列表</h5>
