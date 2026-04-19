@@ -1479,6 +1479,9 @@
                         <button class="map-toggle-btn" id="btnSatellite" onclick="switchMap('satellite')">
                             <i class="fas fa-satellite me-1"></i>卫星地图
                         </button>
+                        <button class="map-toggle-btn" id="btnHybrid" onclick="switchMap('hybrid')">
+                            <i class="fas fa-map-marked me-1"></i>混合地图
+                        </button>
                     </div>
                     <span class="badge bg-info" id="mapDeviceCount">0 台设备</span>
                 </div>
@@ -1934,6 +1937,7 @@
     let allDevices = [];
     let currentMapType = 'normal';
     let satelliteLayer = null;
+    let roadNetLayer = null;
     let visibleStatus = {
         running: true,
         stopped: true,
@@ -2587,11 +2591,20 @@
                 viewMode: '2D',
                 zoomControl: true,
                 scale: true,
-                zooms: [3, 18]
+                zooms: [3, 20],
+                pitch: 0,
+                rotation: 0,
+                showLabel: true,
+                labelzIndex: 100,
+                animateEnable: true,
+                jogEnable: true
             });
 
             // 创建卫星图层
             satelliteLayer = new AMap.TileLayer.Satellite();
+            
+            // 创建路网图层（用于混合地图）
+            roadNetLayer = new AMap.TileLayer.RoadNet();
 
             console.log('✅ Map created');
             statusBar.className = 'status-bar success';
@@ -2947,17 +2960,30 @@
         
         const btnNormal = document.getElementById('btnNormal');
         const btnSatellite = document.getElementById('btnSatellite');
+        const btnHybrid = document.getElementById('btnHybrid');
+        
+        // 先移除所有图层
+        map.remove(satelliteLayer);
+        map.remove(roadNetLayer);
+        
+        // 重置所有按钮状态
+        btnNormal.classList.remove('active');
+        btnSatellite.classList.remove('active');
+        btnHybrid.classList.remove('active');
         
         if (type === 'satellite') {
-            // 切换到卫星地图
+            // 切换到卫星地图（仅卫星影像）
             map.add(satelliteLayer);
-            btnNormal.classList.remove('active');
             btnSatellite.classList.add('active');
             console.log('🛰️ 已切换到卫星地图');
+        } else if (type === 'hybrid') {
+            // 切换到混合地图（卫星影像 + 路网标注）
+            map.add(satelliteLayer);
+            map.add(roadNetLayer);
+            btnHybrid.classList.add('active');
+            console.log('🗺️🛰️ 已切换到混合地图');
         } else {
             // 切换到标准地图
-            map.remove(satelliteLayer);
-            btnSatellite.classList.remove('active');
             btnNormal.classList.add('active');
             console.log('🗺️ 已切换到标准地图');
         }
