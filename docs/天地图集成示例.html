@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天地图集成示例</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Microsoft YaHei, sans-serif; padding:20px; background:#f5f7fa; }
+        .container { max-width:1200px; margin:0 auto; }
+        h1 { color:#2c3e50; margin-bottom:20px; }
+        .info-box { background:white; padding:20px; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.1); margin-bottom:20px; }
+        .map-container { height:600px; border-radius:12px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+        #mapDiv { width:100%; height:100%; }
+        .btn { padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin:5px; }
+        .btn-primary { background:#667eea; color:white; }
+        .btn-success { background:#11998e; color:white; }
+        .btn:hover { opacity:0.9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ 天地图集成示例</h1>
+        
+        <div class="info-box">
+            <h3>使用说明：</h3>
+            <p>1. 去 <strong>天地图官网</strong> 申请API Key</p>
+            <p>2. 替换下方输入框填写你的 Key</p>
+            <p>3. 加载高清卫星地图！</p>
+        </div>
+        
+        <div style="margin:20px 0;">
+            <input type="text" id="keyInput" placeholder="输入你的天地图 Key" 
+                   style="padding:10px; width:300px; border-radius:6px; border:1px solid #ddd;">
+            <button class="btn btn-primary" onclick="loadTianditu()">🔄 加载天地图</button>
+            <button class="btn btn-success" onclick="setSatellite()">🛰️ 切换卫星</button>
+            <button class="btn btn-success" onclick="setVector()">🗺️ 切换矢量</button>
+        </div>
+        
+        <div class="map-container">
+            <div id="mapDiv"></div>
+        </div>
+        
+        <div class="info-box" style="margin-top:20px;">
+            <h3>优势对比：</h3>
+            <ul>
+                <li><strong>卫星精度：</strong>0.2-0.5米（比高德 0.5-1米）</li>
+                <li><strong>更新速度：</strong>国内访问更快</li>
+                <li><strong>覆盖范围：</strong>中国区域最佳</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 天地图API -->
+    <script type="text/javascript" src="http://api.tianditu.gov.cn/api?v=4.0&tk=YOUR_KEY_HERE"></script>
+    <script>
+        let map = null;
+        let satelliteLayer = null;
+        let vectorLayer = null;
+        let labelLayer = null;
+
+        function loadTianditu() {
+            const key = document.getElementById('keyInput').value || '你的天地图KEY';
+            
+            // 重新加载API
+            const script = document.createElement('script');
+            script.src = `http://api.tianditu.gov.cn/api?v=4.0&tk=${key}`;
+            script.onload = function() {
+                initMap(key);
+            };
+            document.body.appendChild(script);
+        }
+
+        function initMap(key) {
+            map = new T.Map('mapDiv');
+            map.centerAndZoom(new T.LngLat(116.40769, 39.89945), 12);
+            map.enableScrollWheelZoom();
+            
+            // 添加比例尺
+            const scale = new T.Control.Scale();
+            map.addControl(scale);
+            
+            // 添加缩放控件
+            const zoom = new T.Control.Zoom();
+            map.addControl(zoom);
+            
+            // 添加地图类型
+            const mapType = new T.Control.MapType();
+            map.addControl(mapType);
+            
+            setSatellite();
+        }
+
+        function setSatellite() {
+            if (!map) return;
+            map.clearOverlays();
+            const satellite = new T.TileLayer('img', {
+                minZoom: 1,
+                maxZoom: 18
+            });
+            const label = new T.TileLayer('cia', {
+                minZoom: 1,
+                maxZoom: 18
+            });
+            map.addLayer(satellite);
+            map.addLayer(label);
+        }
+
+        function setVector() {
+            if (!map) return;
+            map.clearOverlays();
+            const vector = new T.TileLayer('vec', {
+                minZoom: 1,
+                maxZoom: 18
+            });
+            const label = new T.TileLayer('cva', {
+                minZoom: 1,
+                maxZoom: 18
+            });
+            map.addLayer(vector);
+            map.addLayer(label);
+        }
+
+        window.onload = function() {
+            console.log('页面加载完成');
+        };
+    </script>
+</body>
+</html>
