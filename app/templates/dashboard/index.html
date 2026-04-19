@@ -1484,6 +1484,9 @@
                         </button>
                     </div>
                     <span class="badge bg-info" id="mapDeviceCount">0 台设备</span>
+                    <button class="btn btn-sm btn-outline-light ms-2" onclick="showMapTips()" title="地图使用技巧">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
                 </div>
             </div>
             
@@ -1921,7 +1924,7 @@
         securityJsCode: '2dde894eb622b4650b1f691029abf5ce'
     };
 </script>
-<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=90691a64632bff38606380489aac80e9"></script>
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=90691a64632bff38606380489aac80e9&plugin=AMap.ToolBar,AMap.ControlBar,AMap.MapType,AMap.Buildings,AMap.Geocoder"></script>
 
 <script>
     // ==================== 全局变量和工具类 ====================
@@ -2586,25 +2589,67 @@
             console.log('📍 Creating map...');
             
             map = new AMap.Map('mapContainer', {
-                zoom: 4,
+                zoom: 6,
                 center: [104.066544, 37.564716],
-                viewMode: '2D',
+                viewMode: '3D',
+                pitch: 45,
+                rotation: 0,
                 zoomControl: true,
                 scale: true,
-                zooms: [3, 20],
-                pitch: 0,
-                rotation: 0,
+                zooms: [3, 21],
                 showLabel: true,
-                labelzIndex: 100,
+                labelzIndex: 150,
                 animateEnable: true,
-                jogEnable: true
+                jogEnable: true,
+                dragEnable: true,
+                zoomEnable: true,
+                doubleClickZoom: true,
+                scrollWheel: true,
+                keyboardEnable: true
             });
 
-            // 创建卫星图层
-            satelliteLayer = new AMap.TileLayer.Satellite();
+            // 添加地图控件
+            map.addControl(new AMap.ToolBar());
+            map.addControl(new AMap.ControlBar({
+                position: 'RT',
+                showZoomBar: true,
+                showControlButton: true
+            }));
+            map.addControl(new AMap.MapType({
+                defaultType: 0
+            }));
+
+            // 创建高清卫星图层
+            satelliteLayer = new AMap.TileLayer.Satellite({
+                zooms: [3, 21],
+                opacity: 1,
+                zIndex: 10
+            });
             
             // 创建路网图层（用于混合地图）
-            roadNetLayer = new AMap.TileLayer.RoadNet();
+            roadNetLayer = new AMap.TileLayer.RoadNet({
+                zooms: [3, 21],
+                opacity: 1,
+                zIndex: 20
+            });
+
+            // 尝试添加建筑物图层（3D模式下）
+            try {
+                const buildings = new AMap.Buildings({
+                    zooms: [16, 21],
+                    zIndex: 30,
+                    heightFactor: 2,
+                    wallColor: 'rgb(200,200,200)',
+                    roofColor: 'rgb(220,220,220)',
+                    wallStyle: 'stroke',
+                    roofStyle: 'stroke',
+                    opacity: 0.8
+                });
+                buildings.setMap(map);
+                console.log('🏢 建筑物图层已加载');
+            } catch (e) {
+                console.log('⚠️ 建筑物图层加载失败:', e);
+            }
 
             console.log('✅ Map created');
             statusBar.className = 'status-bar success';
@@ -2989,6 +3034,100 @@
         }
         
         currentMapType = type;
+    }
+
+    // 显示地图使用技巧
+    function showMapTips() {
+        const modalHtml = `
+            <div class="modal fade" id="mapTipsModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="fas fa-lightbulb me-2 text-warning"></i>地图使用技巧</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-search-plus text-primary"></i> 缩放操作</h6>
+                                    <ul class="mb-4">
+                                        <li>鼠标滚轮 - 缩放地图</li>
+                                        <li>双击 - 放大</li>
+                                        <li>右侧 + - 按钮 - 精确缩放</li>
+                                        <li>最佳精度级别: 17-21</li>
+                                    </ul>
+                                    
+                                    <h6><i class="fas fa-satellite text-success"></i> 地图模式</h6>
+                                    <ul class="mb-4">
+                                        <li><strong>混合地图</strong> - 最佳选择（卫星+路网）</li>
+                                        <li>3D模式可查看建筑物高度</li>
+                                        <li>缩放至16级以上显示建筑物</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-arrows-alt text-info"></i> 3D操作</h6>
+                                    <ul class="mb-4">
+                                        <li>右键拖动 - 旋转视角</li>
+                                        <li>Ctrl+右键 - 调整俯仰角</li>
+                                        <li>右侧指南针 - 重置视角</li>
+                                    </ul>
+                                    
+                                    <h6><i class="fas fa-exclamation-triangle text-warning"></i> 精度说明</h6>
+                                    <ul>
+                                        <li>高德卫星: 0.5-1米分辨率</li>
+                                        <li>城市区域精度最高</li>
+                                        <li>郊区/农村精度较低</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-rocket"></i> 需要更高精度？</h6>
+                                <p class="mb-0">如果高德地图精度仍不满足，可考虑：</p>
+                                <ol class="mb-0">
+                                    <li>天地图API（更高精度）</li>
+                                    <li>百度地图卫星视图</li>
+                                    <li>Google Earth Pro（桌面版）</li>
+                                </ol>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" onclick="tryBestView()">
+                                <i class="fas fa-eye"></i> 尝试最佳视图
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 添加到DOM
+        if (!document.getElementById('mapTipsModal')) {
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        // 显示模态框
+        const modal = new bootstrap.Modal(document.getElementById('mapTipsModal'));
+        modal.show();
+    }
+
+    // 尝试最佳视图
+    function tryBestView() {
+        // 切换到混合地图
+        switchMap('hybrid');
+        
+        // 如果有设备标记，尝试放大到第一个设备
+        if (Object.values(markers).flat().length > 0) {
+            const firstMarker = Object.values(markers).flat()[0];
+            if (firstMarker && firstMarker.marker) {
+                map.setZoomAndCenter(18, firstMarker.marker.getPosition());
+                map.setPitch(60);
+            }
+        } else {
+            map.setZoom(15);
+        }
     }
 
     // ==================== AI洞察和KPI功能优化 ====================
