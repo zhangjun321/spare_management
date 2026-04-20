@@ -3,7 +3,7 @@
 显示系统概览和统计信息
 """
 
-from flask import Blueprint, render_template, redirect, url_for, jsonify, request
+from flask import Blueprint, render_template, redirect, url_for, jsonify, request, make_response
 from flask_login import login_required, current_user
 from app.models.spare_part import SparePart
 from app.models.equipment import Equipment
@@ -15,8 +15,48 @@ from app.extensions import db
 from sqlalchemy import func, case
 from app.services.dashboard_ai_service import get_dashboard_ai_service
 from app.services.kpi_service import get_kpi_service
+import functools
+import hashlib
 
 dashboard_bp = Blueprint('dashboard', __name__, template_folder='../templates/dashboard')
+
+# ==================== 缓存机制 ====================
+_cache_store = {}
+
+def cache_response(seconds=30):
+    """缓存装饰器"""
+    def decorator(f):
+        @functools.wraps(f)
+        def decorated_function(*args, **kwargs):
+            # 生成缓存键
+            cache_key = f"{f.__name__}:{hashlib.md5(str(request.args).encode()).hexdigest()}"
+            
+            # 检查缓存
+            if cache_key in _cache_store:
+                cached_data, expiry = _cache_store[cache_key]
+                if datetime.now() < expiry:
+                    return cached_data
+            
+            # 执行函数
+            result = f(*args, **kwargs)
+            
+            # 缓存结果
+            _cache_store[cache_key] = (result, datetime.now() + timedelta(seconds=seconds))
+            
+            # 清理过期缓存
+            _clean_expired_cache()
+            
+            return result
+        return decorated_function
+    return decorator
+
+def _clean_expired_cache():
+    """清理过期缓存"""
+    global _cache_store
+    now = datetime.now()
+    keys_to_delete = [k for k, (_, expiry) in _cache_store.items() if now >= expiry]
+    for k in keys_to_delete:
+        del _cache_store[k]
 
 
 @dashboard_bp.route('/')
@@ -50,31 +90,45 @@ def index():
 
 
 def get_dashboard_stats():
-    """获取仪表盘统计数据"""
-    # 查询备件种类和总库存
-    spare_parts_query = db.session.query(
-        func.count(SparePart.id).label('count'),
-        func.coalesce(func.sum(SparePart.current_stock), 0).label('total_stock')
-    ).all()
+    """获取仪表盘统计数据（优化版）"""
+    # 一次性查询所有统计数据
+    stats = {}
     
-    stats = {
-        'spare_parts_count': spare_parts_query[0].count,
-        'spare_parts_total_stock': spare_parts_query[0].total_stock,
-        'equipment_count': Equipment.query.count(),
-        'pending_maintenance_count': MaintenanceOrder.query.filter(
-            MaintenanceOrder.status.in_(['created', 'assigned', 'pending'])
-        ).count(),
-        'today_transactions_count': Transaction.query.filter(
-            func.date(Transaction.created_at) == datetime.today().date()
-        ).count()
-    }
+    # 备件统计（一次性查询）
+    spare_stats = db.session.query(
+        func.count(SparePart.id).label('total_count'),
+        func.coalesce(func.sum(SparePart.current_stock), 0).label('total_stock'),
+        func.count(case((SparePart.stock_status == 'normal', 1))).label('normal'),
+        func.count(case((SparePart.stock_status == 'low', 1))).label('low'),
+        func.count(case((SparePart.stock_status == 'out', 1))).label('out'),
+        func.count(case((SparePart.stock_status == 'overstocked', 1))).label('overstocked')
+    ).first()
+    
+    stats['spare_parts_count'] = spare_stats.total_count
+    stats['spare_parts_total_stock'] = spare_stats.total_stock
+    
+    # 设备统计
+    stats['equipment_count'] = Equipment.query.count()
+    
+    # 待处理维修工单统计
+    stats['pending_maintenance_count'] = MaintenanceOrder.query.filter(
+        MaintenanceOrder.status.in_(['created', 'assigned', 'pending'])
+    ).count()
+    
+    # 今日交易统计（使用索引优化）
+    today = datetime.today().date()
+    tomorrow = today + timedelta(days=1)
+    stats['today_transactions_count'] = Transaction.query.filter(
+        Transaction.created_at >= today,
+        Transaction.created_at < tomorrow
+    ).count()
     
     # 库存状态统计
     stats['stock_status'] = {
-        'normal': SparePart.query.filter_by(stock_status='normal').count(),
-        'low': SparePart.query.filter_by(stock_status='low').count(),
-        'out': SparePart.query.filter_by(stock_status='out').count(),
-        'overstocked': SparePart.query.filter_by(stock_status='overstocked').count()
+        'normal': spare_stats.normal,
+        'low': spare_stats.low,
+        'out': spare_stats.out,
+        'overstocked': spare_stats.overstocked
     }
     
     return stats
@@ -82,6 +136,7 @@ def get_dashboard_stats():
 
 @dashboard_bp.route('/api/stats')
 @login_required
+@cache_response(seconds=30)
 def api_stats():
     """获取统计数据 API"""
     stats = get_dashboard_stats()
@@ -90,6 +145,7 @@ def api_stats():
 
 @dashboard_bp.route('/api/transaction-trend')
 @login_required
+@cache_response(seconds=60)
 def api_transaction_trend():
     """获取出入库趋势数据 API"""
     today = datetime.today().date()
@@ -134,6 +190,7 @@ def api_transaction_trend():
 
 @dashboard_bp.route('/api/maintenance-status')
 @login_required
+@cache_response(seconds=60)
 def api_maintenance_status():
     """获取维修工单状态分布 API"""
     # 按状态统计工单数量
@@ -178,6 +235,7 @@ def api_maintenance_status():
 
 @dashboard_bp.route('/api/spare-part-value')
 @login_required
+@cache_response(seconds=120)
 def api_spare_part_value():
     """获取备件分类库存价值 API"""
     from app.models.category import Category
@@ -507,6 +565,343 @@ def api_dashboard_all_data():
                 'health_score': health_score
             }
         })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# ==================== 增强的仪表盘分析API ====================
+
+@dashboard_bp.route('/api/analysis/inventory-turnover')
+@login_required
+def api_inventory_turnover():
+    """获取库存周转率分析"""
+    try:
+        from datetime import datetime, timedelta
+        
+        period = request.args.get('period', '30')
+        period_days = int(period)
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=period_days)
+        
+        # 计算出库总量
+        outbound_total = db.session.query(
+            func.sum(Transaction.total_qty)
+        ).filter(
+            Transaction.tx_type == 'outbound',
+            Transaction.created_at >= start_date
+        ).scalar() or 0
+        
+        # 计算平均库存
+        total_parts = SparePart.query.count()
+        avg_stock = db.session.query(
+            func.avg(SparePart.current_stock)
+        ).scalar() or 0
+        
+        turnover_rate = round(float(outbound_total) / (avg_stock * total_parts) * 100, 2) if avg_stock > 0 and total_parts > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'period_days': period_days,
+                'outbound_total': float(outbound_total),
+                'avg_stock': float(avg_stock),
+                'turnover_rate': turnover_rate,
+                'start_date': start_date.strftime('%Y-%m-%d'),
+                'end_date': end_date.strftime('%Y-%m-%d')
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@dashboard_bp.route('/api/analysis/equipment-oee')
+@login_required
+def api_equipment_oee():
+    """获取设备OEE（整体设备效率）分析"""
+    try:
+        total_equipment = Equipment.query.count()
+        running_equipment = Equipment.query.filter_by(status='running').count()
+        maintenance_equipment = Equipment.query.filter_by(status='maintenance').count()
+        
+        # 计算可用性
+        availability = round((running_equipment / total_equipment * 100), 2) if total_equipment > 0 else 0
+        
+        # 获取近期工单完成情况
+        from datetime import datetime, timedelta
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+        
+        total_orders = MaintenanceOrder.query.filter(
+            MaintenanceOrder.created_at >= start_date
+        ).count()
+        completed_orders = MaintenanceOrder.query.filter(
+            MaintenanceOrder.status == 'completed',
+            MaintenanceOrder.created_at >= start_date
+        ).count()
+        
+        performance = round((completed_orders / total_orders * 100), 2) if total_orders > 0 else 0
+        
+        # 计算OEE (简化版本)
+        oee = round((availability * performance) / 100, 2)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'total_equipment': total_equipment,
+                'running_equipment': running_equipment,
+                'maintenance_equipment': maintenance_equipment,
+                'availability': availability,
+                'performance': performance,
+                'oee': oee,
+                'quality_rate': 98.5  # 模拟质量率
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@dashboard_bp.route('/api/analysis/stock-age')
+@login_required
+def api_stock_age():
+    """获取库龄分析"""
+    try:
+        from app.models.batch import Batch
+        from datetime import datetime, timedelta
+        
+        now = datetime.now()
+        
+        # 统计不同库龄区间的备件数量
+        age_ranges = {
+            '0_30': {'label': '0-30天', 'count': 0, 'value': 0},
+            '30_90': {'label': '30-90天', 'count': 0, 'value': 0},
+            '90_180': {'label': '90-180天', 'count': 0, 'value': 0},
+            '180_365': {'label': '180-365天', 'count': 0, 'value': 0},
+            'over_365': {'label': '超过1年', 'count': 0, 'value': 0}
+        }
+        
+        batches = Batch.query.all()
+        
+        for batch in batches:
+            if batch.production_date:
+                age_days = (now.date() - batch.production_date).days
+                value = float(batch.quantity or 0) * float(batch.unit_price or 0)
+                
+                if age_days <= 30:
+                    age_ranges['0_30']['count'] += 1
+                    age_ranges['0_30']['value'] += value
+                elif age_days <= 90:
+                    age_ranges['30_90']['count'] += 1
+                    age_ranges['30_90']['value'] += value
+                elif age_days <= 180:
+                    age_ranges['90_180']['count'] += 1
+                    age_ranges['90_180']['value'] += value
+                elif age_days <= 365:
+                    age_ranges['180_365']['count'] += 1
+                    age_ranges['180_365']['value'] += value
+                else:
+                    age_ranges['over_365']['count'] += 1
+                    age_ranges['over_365']['value'] += value
+        
+        return jsonify({
+            'success': True,
+            'data': age_ranges
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@dashboard_bp.route('/api/alerts/active')
+@login_required
+def api_active_alerts():
+    """获取活跃告警列表"""
+    try:
+        from app.models.system import Alert
+        
+        alerts = Alert.query.filter_by(status='active').order_by(Alert.created_at.desc()).limit(10).all()
+        
+        return jsonify({
+            'success': True,
+            'data': [{
+                'id': alert.id,
+                'type': alert.alert_type,
+                'title': alert.title,
+                'message': alert.message,
+                'level': alert.level,
+                'created_at': alert.created_at.strftime('%Y-%m-%d %H:%M:%S') if alert.created_at else None
+            } for alert in alerts]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@dashboard_bp.route('/api/export/dashboard-data')
+@login_required
+def api_export_dashboard_data():
+    """导出仪表盘数据"""
+    try:
+        stats = get_dashboard_stats()
+        
+        export_data = {
+            'export_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'summary': {
+                'spare_parts_count': stats['spare_parts_count'],
+                'equipment_count': stats['equipment_count'],
+                'pending_maintenance_count': stats['pending_maintenance_count'],
+                'today_transactions_count': stats['today_transactions_count']
+            },
+            'stock_status': stats['stock_status']
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': export_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@dashboard_bp.route('/api/trend/comparison')
+@login_required
+def api_trend_comparison():
+    """获取同比环比趋势对比"""
+    try:
+        from datetime import datetime, timedelta
+        
+        now = datetime.now()
+        
+        # 本期（最近30天）
+        current_end = now
+        current_start = current_end - timedelta(days=30)
+        
+        # 上期（前30天）
+        prev_end = current_start
+        prev_start = prev_end - timedelta(days=30)
+        
+        # 去年同期
+        last_year_start = current_start.replace(year=current_start.year - 1)
+        last_year_end = current_end.replace(year=current_end.year - 1)
+        
+        def get_stats(start_date, end_date):
+            inbound = db.session.query(
+                func.sum(Transaction.total_qty)
+            ).filter(
+                Transaction.tx_type == 'inbound',
+                Transaction.created_at >= start_date,
+                Transaction.created_at <= end_date
+            ).scalar() or 0
+            
+            outbound = db.session.query(
+                func.sum(Transaction.total_qty)
+            ).filter(
+                Transaction.tx_type == 'outbound',
+                Transaction.created_at >= start_date,
+                Transaction.created_at <= end_date
+            ).scalar() or 0
+            
+            orders = MaintenanceOrder.query.filter(
+                MaintenanceOrder.created_at >= start_date,
+                MaintenanceOrder.created_at <= end_date
+            ).count()
+            
+            return {
+                'inbound': float(inbound),
+                'outbound': float(outbound),
+                'orders': orders
+            }
+        
+        current_stats = get_stats(current_start, current_end)
+        prev_stats = get_stats(prev_start, prev_end)
+        last_year_stats = get_stats(last_year_start, last_year_end)
+        
+        def calc_change(current, previous):
+            if previous == 0:
+                return 100 if current > 0 else 0
+            return round(((current - previous) / previous) * 100, 2)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'current': current_stats,
+                'previous': prev_stats,
+                'last_year': last_year_stats,
+                'mom_change': {  # 环比
+                    'inbound': calc_change(current_stats['inbound'], prev_stats['inbound']),
+                    'outbound': calc_change(current_stats['outbound'], prev_stats['outbound']),
+                    'orders': calc_change(current_stats['orders'], prev_stats['orders'])
+                },
+                'yoy_change': {  # 同比
+                    'inbound': calc_change(current_stats['inbound'], last_year_stats['inbound']),
+                    'outbound': calc_change(current_stats['outbound'], last_year_stats['outbound']),
+                    'orders': calc_change(current_stats['orders'], last_year_stats['orders'])
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# ==================== 新的AI分析API ====================
+
+@dashboard_bp.route('/api/ai/demand-forecast')
+@login_required
+def api_demand_forecast():
+    """获取需求预测"""
+    try:
+        ai_service = get_dashboard_ai_service()
+        result = ai_service.get_demand_forecast()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@dashboard_bp.route('/api/ai/abc-analysis')
+@login_required
+def api_abc_analysis():
+    """获取ABC分类分析"""
+    try:
+        ai_service = get_dashboard_ai_service()
+        result = ai_service.get_abc_analysis()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@dashboard_bp.route('/api/ai/performance-insights')
+@login_required
+def api_performance_insights():
+    """获取综合绩效洞察"""
+    try:
+        ai_service = get_dashboard_ai_service()
+        result = ai_service.get_performance_insights()
+        return jsonify(result)
     except Exception as e:
         return jsonify({
             'success': False,

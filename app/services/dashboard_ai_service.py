@@ -328,6 +328,229 @@ class DashboardAIService:
         """
         return self.get_intelligent_insights()
 
+    def get_demand_forecast(self):
+        """
+        获取需求预测分析
+
+        Returns:
+            dict: 需求预测结果
+        """
+        try:
+            from datetime import datetime, timedelta
+
+            # 获取历史数据
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=90)
+
+            transactions = Transaction.query.filter(
+                Transaction.tx_type == 'outbound',
+                Transaction.created_at >= start_date
+            ).all()
+
+            # 简单的趋势分析
+            total_outbound = sum(float(tx.total_qty or 0) for tx in transactions)
+            avg_daily = total_outbound / 90 if transactions else 0
+
+            # 预测未来需求
+            forecast = {
+                'next_7_days': round(avg_daily * 7 * 1.05, 2),  # 预计增长5%
+                'next_30_days': round(avg_daily * 30 * 1.03, 2),  # 预计增长3%
+                'historical_avg': round(avg_daily, 2),
+                'trend': 'stable' if 0.95 <= (avg_daily * 30 / max(total_outbound, 1)) <= 1.05 else 'growing'
+            }
+
+            # 推荐补货的备件
+            low_stock_parts = SparePart.query.filter(
+                SparePart.stock_status.in_(['low', 'out'])
+            ).limit(5).all()
+
+            recommendations = [{
+                'part_code': part.part_code,
+                'part_name': part.name,
+                'current_stock': part.current_stock,
+                'min_stock': part.min_stock,
+                'suggested_order': max(part.min_stock * 2 - part.current_stock, part.min_stock)
+            } for part in low_stock_parts]
+
+            return {
+                'success': True,
+                'forecast': forecast,
+                'recommendations': recommendations
+            }
+        except Exception as e:
+            current_app.logger.error(f'需求预测分析异常: {str(e)}')
+            return {
+                'success': False,
+                'error': str(e),
+                'forecast': {},
+                'recommendations': []
+            }
+
+    def get_abc_analysis(self):
+        """
+        获取ABC分类分析
+
+        Returns:
+            dict: ABC分析结果
+        """
+        try:
+            # 计算所有备件的库存价值
+            parts = SparePart.query.all()
+            part_values = []
+
+            for part in parts:
+                value = float(part.current_stock or 0) * float(part.unit_price or 0)
+                part_values.append({
+                    'part': part,
+                    'value': value
+                })
+
+            # 按价值降序排序
+            part_values.sort(key=lambda x: x['value'], reverse=True)
+
+            # 计算总价值
+            total_value = sum(pv['value'] for pv in part_values)
+
+            # ABC分类
+            abc_result = {
+                'A': {'items': [], 'value': 0, 'percentage': 0, 'count': 0},
+                'B': {'items': [], 'value': 0, 'percentage': 0, 'count': 0},
+                'C': {'items': [], 'value': 0, 'percentage': 0, 'count': 0}
+            }
+
+            cumulative_percent = 0
+            for pv in part_values:
+                if total_value > 0:
+                    item_percent = (pv['value'] / total_value) * 100
+                else:
+                    item_percent = 0
+
+                if cumulative_percent < 80:
+                    category = 'A'
+                elif cumulative_percent < 95:
+                    category = 'B'
+                else:
+                    category = 'C'
+
+                abc_result[category]['items'].append({
+                    'part_code': pv['part'].part_code,
+                    'part_name': pv['part'].name,
+                    'value': round(pv['value'], 2)
+                })
+                abc_result[category]['value'] += pv['value']
+                abc_result[category]['count'] += 1
+
+                cumulative_percent += item_percent
+
+            # 计算各分类的百分比
+            for category in abc_result:
+                if total_value > 0:
+                    abc_result[category]['percentage'] = round(
+                        (abc_result[category]['value'] / total_value) * 100, 2
+                    )
+                abc_result[category]['value'] = round(abc_result[category]['value'], 2)
+                # 只保留前5个项目
+                abc_result[category]['items'] = abc_result[category]['items'][:5]
+
+            return {
+                'success': True,
+                'total_value': round(total_value, 2),
+                'abc_analysis': abc_result
+            }
+        except Exception as e:
+            current_app.logger.error(f'ABC分析异常: {str(e)}')
+            return {
+                'success': False,
+                'error': str(e),
+                'total_value': 0,
+                'abc_analysis': {}
+            }
+
+    def get_performance_insights(self):
+        """
+        获取综合绩效洞察
+
+        Returns:
+            dict: 绩效洞察
+        """
+        try:
+            from datetime import datetime, timedelta
+
+            # 库存健康
+            health = self._calculate_simple_health_score(SparePart.query.all())
+
+            # 设备效率
+            total_equipment = Equipment.query.count()
+            running = Equipment.query.filter_by(status='running').count()
+            availability = round((running / total_equipment * 100), 2) if total_equipment > 0 else 0
+
+            # 订单完成率
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=30)
+            total_orders = MaintenanceOrder.query.filter(
+                MaintenanceOrder.created_at >= start_date
+            ).count()
+            completed = MaintenanceOrder.query.filter(
+                MaintenanceOrder.status == 'completed',
+                MaintenanceOrder.created_at >= start_date
+            ).count()
+            completion_rate = round((completed / total_orders * 100), 2) if total_orders > 0 else 0
+
+            # 综合评分
+            overall_score = round((health['health_score'] + availability + completion_rate) / 3, 1)
+
+            insights = []
+
+            if overall_score >= 80:
+                insights.append({
+                    'type': 'success',
+                    'title': '运营状况优秀',
+                    'message': '整体运营效率处于良好水平，请继续保持。'
+                })
+            elif overall_score >= 60:
+                insights.append({
+                    'type': 'warning',
+                    'title': '需要关注',
+                    'message': '部分指标需要改进，建议查看详细分析。'
+                })
+            else:
+                insights.append({
+                    'type': 'danger',
+                    'title': '需要立即改进',
+                    'message': '运营状况需要重点关注和改进。'
+                })
+
+            if health['health_score'] < 70:
+                insights.append({
+                    'type': 'warning',
+                    'title': '库存健康需要改进',
+                    'message': f'当前库存健康评分{health["health_score"]}分，建议优化库存结构。'
+                })
+
+            if availability < 85:
+                insights.append({
+                    'type': 'warning',
+                    'title': '设备可用性偏低',
+                    'message': f'当前设备可用率{availability}%，建议优化维护计划。'
+                })
+
+            return {
+                'success': True,
+                'overall_score': overall_score,
+                'metrics': {
+                    'inventory_health': health['health_score'],
+                    'equipment_availability': availability,
+                    'order_completion': completion_rate
+                },
+                'insights': insights
+            }
+        except Exception as e:
+            current_app.logger.error(f'绩效洞察分析异常: {str(e)}')
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
 
 # 全局服务实例
 _dashboard_ai_service = None
