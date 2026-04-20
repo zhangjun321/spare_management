@@ -39,7 +39,7 @@ def login():
             return render_template('auth/login.html')
         
         # 验证密码
-        if not check_password_hash(user.password_hash, password):
+        if not user.check_password(password):
             flash('用户名或密码错误', 'danger')
             return render_template('auth/login.html')
         
@@ -140,7 +140,7 @@ def change_password():
         confirm_password = request.form.get('confirm_password', '')
         
         # 验证旧密码
-        if not check_password_hash(current_user.password_hash, old_password):
+        if not current_user.check_password(old_password):
             flash('原密码错误', 'danger')
             return render_template('auth/change_password.html')
         

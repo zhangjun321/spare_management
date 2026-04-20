@@ -52,7 +52,15 @@ class User(db.Model, UserMixin):
         try:
             password_bytes = password.encode('utf-8')
             hash_bytes = self.password_hash.encode('utf-8')
-            return bcrypt.checkpw(password_bytes, hash_bytes)
+            
+            # 判断密码哈希格式
+            if hash_bytes.startswith(b'$2b$') or hash_bytes.startswith(b'$2a$') or hash_bytes.startswith(b'$2y$'):
+                # bcrypt 格式
+                return bcrypt.checkpw(password_bytes, hash_bytes)
+            else:
+                # werkzeug (pbkdf2) 格式
+                from werkzeug.security import check_password_hash
+                return check_password_hash(self.password_hash, password)
         except Exception:
             return False
     
