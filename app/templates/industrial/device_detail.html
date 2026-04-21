@@ -1,0 +1,77 @@
+
+{% extends "industrial/base.html" %}
+
+{% block page_title %}设备详情 - {{ device.name }}{% endblock %}
+
+{% block industrial_content %}
+<div class="card industrial-card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h4 class="fw-bold mb-2">{{ device.name }}</h4>
+                <div class="text-muted">设备编号: {{ device.device_code }}</div>
+            </div>
+            <div class="col-md-4 text-end">
+                <span class="status-badge status-{{ device.status }}">
+                    {{ device.status|capitalize }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card industrial-card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="fas fa-info-circle me-2 text-primary"></i>基本信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td class="text-muted">设备类型</td>
+                        <td class="fw-600">{{ device.device_type.name if device.device_type else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">位置</td>
+                        <td>{{ device.location or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">健康度</td>
+                        <td>
+                            {% if device.health_score %}
+                                <span class="fw-600">{{ device.health_score }}%</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">创建时间</td>
+                        <td>{{ device.created_at|datetime_format }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card industrial-card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="fas fa-cog me-2 text-success"></i>快捷操作</h6>
+                <a href="{{ url_for('industrial_pages.create_work_order') }}?device_id={{ device.id }}" class="btn btn-primary w-100 mb-2">
+                    <i class="fas fa-plus-circle me-2"></i>创建工单
+                </a>
+                <a href="{{ url_for('industrial_pages.alerts') }}" class="btn btn-outline-warning w-100">
+                    <i class="fas fa-bell me-2"></i>查看告警
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card industrial-card">
+    <div class="card-body">
+        <a href="{{ url_for('industrial_pages.devices') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>返回设备列表
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,991 @@
+{% extends "base.html" %}
+
+{% block title %}设备智能管理中心 - 备件管理系统{% endblock %}
+
+{% block page_title %}设备智能管理中心{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 健康评分环形图 */
+    .health-ring {
+        width: 120px;
+        height: 120px;
+        position: relative;
+        border-radius: 50%;
+        background: conic-gradient(
+            #10b981 0deg var(--score-deg, 288deg),
+            #e5e7eb var(--score-deg, 288deg) 360deg
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .health-ring-inner {
+        width: 90px;
+        height: 90px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .health-score {
+        font-size: 28px;
+        font-weight: bold;
+        color: #1f2937;
+    }
+
+    .health-label {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    /* 风险标签 */
+    .risk-tag {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .risk-low { background: #d1fae5; color: #065f46; }
+    .risk-medium { background: #fef3c7; color: #92400e; }
+    .risk-high { background: #fed7d7; color: #991b1b; }
+    .risk-critical { background: #fee2e2; color: #7f1d1d; }
+
+    /* IoT实时监控卡片 */
+    .iot-metric-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .metric-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: #1f2937;
+    }
+
+    .metric-label {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .metric-unit {
+        font-size: 16px;
+        color: #6b7280;
+    }
+
+    /* 实时状态指示器 */
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+
+    .status-running { background: #10b981; }
+    .status-stopped { background: #6b7280; }
+    .status-maintenance { background: #f59e0b; }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* OEE展示 */
+    .oee-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .oee-score {
+        font-size: 48px;
+        font-weight: bold;
+    }
+
+    .oee-label {
+        font-size: 14px;
+        color: #6b7280;
+        margin-top: 4px;
+    }
+
+    .oee-metrics {
+        display: flex;
+        gap: 30px;
+        margin-top: 16px;
+    }
+
+    .oee-metric {
+        text-align: center;
+    }
+
+    .oee-metric-value {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .oee-metric-label {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    /* 预测卡片 */
+    .prediction-card {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-radius: 12px;
+        padding: 20px;
+        border-left: 4px solid #f59e0b;
+    }
+
+    .prediction-alert {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        border-left: 4px solid #ef4444;
+    }
+
+    .prediction-info {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-left: 4px solid #3b82f6;
+    }
+
+    /* 时间线 */
+    .timeline-item {
+        display: flex;
+        gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .timeline-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-top: 6px;
+        flex-shrink: 0;
+    }
+
+    .timeline-content {
+        flex: 1;
+    }
+
+    /* 组件健康卡片 */
+    .component-health {
+        padding: 12px;
+        border-radius: 8px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 12px;
+    }
+
+    .component-progress {
+        height: 6px;
+        background: #e5e7eb;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .component-progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s;
+    }
+
+    /* 实时图表 */
+    .chart-container {
+        height: 200px;
+        position: relative;
+    }
+
+    /* 响应式网格 */
+    @media (max-width: 768px) {
+        .health-ring { width: 100px; height: 100px; }
+        .health-ring-inner { width: 75px; height: 75px; }
+        .health-score { font-size: 22px; }
+        .metric-value { font-size: 24px; }
+        .oee-score { font-size: 36px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 设备选择器 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <label class="fw-bold mb-0">选择设备:</label>
+                    <select id="equipmentSelector" class="form-select" style="width: 300px;">
+                        <option value="">-- 请选择设备 --</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt me-2"></i>刷新数据
+                    </button>
+                    <div class="ms-auto d-flex gap-2">
+                        <span class="status-indicator status-running" id="statusIndicator"></span>
+                        <span id="statusText" class="fw-bold">选择设备查看实时状态</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 健康评分与风险概览 -->
+<div class="row mb-4">
+    <!-- 健康评分 -->
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title mb-3">
+                    <i class="fas fa-heartbeat me-2 text-primary"></i>设备健康指数
+                </h6>
+                <div class="text-center">
+                    <div class="health-ring mx-auto mb-3" id="healthRing" style="--score-deg: 288deg;">
+                        <div class="health-ring-inner">
+                            <span class="health-score" id="healthScore">80</span>
+                            <span class="health-label">健康分</span>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-4 text-center">
+                            <div class="text-muted small">可靠性</div>
+                            <div class="fw-bold" id="reliabilityScore">76</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="text-muted small">性能</div>
+                            <div class="fw-bold" id="performanceScore">72</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="text-muted small">维护</div>
+                            <div class="fw-bold" id="maintenanceScore">68</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 风险评估 -->
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title mb-3">
+                    <i class="fas fa-exclamation-triangle me-2 text-warning"></i>风险评估
+                </h6>
+                <div class="text-center mb-4">
+                    <div class="risk-tag risk-medium mb-3" id="riskTag">中等风险</div>
+                    <div class="display-6 fw-bold text-warning" id="riskScore">20</div>
+                    <div class="text-muted small">风险分数</div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-6 text-center">
+                        <div class="text-muted small">预测MTBF</div>
+                        <div class="fw-bold" id="mtbfPrediction">7,800h</div>
+                    </div>
+                    <div class="col-6 text-center">
+                        <div class="text-muted small">剩余寿命</div>
+                        <div class="fw-bold" id="rulPrediction">180天</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="text-muted small">故障风险概率</div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-warning" id="failureRiskBar" style="width: 35%;"></div>
+                    </div>
+                    <div class="text-end small text-muted mt-1" id="failureRiskText">35.2%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OEE指标 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title mb-3">
+                    <i class="fas fa-chart-area me-2 text-info"></i>整体设备效率OEE
+                </h6>
+                <div class="oee-container">
+                    <div class="oee-score text-info" id="oeeScore">82.5%</div>
+                    <div class="oee-label">整体设备效率</div>
+                    <div class="oee-metrics">
+                        <div class="oee-metric">
+                            <div class="oee-metric-value text-primary" id="availabilityRate">92.0%</div>
+                            <div class="oee-metric-label">可用率</div>
+                        </div>
+                        <div class="oee-metric">
+                            <div class="oee-metric-value text-success" id="performanceRate">91.0%</div>
+                            <div class="oee-metric-label">性能率</div>
+                        </div>
+                        <div class="oee-metric">
+                            <div class="oee-metric-value text-info" id="qualityRate">98.5%</div>
+                            <div class="oee-metric-label">合格率</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- IoT实时监控与预测 -->
+<div class="row mb-4">
+    <!-- IoT实时数据 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-microchip me-2 text-primary"></i>IoT实时监控
+                </h6>
+                <span class="badge bg-success" id="dataQualityBadge">数据质量: 良好</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="iot-metric-card">
+                            <div class="metric-label">温度</div>
+                            <div class="d-flex align-items-end">
+                                <span class="metric-value" id="temperatureValue">28.5</span>
+                                <span class="metric-unit ms-1">°C</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="iot-metric-card">
+                            <div class="metric-label">振动</div>
+                            <div class="d-flex align-items-end">
+                                <span class="metric-value" id="vibrationValue">2.3</span>
+                                <span class="metric-unit ms-1">mm/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="iot-metric-card">
+                            <div class="metric-label">电压</div>
+                            <div class="d-flex align-items-end">
+                                <span class="metric-value" id="voltageValue">220</span>
+                                <span class="metric-unit ms-1">V</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="iot-metric-card">
+                            <div class="metric-label">电流</div>
+                            <div class="d-flex align-items-end">
+                                <span class="metric-value" id="currentValue">15.5</span>
+                                <span class="metric-unit ms-1">A</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="text-muted small">今日检测</div>
+                            <div class="fw-bold fs-4" id="todayScans">156</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted small">累计检测</div>
+                            <div class="fw-bold fs-4" id="totalScans">123,456</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预测性维护 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-brain me-2 text-purple"></i>预测性维护分析
+                </h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="showAllPredictions()">
+                    查看全部
+                </button>
+            </div>
+            <div class="card-body" id="predictionsContainer">
+                <div class="prediction-card prediction-alert mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                            <strong>预测故障警告</strong>
+                        </div>
+                        <span class="badge bg-danger" id="predictionConfidence">置信度: 72.5%</span>
+                    </div>
+                    <p class="mb-2" id="predictionComponent">射线源管预计在45天后需要更换</p>
+                    <p class="text-muted small mb-3" id="predictionRecommendation">
+                        建议在下个月安排预防性更换
+                    </p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-primary" onclick="acknowledgePrediction()">
+                            <i class="fas fa-check me-1"></i>我已知晓
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="createMaintenanceTask()">
+                            <i class="fas fa-wrench me-1"></i>创建任务
+                        </button>
+                    </div>
+                </div>
+
+                <div class="prediction-card prediction-info mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <strong>性能趋势分析</strong>
+                        </div>
+                        <span class="badge bg-info">置信度: 88.2%</span>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        设备性能在过去30天呈下降趋势，建议安排全面检查
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 组件健康与历史趋势 -->
+<div class="row mb-4">
+    <!-- 关键组件健康状态 -->
+    <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-cogs me-2 text-primary"></i>关键组件健康状态
+                </h6>
+            </div>
+            <div class="card-body" id="componentsContainer">
+                <div class="component-health">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">X射线管</span>
+                        <span class="badge bg-success">正常</span>
+                    </div>
+                    <div class="text-muted small mb-2">
+                        <span id="componentHours1">已使用: 2,345小时 / 预估寿命: 8,000小时</span>
+                    </div>
+                    <div class="component-progress">
+                        <div class="component-progress-fill bg-success" id="componentProgress1" style="width: 29%;"></div>
+                    </div>
+                    <div class="text-end text-muted small mt-1">
+                        下次更换: <span id="nextReplacement1">120天后</span>
+                    </div>
+                </div>
+
+                <div class="component-health">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">探测器阵列</span>
+                        <span class="badge bg-success">正常</span>
+                    </div>
+                    <div class="text-muted small mb-2">
+                        已使用: 1,890小时 / 预估寿命: 10,000小时
+                    </div>
+                    <div class="component-progress">
+                        <div class="component-progress-fill bg-success" style="width: 19%;"></div>
+                    </div>
+                    <div class="text-end text-muted small mt-1">
+                        下次更换: 240天后
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 健康趋势图表 -->
+    <div class="col-lg-7 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-line me-2 text-info"></i>健康趋势分析
+                </h6>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary active" onclick="setChartPeriod(7)">7天</button>
+                    <button class="btn btn-outline-primary" onclick="setChartPeriod(30)">30天</button>
+                    <button class="btn btn-outline-primary" onclick="setChartPeriod(90)">90天</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" id="healthChartContainer">
+                    <canvas id="healthChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 维护任务与文档 -->
+<div class="row">
+    <!-- 即将到期的维护任务 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-tasks me-2 text-warning"></i>即将到期的维护任务
+                </h6>
+                <button class="btn btn-sm btn-primary" onclick="showCreateTaskModal()">
+                    <i class="fas fa-plus me-1"></i>新建任务
+                </button>
+            </div>
+            <div class="card-body" id="tasksContainer">
+                <div class="timeline-item">
+                    <div class="timeline-dot bg-warning"></div>
+                    <div class="timeline-content">
+                        <div class="d-flex justify-content-between">
+                            <strong>预防性维护 - 季度检查</strong>
+                            <span class="badge bg-warning">高优先级</span>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="far fa-calendar me-1"></i>计划日期: 2024-05-15
+                            <span class="ms-3">
+                                <i class="fas fa-hourglass-half me-1"></i>3天后
+                            </span>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary me-2">查看详情</button>
+                            <button class="btn btn-sm btn-success">开始执行</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-dot bg-info"></div>
+                    <div class="timeline-content">
+                        <div class="d-flex justify-content-between">
+                            <strong>设备校准</strong>
+                            <span class="badge bg-info">中优先级</span>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="far fa-calendar me-1"></i>计划日期: 2024-05-20
+                            <span class="ms-3">
+                                <i class="fas fa-hourglass-half me-1"></i>8天后
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备文档/知识库 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-book me-2 text-success"></i>设备文档与知识库
+                </h6>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="filterDocuments('all')">全部</button>
+                    <button class="btn btn-outline-secondary" onclick="filterDocuments('manual')">手册</button>
+                    <button class="btn btn-outline-secondary" onclick="filterDocuments('spec')">规范</button>
+                </div>
+            </div>
+            <div class="card-body" id="documentsContainer">
+                <div class="list-group list-group-flush">
+                    <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1"><i class="fas fa-file-pdf text-danger me-2"></i>设备操作手册</h6>
+                            <p class="mb-0 text-muted small">版本 2.3 | 2024-01-15 | 下载 156次</p>
+                        </div>
+                        <i class="fas fa-download text-muted"></i>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1"><i class="fas fa-file-alt text-primary me-2"></i>维护保养规程</h6>
+                            <p class="mb-0 text-muted small">版本 1.8 | 2023-12-02 | 下载 89次</p>
+                        </div>
+                        <i class="fas fa-download text-muted"></i>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1"><i class="fas fa-file-contract text-info me-2"></i>技术规格说明书</h6>
+                            <p class="mb-0 text-muted small">版本 3.1 | 2023-10-25 | 下载 78次</p>
+                        </div>
+                        <i class="fas fa-download text-muted"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    let currentEquipmentId = null;
+    let healthChart = null;
+    let refreshInterval = null;
+
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', function() {
+        loadEquipmentList();
+        initHealthChart();
+        startAutoRefresh();
+    });
+
+    // 加载设备列表
+    async function loadEquipmentList() {
+        try {
+            const response = await fetch('/api/equipment/api/list');
+            if (response.ok) {
+                const equipments = await response.json();
+                const selector = document.getElementById('equipmentSelector');
+                equipments.forEach(eq => {
+                    const option = document.createElement('option');
+                    option.value = eq.id;
+                    option.textContent = `${eq.equipment_code} - ${eq.name}`;
+                    selector.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('加载设备列表失败:', error);
+        }
+    }
+
+    // 设备选择器变化
+    document.getElementById('equipmentSelector').addEventListener('change', function() {
+        currentEquipmentId = this.value ? parseInt(this.value) : null;
+        if (currentEquipmentId) {
+            loadEquipmentDashboard();
+        }
+    });
+
+    // 加载设备仪表板数据
+    async function loadEquipmentDashboard() {
+        if (!currentEquipmentId) return;
+        try {
+            const [healthRes, iotRes, performanceRes, componentsRes, tasksRes] = await Promise.all([
+                fetch(`/api/equipment/${currentEquipmentId}/health/current`),
+                fetch(`/api/equipment/${currentEquipmentId}/iot/latest`),
+                fetch(`/api/equipment/${currentEquipmentId}/performance/dashboard`),
+                fetch(`/api/equipment/${currentEquipmentId}/components`),
+                fetch(`/api/equipment/${currentEquipmentId}/tasks?status=pending`)
+            ]);
+
+            const [healthData, iotData, performanceData, componentsData, tasksData] = await Promise.all([
+                healthRes.json(),
+                iotRes.json(),
+                performanceRes.json(),
+                componentsRes.json(),
+                tasksRes.json()
+            ]);
+
+            updateHealthDisplay(healthData.data);
+            updateIotDisplay(iotData.data);
+            updatePerformanceDisplay(performanceData.data);
+            updateComponentsDisplay(componentsData.data);
+            updateTasksDisplay(tasksData.data);
+
+            loadHealthHistory();
+        } catch (error) {
+            console.error('加载设备数据失败:', error);
+        }
+    }
+
+    // 更新健康显示
+    function updateHealthDisplay(data) {
+        const score = data.health_score || 80;
+        const scoreDeg = (score / 100) * 360;
+        document.getElementById('healthRing').style.setProperty('--score-deg', scoreDeg + 'deg');
+        document.getElementById('healthScore').textContent = Math.round(score);
+        document.getElementById('reliabilityScore').textContent = Math.round(data.reliability_score || 76);
+        document.getElementById('performanceScore').textContent = Math.round(data.performance_score || 72);
+        document.getElementById('maintenanceScore').textContent = Math.round(data.maintenance_score || 68);
+
+        const riskLevel = data.risk_level || 'medium';
+        const riskTag = document.getElementById('riskTag');
+        riskTag.className = `risk-tag risk-${riskLevel}`;
+        const riskLabels = { low: '低风险', medium: '中等风险', high: '高风险', critical: '严重风险' };
+        riskTag.textContent = riskLabels[riskLevel] || '中等风险';
+
+        document.getElementById('riskScore').textContent = Math.round(data.risk_score || 20);
+        document.getElementById('mtbfPrediction').textContent = (data.mtbf_prediction || 7800).toLocaleString() + 'h';
+        document.getElementById('rulPrediction').textContent = (data.rul_prediction || 180) + '天';
+
+        const failureRisk = data.failure_risk || 35.2;
+        document.getElementById('failureRiskBar').style.width = failureRisk + '%';
+        document.getElementById('failureRiskText').textContent = failureRisk.toFixed(1) + '%';
+    }
+
+    // 更新IoT数据显示
+    function updateIotDisplay(data) {
+        document.getElementById('temperatureValue').textContent = (data.temperature || 28.5).toFixed(1);
+        document.getElementById('vibrationValue').textContent = (data.vibration || 2.3).toFixed(1);
+        document.getElementById('voltageValue').textContent = Math.round(data.voltage || 220);
+        document.getElementById('currentValue').textContent = (data.current || 15.5).toFixed(1);
+        document.getElementById('todayScans').textContent = data.today_scans || 156;
+        document.getElementById('totalScans').textContent = (data.total_scans || 123456).toLocaleString();
+
+        const indicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        if (data.is_running) {
+            indicator.className = 'status-indicator status-running';
+            statusText.textContent = '运行中';
+        } else {
+            indicator.className = 'status-indicator status-stopped';
+            statusText.textContent = '已停机';
+        }
+    }
+
+    // 更新性能显示
+    function updatePerformanceDisplay(data) {
+        document.getElementById('oeeScore').textContent = (data.oee || 82.5).toFixed(1) + '%';
+        document.getElementById('availabilityRate').textContent = (data.availability || 92.0).toFixed(1) + '%';
+        document.getElementById('performanceRate').textContent = (data.performance || 91.0).toFixed(1) + '%';
+        document.getElementById('qualityRate').textContent = (data.quality || 98.5).toFixed(1) + '%';
+    }
+
+    // 更新组件显示
+    function updateComponentsDisplay(components) {
+        const container = document.getElementById('componentsContainer');
+        container.innerHTML = '';
+        (components || []).forEach((comp, index) => {
+            const usage = comp.usage_hours || 0;
+            const lifetime = comp.expected_lifetime || 10000;
+            const percentage = Math.min((usage / lifetime) * 100, 100);
+
+            let statusColor = 'bg-success';
+            let statusText = '正常';
+            if (percentage > 80) {
+                statusColor = 'bg-danger';
+                statusText = '需更换';
+            } else if (percentage > 60) {
+                statusColor = 'bg-warning';
+                statusText = '注意';
+            }
+
+            container.innerHTML += `
+                <div class="component-health">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">${comp.component_name}</span>
+                        <span class="badge ${statusColor}">${statusText}</span>
+                    </div>
+                    <div class="text-muted small mb-2">
+                        已使用: ${Math.round(usage).toLocaleString()}小时 / 预估寿命: ${lifetime.toLocaleString()}小时
+                    </div>
+                    <div class="component-progress">
+                        <div class="component-progress-fill ${statusColor}" style="width: ${percentage}%;"></div>
+                    </div>
+                    <div class="text-end text-muted small mt-1">
+                        ${comp.next_replacement_date ? '下次更换: ' + comp.next_replacement_date : ''}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // 更新任务显示
+    function updateTasksDisplay(tasks) {
+        const container = document.getElementById('tasksContainer');
+        container.innerHTML = '';
+        (tasks || []).forEach(task => {
+            let dotColor = 'bg-secondary';
+            if (task.priority === 'high') dotColor = 'bg-warning';
+            if (task.priority === 'critical') dotColor = 'bg-danger';
+
+            const scheduledDate = task.scheduled_date ? new Date(task.scheduled_date) : new Date();
+            const today = new Date();
+            const daysLeft = Math.ceil((scheduledDate - today) / (1000 * 60 * 60 * 24));
+
+            container.innerHTML += `
+                <div class="timeline-item">
+                    <div class="timeline-dot ${dotColor}"></div>
+                    <div class="timeline-content">
+                        <div class="d-flex justify-content-between">
+                            <strong>${task.task_name}</strong>
+                            <span class="badge bg-${task.priority === 'critical' ? 'danger' : task.priority === 'high' ? 'warning' : 'info'}">${task.priority === 'critical' ? '严重' : task.priority === 'high' ? '高' : '中'}优先级</span>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="far fa-calendar me-1"></i>计划日期: ${task.scheduled_date || '未设置'}
+                            <span class="ms-3">
+                                <i class="fas fa-hourglass-half me-1"></i>${daysLeft}天后
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // 初始化健康趋势图表
+    function initHealthChart() {
+        const ctx = document.getElementById('healthChart').getContext('2d');
+        healthChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: '健康指数',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: '性能分数',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100 }
+                }
+            }
+        });
+    }
+
+    // 加载健康历史数据
+    async function loadHealthHistory(days = 30) {
+        if (!currentEquipmentId) return;
+        try {
+            const response = await fetch(`/api/equipment/${currentEquipmentId}/health/history?days=${days}`);
+            const data = await response.json();
+
+            if (data.success && data.data.length > 0) {
+                healthChart.data.labels = data.data.map(d => d.date);
+                healthChart.data.datasets[0].data = data.data.map(d => d.health_score);
+                healthChart.data.datasets[1].data = data.data.map(d => d.performance_score);
+                healthChart.update();
+            } else {
+                const mockData = generateMockHealthData(days);
+                healthChart.data.labels = mockData.map(d => d.date);
+                healthChart.data.datasets[0].data = mockData.map(d => d.health_score);
+                healthChart.data.datasets[1].data = mockData.map(d => d.performance_score);
+                healthChart.update();
+            }
+        } catch (error) {
+            console.error('加载健康历史失败:', error);
+            const mockData = generateMockHealthData(days);
+            healthChart.data.labels = mockData.map(d => d.date);
+            healthChart.data.datasets[0].data = mockData.map(d => d.health_score);
+            healthChart.data.datasets[1].data = mockData.map(d => d.performance_score);
+            healthChart.update();
+        }
+    }
+
+    // 生成模拟健康数据
+    function generateMockHealthData(days) {
+        const data = [];
+        const today = new Date();
+        let baseScore = 80;
+
+        for (let i = days - 1; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            baseScore += (Math.random() - 0.5) * 4;
+            baseScore = Math.max(60, Math.min(95, baseScore));
+
+            data.push({
+                date: date.toLocaleDateString('zh-CN'),
+                health_score: Math.round(baseScore),
+                performance_score: Math.round(baseScore - 5 + Math.random() * 10)
+            });
+        }
+        return data;
+    }
+
+    // 设置图表周期
+    function setChartPeriod(days) {
+        document.querySelectorAll('[onclick^="setChartPeriod"]').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.includes(days + '天')) btn.classList.add('active');
+        });
+        loadHealthHistory(days);
+    }
+
+    // 刷新仪表板
+    function refreshDashboard() {
+        if (currentEquipmentId) loadEquipmentDashboard();
+    }
+
+    // 自动刷新
+    function startAutoRefresh() {
+        refreshInterval = setInterval(() => refreshDashboard(), 30000);
+    }
+
+    // 确认预测
+    async function acknowledgePrediction() {
+        showToast('已确认预测通知', 'success');
+    }
+
+    // 创建维护任务
+    function createMaintenanceTask() {
+        showToast('维护任务创建功能开发中', 'info');
+    }
+
+    // 显示所有预测
+    function showAllPredictions() {
+        showToast('预测分析详情功能开发中', 'info');
+    }
+
+    // 显示创建任务模态框
+    function showCreateTaskModal() {
+        showToast('新建任务功能开发中', 'info');
+    }
+
+    // 文档过滤
+    function filterDocuments(type) {
+        showToast(`文档过滤: ${type}`, 'info');
+    }
+
+    // Toast提示函数
+    function showToast(message, type = 'info') {
+        const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px;
+            background: white; border-left: 4px solid ${colors[type]};
+            padding: 16px 20px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999; animation: slideInRight 0.3s ease-out;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // 添加动画样式
+    if (!document.getElementById('toastStyles')) {
+        const style = document.createElement('style');
+        style.id = 'toastStyles';
+        style.textContent = `
+            @keyframes slideInRight {
+                from { opacity: 0; transform: translateX(100px); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+</script>
+{% endblock %}

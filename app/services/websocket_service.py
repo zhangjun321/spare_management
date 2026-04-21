@@ -1,13 +1,14 @@
 """
 WebSocket 实时通知服务
-提供库存变更、订单状态等实时推送功能
+提供库存变更、订单状态、设备监控等实时推送功能
 """
 
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_login import current_user
-from flask import session
+from flask import request, session
 import json
 from datetime import datetime
+import random
 
 # 全局 SocketIO 实例
 socketio = None
@@ -68,6 +69,24 @@ def register_socketio_events():
         if warehouse_id:
             leave_room(f'warehouse_{warehouse_id}')
             print(f'用户离开仓库房间：warehouse_{warehouse_id}')
+    
+    @socketio.on('join_equipment')
+    def handle_join_equipment(data):
+        """加入设备监控房间（监控特定设备）"""
+        equipment_id = data.get('equipment_id')
+        if equipment_id:
+            join_room(f'equipment_{equipment_id}')
+            print(f'用户加入设备监控房间：equipment_{equipment_id}')
+            # 发送当前设备状态
+            send_equipment_status_update(equipment_id)
+    
+    @socketio.on('leave_equipment')
+    def handle_leave_equipment(data):
+        """离开设备监控房间"""
+        equipment_id = data.get('equipment_id')
+        if equipment_id:
+            leave_room(f'equipment_{equipment_id}')
+            print(f'用户离开设备监控房间：equipment_{equipment_id}')
 
 
 def send_notification(user_id, notification_type, data):
@@ -199,6 +218,167 @@ def broadcast_system_message(message, level='info'):
     
     socketio.emit('system_message', data)
 
+
+# ============================================
+# 设备管理相关的通知函数
+# ============================================
+
+def send_equipment_status_update(equipment_id, status_data=None):
+    """
+    发送设备状态更新通知
+    
+    Args:
+        equipment_id: 设备 ID
+        status_data: 状态数据 (可选，否则生成模拟数据)
+    """
+    if not socketio:
+        return
+    
+    # 如果没有提供数据，生成模拟数据
+    if not status_data:
+        status_data = {
+            'equipment_id': equipment_id,
+            'is_running': random.choice([True, True, False]),
+            'temperature': round(25 + random.uniform(-2, 5), 1),
+            'vibration': round(1.5 + random.uniform(-0.5, 1.5), 2),
+            'voltage': 220 + round(random.uniform(-5, 5), 1),
+            'current': round(10 + random.uniform(-2, 5), 1),
+            'today_scans': random.randint(100, 200),
+            'total_scans': random.randint(10000, 20000),
+            'health_score': round(75 + random.uniform(-10, 15), 1),
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    # 发送给监控该设备的所有用户
+    socketio.emit('equipment_status', status_data, room=f'equipment_{equipment_id}')
+
+
+def send_equipment_alert(equipment_id, alert_type, alert_data):
+    """
+    发送设备告警通知
+    
+    Args:
+        equipment_id: 设备 ID
+        alert_type: 告警类型 (critical/warning/info)
+        alert_data: 告警数据
+    """
+    if not socketio:
+        return
+    
+    alert = {
+        'equipment_id': equipment_id,
+        'alert_type': alert_type,
+        'data': alert_data,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # 发送给设备监控房间
+    socketio.emit('equipment_alert', alert, room=f'equipment_{equipment_id}')
+    
+    # 如果是严重告警，同时发送给设备负责人
+    if alert_type in ['critical', 'warning']:
+        try:
+            from app.models.equipment import Equipment
+            equipment = Equipment.query.get(equipment_id)
+            if equipment and equipment.responsible_person:
+                # 发送给负责人（这里可以根据实际情况查找用户ID）
+                notification_data = {
+                    'equipment_id': equipment_id,
+                    'equipment_name': equipment.name,
+                    'alert_type': alert_type,
+                    'alert_message': alert_data.get('message', '')
+                }
+                socketio.emit('equipment_alert_notification', notification_data)
+        except Exception:
+            pass
+
+
+def send_maintenance_task_update(equipment_id, task_id, task_data):
+    """
+    发送维护任务更新通知
+    
+    Args:
+        equipment_id: 设备 ID
+        task_id: 任务 ID
+        task_data: 任务数据
+    """
+    if not socketio:
+        return
+    
+    data = {
+        'equipment_id': equipment_id,
+        'task_id': task_id,
+        'task_data': task_data,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # 发送给设备监控房间
+    socketio.emit('maintenance_task_update', data, room=f'equipment_{equipment_id}')
+
+
+def send_health_score_update(equipment_id, health_data):
+    """
+    发送健康评分更新通知
+    
+    Args:
+        equipment_id: 设备 ID
+        health_data: 健康数据
+    """
+    if not socketio:
+        return
+    
+    data = {
+        'equipment_id': equipment_id,
+        'health_data': health_data,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # 发送给设备监控房间
+    socketio.emit('health_score_update', data, room=f'equipment_{equipment_id}')
+
+
+def send_iot_data_stream(equipment_id, iot_data):
+    """
+    发送IoT数据流
+    
+    Args:
+        equipment_id: 设备 ID
+        iot_data: IoT数据
+    """
+    if not socketio:
+        return
+    
+    data = {
+        'equipment_id': equipment_id,
+        'iot_data': iot_data,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # 发送给设备监控房间
+    socketio.emit('iot_data_stream', data, room=f'equipment_{equipment_id}')
+
+
+def broadcast_equipment_dashboard_update(equipment_list):
+    """
+    广播设备仪表板更新（适用于设备列表页面）
+    
+    Args:
+        equipment_list: 设备列表数据
+    """
+    if not socketio:
+        return
+    
+    data = {
+        'equipment_list': equipment_list,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    socketio.emit('dashboard_update', data)
+
+
+# ============================================
+# 原有的库存相关函数（保持不变）
+# ============================================
 
 # 装饰器：自动发送库存变更通知
 def notify_inventory_change(func):

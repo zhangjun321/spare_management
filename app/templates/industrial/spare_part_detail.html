@@ -1,0 +1,72 @@
+
+{% extends "industrial/base.html" %}
+
+{% block page_title %}备件详情 - {{ spare_part.name }}{% endblock %}
+
+{% block industrial_content %}
+<div class="card industrial-card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h4 class="fw-bold mb-2">{{ spare_part.name }}</h4>
+                <div class="text-muted">备件编码: {{ spare_part.code }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card industrial-card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="fas fa-info-circle me-2 text-primary"></i>备件信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td class="text-muted">型号</td>
+                        <td class="fw-600">{{ spare_part.model or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">制造商</td>
+                        <td>{{ spare_part.manufacturer or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">单价</td>
+                        <td>
+                            {% if spare_part.price %}
+                                <span class="fw-600">¥{{ spare_part.price }}</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card industrial-card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="fas fa-boxes me-2 text-success"></i>库存信息</h6>
+                {% if inventory %}
+                    {% for item in inventory %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="fw-600">{{ item.warehouse.name if item.warehouse else '-' }}</div>
+                            <div class="text-muted">库存: {{ item.quantity }}</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">暂无库存信息</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card industrial-card">
+    <div class="card-body">
+        <a href="{{ url_for('industrial_pages.spare_parts') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>返回备件列表
+        </a>
+    </div>
+</div>
+{% endblock %}

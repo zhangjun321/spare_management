@@ -1,0 +1,213 @@
+-- 设备管理高级模型迁移脚本
+-- 创建日期: 2024-04-20
+-- 功能: 添加工业4.0相关的设备管理高级功能
+
+-- 1. 设备健康指数表
+CREATE TABLE IF NOT EXISTS `equipment_health_index` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `equipment_id` INT NOT NULL COMMENT '设备 ID',
+  `health_score` DECIMAL(5,2) NOT NULL COMMENT '综合健康评分',
+  `reliability_score` DECIMAL(5,2) COMMENT '可靠性评分',
+  `performance_score` DECIMAL(5,2) COMMENT '性能评分',
+  `maintenance_score` DECIMAL(5,2) COMMENT '维护状况评分',
+  `health_level` VARCHAR(20) COMMENT '健康等级：excellent/good/normal/warning/critical',
+  `risk_level` VARCHAR(20) COMMENT '风险等级：low/medium/high/critical',
+  `risk_score` DECIMAL(5,2) COMMENT '风险评分',
+  `mtbf_prediction` INT COMMENT '预测MTBF（小时）',
+  `rul_prediction` INT COMMENT '剩余使用寿命（天）',
+  `failure_probability` DECIMAL(5,2) COMMENT '故障风险概率',
+  `record_date` DATE NOT NULL COMMENT '记录日期',
+  `record_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '记录时间',
+  `remarks` TEXT COMMENT '健康分析备注',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  INDEX `idx_eq_health_equipment_date` (`equipment_id`, `record_date`),
+  INDEX `idx_health_score` (`health_score`),
+  INDEX `idx_record_date` (`record_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='设备健康指数表';
+
+-- 2. 设备IoT数据表
+CREATE TABLE IF NOT EXISTS `equipment_iot_data` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `equipment_id` INT NOT NULL COMMENT '设备 ID',
+  `is_running` TINYINT(1) DEFAULT 0 COMMENT '是否正在运行',
+  `uptime_hours` DECIMAL(10,2) COMMENT '运行时长（小时）',
+  `voltage` DECIMAL(10,2) COMMENT '电压（V）',
+  `current` DECIMAL(10,2) COMMENT '电流（A）',
+  `temperature` DECIMAL(10,2) COMMENT '温度（°C）',
+  `pressure` DECIMAL(10,2) COMMENT '压力（MPa）',
+  `vibration` DECIMAL(10,2) COMMENT '振动值（mm/s）',
+  `radiation_power` DECIMAL(10,2) COMMENT '射线源功率（kW）',
+  `radiation_on_time` DECIMAL(10,2) COMMENT '射线照射时间（秒）',
+  `today_scans` INT DEFAULT 0 COMMENT '今日检测次数',
+  `today_images` INT DEFAULT 0 COMMENT '今日成像数',
+  `total_scans` BIGINT DEFAULT 0 COMMENT '累计检测次数',
+  `has_alarms` TINYINT(1) DEFAULT 0 COMMENT '是否有告警',
+  `alarm_count` INT DEFAULT 0 COMMENT '告警数量',
+  `data_quality` VARCHAR(20) DEFAULT 'good' COMMENT '数据质量：good/warning/bad',
+  `timestamp` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '时间戳',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `raw_data` JSON COMMENT '原始IoT数据',
+  PRIMARY KEY (`id`),
+  INDEX `idx_iot_equipment_timestamp` (`equipment_id`, `timestamp`),
+  INDEX `idx_timestamp` (`timestamp`),
+  INDEX `idx_is_running` (`is_running`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='设备IoT数据表';
+
+-- 3. 预测性维护表
+CREATE TABLE IF NOT EXISTS `equipment_predictive_maintenance` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `equipment_id` INT NOT NULL COMMENT '设备 ID',
+  `prediction_type` VARCHAR(50) NOT NULL COMMENT '预测类型：failure/performance/maintenance',
+  `predicted_failure_date` DATE COMMENT '预测故障日期',
+  `predicted_maintenance_date` DATE COMMENT '预测维护日期',
+  `confidence_level` DECIMAL(5,2) COMMENT '置信度（0-100）',
+  `priority` VARCHAR(20) COMMENT '优先级：low/medium/high/critical',
+  `failure_probability` DECIMAL(5,2) COMMENT '故障概率',
+  `predicted_component` VARCHAR(200) COMMENT '预测故障部件',
+  `failure_symptoms` TEXT COMMENT '故障症状',
+  `recommendations` TEXT COMMENT '维护建议',
+  `model_version` VARCHAR(50) COMMENT '预测模型版本',
+  `model_type` VARCHAR(50) COMMENT '模型类型：ml/rule-based/hybrid',
+  `prediction_date` DATE NOT NULL COMMENT '预测日期',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `acknowledged` TINYINT(1) DEFAULT 0 COMMENT '是否已确认',
+  `acknowledged_by` INT COMMENT '确认人 ID',
+  `acknowledged_at` DATETIME COMMENT '确认时间',
+  PRIMARY KEY (`id`),
+  INDEX `idx_pred_eq_date` (`equipment_id`, `prediction_date`),
+  INDEX `idx_prediction_type` (`prediction_type`),
+  INDEX `idx_priority` (`priority`),
+  INDEX `idx_acknowledged` (`acknowledged`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='预测性维护表';
+
+-- 4. 设备性能指标表
+CREATE TABLE IF NOT EXISTS `equipment_performance_metric` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `equipment_id` INT NOT NULL COMMENT '设备 ID',
+  `metric_type` VARCHAR(50) NOT NULL COMMENT '指标类型：daily/weekly/monthly',
+  `period_date` DATE NOT NULL COMMENT '统计日期',
+  `oee_score` DECIMAL(5,2) COMMENT '整体设备效率OEE',
+  `availability_rate` DECIMAL(5,2) COMMENT '可用率',
+  `performance_rate` DECIMAL(5,2) COMMENT '性能率',
+  `quality_rate` DECIMAL(5,2) COMMENT '合格率',
+  `planned_uptime` DECIMAL(10,2) COMMENT '计划运行时间（小时）',
+  `actual_uptime` DECIMAL(10,2) COMMENT '实际运行时间（小时）',
+  `downtime` DECIMAL(10,2) COMMENT '停机时间（小时）',
+  `maintenance_time` DECIMAL(10,2) COMMENT '维护时间（小时）',
+  `total_scans` INT DEFAULT 0 COMMENT '总检测次数',
+  `successful_scans` INT DEFAULT 0 COMMENT '成功检测次数',
+  `rejected_scans` INT DEFAULT 0 COMMENT '拒检次数',
+  `defect_rate` DECIMAL(5,2) COMMENT '缺陷率',
+  `false_alarm_rate` DECIMAL(5,2) COMMENT '误报率',
+  `energy_consumption` DECIMAL(10,2) COMMENT '能耗（kWh）',
+  `energy_efficiency` DECIMAL(5,2) COMMENT '能效评分',
+  `maintenance_cost` DECIMAL(15,2) COMMENT '维护成本',
+  `operating_cost` DECIMAL(15,2) COMMENT '运营成本',
+  `total_cost` DECIMAL(15,2) COMMENT '总成本',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  INDEX `idx_perf_eq_date_type` (`equipment_id`, `period_date`, `metric_type`),
+  INDEX `idx_metric_type` (`metric_type`),
+  INDEX `idx_period_date` (`period_date`),
+  INDEX `idx_oee_score` (`oee_score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='设备性能指标表';
+
+-- 5. 设备组件表
+CREATE TABLE IF NOT EXISTS `equipment_component` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `equipment_id` INT NOT NULL COMMENT '设备 ID',
+  `spare_part_id` INT COMMENT '备件 ID',
+  `component_name` VARCHAR(200) COMMENT '组件名称',
+  `component_type` VARCHAR(50) COMMENT '组件类型：critical/important/standard',
+  `installation_position` VARCHAR(200) COMMENT '安装位置',
+  `installation_date` DATE COMMENT '安装日期',
+  `replacement_cycle` INT COMMENT '更换周期（天）',
+  `expected_lifetime` INT COMMENT '预期寿命（小时）',
+  `usage_hours` DECIMAL(10,2) DEFAULT 0 COMMENT '已使用小时数',
+  `status` VARCHAR(20) DEFAULT 'normal' COMMENT '状态：normal/warning/needs_replacement',
+  `last_maintenance_date` DATE COMMENT '上次维护日期',
+  `next_replacement_date` DATE COMMENT '下次更换日期',
+  `quantity_required` INT DEFAULT 1 COMMENT '所需数量',
+  `quantity_installed` INT DEFAULT 1 COMMENT '已安装数量',
+  `remarks` TEXT COMMENT '备注',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  INDEX `idx_eq_component_equipment` (`equipment_id`),
+  INDEX `idx_component_status` (`status`),
+  INDEX `idx_next_replacement` (`next_replacement_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='设备组件表';
+
+-- 6. 设备维护任务表
+CREATE TABLE IF NOT EXISTS `equipment_maintenance_task` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `equipment_id` INT NOT NULL COMMENT '设备 ID',
+  `maintenance_order_id` INT COMMENT '维护工单 ID',
+  `task_name` VARCHAR(200) NOT NULL COMMENT '任务名称',
+  `task_code` VARCHAR(50) COMMENT '任务编号',
+  `task_type` VARCHAR(50) NOT NULL COMMENT '任务类型：preventive/corrective/inspection/calibration/upgrade',
+  `priority` VARCHAR(20) DEFAULT 'medium' COMMENT '优先级：low/medium/high/critical',
+  `scheduled_date` DATE COMMENT '计划日期',
+  `scheduled_time` TIME COMMENT '计划时间',
+  `estimated_duration` DECIMAL(5,1) COMMENT '预估时长（小时）',
+  `actual_start_date` DATETIME COMMENT '实际开始时间',
+  `actual_end_date` DATETIME COMMENT '实际结束时间',
+  `status` VARCHAR(20) DEFAULT 'pending' COMMENT '状态：pending/in_progress/completed/cancelled/overdue',
+  `progress` INT DEFAULT 0 COMMENT '进度（0-100）',
+  `assigned_to` INT COMMENT '指派给用户',
+  `created_by` INT COMMENT '创建人 ID',
+  `description` TEXT COMMENT '任务描述',
+  `check_list` JSON COMMENT '检查清单',
+  `required_tools` JSON COMMENT '所需工具',
+  `required_parts` JSON COMMENT '所需备件',
+  `result` TEXT COMMENT '执行结果',
+  `findings` TEXT COMMENT '发现的问题',
+  `recommendations` TEXT COMMENT '后续建议',
+  `material_cost` DECIMAL(15,2) COMMENT '材料成本',
+  `labor_cost` DECIMAL(15,2) COMMENT '人工成本',
+  `total_cost` DECIMAL(15,2) COMMENT '总成本',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  INDEX `idx_task_eq_status_date` (`equipment_id`, `status`, `scheduled_date`),
+  INDEX `idx_task_code` (`task_code`),
+  INDEX `idx_task_priority` (`priority`),
+  INDEX `idx_task_status` (`status`),
+  INDEX `idx_scheduled_date` (`scheduled_date`),
+  INDEX `idx_assigned_to` (`assigned_to`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='设备维护任务表';
+
+-- 7. 设备文档表
+CREATE TABLE IF NOT EXISTS `equipment_document` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `equipment_id` INT NOT NULL COMMENT '设备 ID',
+  `document_type` VARCHAR(50) NOT NULL COMMENT '文档类型：manual/drawing/spec/procedure/maintenance_record',
+  `title` VARCHAR(200) NOT NULL COMMENT '文档标题',
+  `description` TEXT COMMENT '文档描述',
+  `version` VARCHAR(50) DEFAULT '1.0' COMMENT '文档版本',
+  `file_name` VARCHAR(500) COMMENT '文件名',
+  `file_path` VARCHAR(500) COMMENT '文件路径',
+  `file_size` BIGINT COMMENT '文件大小',
+  `file_type` VARCHAR(50) COMMENT '文件类型',
+  `file_url` VARCHAR(500) COMMENT '文件访问URL',
+  `category` VARCHAR(100) COMMENT '文档分类',
+  `tags` JSON COMMENT '标签数组',
+  `is_active` TINYINT(1) DEFAULT 1 COMMENT '是否启用',
+  `is_public` TINYINT(1) DEFAULT 0 COMMENT '是否公开',
+  `review_status` VARCHAR(20) DEFAULT 'draft' COMMENT '审核状态：draft/reviewed/approved',
+  `approved_by` INT COMMENT '审核人 ID',
+  `approved_at` DATETIME COMMENT '审核时间',
+  `created_by` INT COMMENT '创建人 ID',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `download_count` INT DEFAULT 0 COMMENT '下载次数',
+  PRIMARY KEY (`id`),
+  INDEX `idx_eq_document_equipment` (`equipment_id`),
+  INDEX `idx_document_type` (`document_type`),
+  INDEX `idx_category` (`category`),
+  INDEX `idx_is_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='设备文档表';
+
+-- 添加一些示例数据的注释
+-- 注意：实际使用时，请根据需要添加测试数据

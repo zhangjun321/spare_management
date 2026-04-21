@@ -1,0 +1,89 @@
+
+{% extends "industrial/base.html" %}
+
+{% block page_title %}创建工单{% endblock %}
+
+{% block industrial_content %}
+<!-- 页面头部 -->
+<div class="card industrial-card mb-4">
+    <div class="card-body">
+        <h5 class="fw-bold mb-0">创建工单</h5>
+        <p class="text-muted mb-0 mt-1">创建新的维修或维护工单</p>
+    </div>
+</div>
+
+<!-- 工单表单 -->
+<div class="card industrial-card">
+    <div class="card-body">
+        <form>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-600">工单标题 *</label>
+                    <input type="text" class="form-control" placeholder="请输入工单标题">
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-600">设备 *</label>
+                    <select class="form-select">
+                        <option value="">请选择设备</option>
+                        {% for device in devices %}
+                            <option value="{{ device.id }}">{{ device.name }} ({{ device.device_code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-600">工单类型 *</label>
+                    <select class="form-select">
+                        <option value="repair">维修</option>
+                        <option value="maintenance">维护</option>
+                        <option value="inspection">巡检</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-600">优先级 *</label>
+                    <select class="form-select">
+                        <option value="low">低</option>
+                        <option value="medium" selected>中</option>
+                        <option value="high">高</option>
+                        <option value="urgent">紧急</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-600">指派人</label>
+                    <select class="form-select">
+                        <option value="">请选择指派人</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-600">问题描述 *</label>
+                <textarea class="form-control" rows="4" placeholder="请详细描述问题"></textarea>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label fw-600">附件</label>
+                <div class="border-2 border-dashed rounded p-4 text-center">
+                    <i class="fas fa-cloud-upload-alt text-muted" style="font-size: 36px;"></i>
+                    <p class="text-muted mt-2 mb-0">点击或拖拽文件上传</p>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('industrial_pages.work_orders') }}" class="btn btn-outline-secondary me-2">
+                    取消
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>创建工单
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

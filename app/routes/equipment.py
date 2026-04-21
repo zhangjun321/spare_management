@@ -746,3 +746,48 @@ def api_locations():
         'province_options': sorted(list(provinces)),
         'city_options': sorted(list(cities))
     })
+
+
+@equipment_bp.route('/dashboard/advanced')
+@login_required
+def dashboard_advanced():
+    """设备智能管理中心 - 增强版"""
+    # 获取基础统计
+    total = Equipment.query.count()
+    running = Equipment.query.filter_by(status='running').count()
+    maintenance = Equipment.query.filter_by(status='maintenance').count()
+    stopped = Equipment.query.filter_by(status='stopped').count()
+    
+    stats = {
+        'total': total,
+        'running': running,
+        'maintenance': maintenance,
+        'stopped': stopped,
+        'health_rate': round((running / max(total, 1)) * 100, 1)
+    }
+    
+    return render_template('equipment/dashboard_advanced.html', stats=stats)
+
+
+@equipment_bp.route('/api/quick-list')
+@login_required
+def api_quick_list():
+    """快速设备列表API（简化版）"""
+    equipments = Equipment.query.filter_by(is_active=True).order_by(
+        Equipment.created_at.desc()
+    ).limit(50).all()
+    
+    result = []
+    for eq in equipments:
+        result.append({
+            'id': eq.id,
+            'equipment_code': eq.equipment_code,
+            'name': eq.name,
+            'model': eq.model,
+            'series': eq.series,
+            'status': eq.status,
+            'location': eq.location,
+            'department': eq.department.name if eq.department else None
+        })
+    
+    return jsonify(result)

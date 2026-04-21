@@ -1,0 +1,86 @@
+
+{% extends "industrial/base.html" %}
+
+{% block page_title %}工单详情 - {{ work_order.work_order_code }}{% endblock %}
+
+{% block industrial_content %}
+<div class="card industrial-card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h4 class="fw-bold mb-2">{{ work_order.title }}</h4>
+                <div class="text-muted">工单编号: {{ work_order.work_order_code }}</div>
+            </div>
+            <div class="col-md-4 text-end">
+                <span class="status-badge priority-{{ work_order.priority }} me-2">
+                    {{ work_order.priority|capitalize }}
+                </span>
+                <span class="status-badge {% if work_order.status == 'completed' %}status-active{% elif work_order.status == 'in_progress' %}status-maintenance{% else %}status-error{% endif %}">
+                    {{ work_order.status|capitalize }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card industrial-card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="fas fa-info-circle me-2 text-primary"></i>工单信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td class="text-muted">相关设备</td>
+                        <td class="fw-600">{{ work_order.device.name if work_order.device else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">类型</td>
+                        <td>{{ work_order.type|capitalize }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">创建时间</td>
+                        <td>{{ work_order.created_at|datetime_format }}</td>
+                    </tr>
+                    {% if work_order.completed_at %}
+                    <tr>
+                        <td class="text-muted">完成时间</td>
+                        <td>{{ work_order.completed_at|datetime_format }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+                {% if work_order.description %}
+                <div class="mt-3">
+                    <h6 class="fw-bold mb-2">问题描述</h6>
+                    <p class="text-muted">{{ work_order.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card industrial-card h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="fas fa-history me-2 text-info"></i>处理日志</h6>
+                {% if logs %}
+                    {% for log in logs %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="fw-600">{{ log.action }}</div>
+                            <div class="text-muted text-sm">{{ log.created_at|datetime_format }}</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">暂无处理日志</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card industrial-card">
+    <div class="card-body">
+        <a href="{{ url_for('industrial_pages.work_orders') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>返回工单列表
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+
+{% extends "industrial/base.html" %}
+
+{% block page_title %}知识库{% endblock %}
+
+{% block industrial_content %}
+<!-- 页面头部 -->
+<div class="card industrial-card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h5 class="fw-bold mb-0">知识库</h5>
+                <p class="text-muted mb-0 mt-1">管理和查询维修经验与解决方案</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="#" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>新增知识
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 知识库列表 -->
+<div class="card industrial-card">
+    <div class="card-body">
+        {% if pagination.items %}
+            <div class="row">
+                {% for knowledge in pagination.items %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-0 shadow-sm" style="transition: all 0.3s;">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="fw-bold mb-0">
+                                        <a href="{{ url_for('industrial_pages.knowledge_detail', id=knowledge.id) }}" 
+                                           class="text-decoration-none text-dark">
+                                            {{ knowledge.title }}
+                                        </a>
+                                    </h6>
+                                    {% if knowledge.category %}
+                                        <span class="badge bg-info">{{ knowledge.category }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if knowledge.symptom %}
+                                    <p class="text-muted text-sm mb-2">{{ knowledge.symptom[:100] }}...</p>
+                                {% endif %}
+                                <div class="d-flex justify-content-between align-items-center text-muted text-sm">
+                                    <span>
+                                        <i class="fas fa-eye me-1"></i> {{ knowledge.view_count or 0 }} 浏览
+                                    </span>
+                                    <span>{{ knowledge.created_at|datetime_format }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-book-open text-muted" style="font-size: 48px;"></i>
+                <p class="text-muted mt-2">暂无知识数据</p>
+            </div>
+        {% endif %}
+        
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ pagination.prev_num }}">上一页</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ pagination.next_num }}">下一页</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

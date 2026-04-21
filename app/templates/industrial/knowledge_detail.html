@@ -1,0 +1,37 @@
+
+{% extends "industrial/base.html" %}
+
+{% block page_title %}知识详情 - {{ knowledge.title }}{% endblock %}
+
+{% block industrial_content %}
+<div class="card industrial-card mb-4">
+    <div class="card-body">
+        <h4 class="fw-bold mb-2">{{ knowledge.title }}</h4>
+        {% if knowledge.category %}
+            <span class="badge bg-primary mb-3">{{ knowledge.category }}</span>
+        {% endif %}
+        <div class="text-muted">浏览次数: {{ knowledge.view_count }}</div>
+    </div>
+</div>
+
+<div class="card industrial-card mb-4">
+    <div class="card-body">
+        {% if knowledge.symptom %}
+            <h6 class="fw-bold mb-2"><i class="fas fa-search text-warning me-2"></i>故障现象</h6>
+            <p class="mb-4">{{ knowledge.symptom }}</p>
+        {% endif %}
+        {% if knowledge.solution %}
+            <h6 class="fw-bold mb-2"><i class="fas fa-lightbulb text-success me-2"></i>解决方案</h6>
+            <p>{{ knowledge.solution }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card industrial-card">
+    <div class="card-body">
+        <a href="{{ url_for('industrial_pages.knowledge_base') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>返回知识库
+        </a>
+    </div>
+</div>
+{% endblock %}

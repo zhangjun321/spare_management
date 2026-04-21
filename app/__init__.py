@@ -80,6 +80,15 @@ def create_app(config_name=None):
     except Exception as e:
         app.logger.error(f'定时任务调度器初始化失败：{str(e)}')
     
+    # 初始化 WebSocket 服务
+    try:
+        from app.services.websocket_service import init_socketio
+        socketio = init_socketio(app)
+        app.extensions['socketio'] = socketio
+        app.logger.info('WebSocket 服务初始化成功')
+    except Exception as e:
+        app.logger.warning(f'WebSocket 服务初始化失败：{str(e)}')
+    
     # 注册蓝图
     register_blueprints(app)
     
@@ -226,6 +235,10 @@ def register_blueprints(app):
     # 设备管理模块
     from app.routes.equipment import equipment_bp
     app.register_blueprint(equipment_bp, url_prefix='/equipment')
+    
+    # 设备管理高级API
+    from app.routes.equipment_api import equipment_api_bp
+    app.register_blueprint(equipment_api_bp, url_prefix='/api/equipment')
     
     # 维修管理模块
     from app.routes.maintenance import maintenance_bp
@@ -445,6 +458,14 @@ def register_blueprints(app):
     # 全局搜索 API
     from app.routes.search import search_bp
     app.register_blueprint(search_bp)
+    
+    # 工业设备维护管理 API
+    from app.routes.industrial_equipment_api import industrial_bp
+    app.register_blueprint(industrial_bp)
+    
+    # 工业设备维护管理前端页面
+    from app.routes.industrial_equipment_pages import industrial_pages_bp
+    app.register_blueprint(industrial_pages_bp)
     
     # 备件 API
     from app.routes.spare_parts_api import spare_parts_api

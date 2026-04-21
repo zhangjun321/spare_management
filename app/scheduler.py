@@ -167,6 +167,45 @@ def check_stock_age_warnings():
             pass
 
 
+def simulate_equipment_updates():
+    """定时模拟设备数据推送（用于演示）"""
+    logger.info("开始模拟设备数据推送...")
+    try:
+        from app.services.equipment_simulator_service import (
+            send_equipment_update,
+            get_all_active_equipments,
+            broadcast_equipment_dashboard_data
+        )
+
+        # 获取所有活跃设备
+        equipment_ids = get_all_active_equipments()
+        
+        if equipment_ids:
+            # 选择几个设备进行模拟（避免过多）
+            sample_size = min(3, len(equipment_ids))
+            import random
+            sample_equipment_ids = random.sample(equipment_ids, sample_size)
+            
+            # 发送设备更新
+            for equipment_id in sample_equipment_ids:
+                send_equipment_update(equipment_id)
+            
+            # 广播仪表板数据
+            broadcast_equipment_dashboard_data()
+            
+            logger.info(f"设备数据推送完成，推送给 {len(sample_equipment_ids)} 个设备")
+        else:
+            logger.info("没有活跃设备")
+            
+    except Exception as e:
+        logger.error(f"设备数据推送失败：{str(e)}")
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
+
+
 def init_scheduler(app=None):
     """
     初始化调度器
@@ -189,6 +228,12 @@ def init_scheduler(app=None):
         def wrapped_check_stock_age():
             with app.app_context():
                 check_stock_age_warnings()
+        
+        # 设备数据模拟推送（每10秒）
+        @scheduler.scheduled_job('interval', seconds=10, id='simulate_equipment_updates')
+        def wrapped_simulate_equipment():
+            with app.app_context():
+                simulate_equipment_updates()
 
     if not scheduler.running:
         scheduler.start()
