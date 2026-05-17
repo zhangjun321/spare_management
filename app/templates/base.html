@@ -282,6 +282,23 @@
             background: rgba(78, 115, 223, 0.2);
         }
         
+        /* 子菜单分组标题样式 */
+        .submenu-group-title {
+            padding: 0.8rem 1rem 0.3rem 2.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 0.3rem;
+            cursor: default;
+        }
+        .submenu-group-title:first-child {
+            border-top: none;
+            margin-top: 0;
+        }
+        
         .has-submenu > a .fa-chevron-down {
             transition: transform 0.3s;
         }
@@ -1171,10 +1188,55 @@
                 </a>
             </li>
             <li>
-                <a href="{{ url_for('spare_parts.index') }}" class="{% if request.endpoint and request.endpoint.startswith('spare_parts') %}active{% endif %}" data-tooltip="备件管理">
+                <a href="{{ url_for('spare_parts.workstation') }}" class="{% if request.endpoint == 'spare_parts.workstation' %}active{% endif %}" data-tooltip="工作台">
+                    <i class="fas fa-desktop"></i>
+                    <span class="menu-text">工作台</span>
+                </a>
+            </li>
+            <li class="has-submenu">
+                <a href="javascript:void(0)" class="{% if request.path.startswith('/spare_parts') or (request.endpoint and request.endpoint.startswith('spare_parts')) %}active{% endif %}" data-tooltip="备件管理">
                     <i class="fas fa-box"></i>
                     <span class="menu-text">备件管理</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
+                <ul class="submenu">
+                    {# 基础管理 #}
+                    <li class="submenu-group-title">基础管理</li>
+                    <li>
+                        <a href="{{ url_for('spare_parts.index') }}" class="{% if request.endpoint == 'spare_parts.index' %}active{% endif %}">
+                            <i class="fas fa-list"></i>备件列表
+                        </a>
+                    </li>
+                    {# 运维管理 #}
+                    <li class="submenu-group-title">运维管理</li>
+                    <li>
+                        <a href="{{ url_for('spare_parts.quality') }}" class="{% if request.endpoint == 'spare_parts.quality' %}active{% endif %}">
+                            <i class="fas fa-check-double"></i>备件质量管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('spare_parts.diagnosis') }}" class="{% if request.endpoint == 'spare_parts.diagnosis' %}active{% endif %}">
+                            <i class="fas fa-stethoscope"></i>故障诊断与维护
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('spare_parts.lifecycle') }}" class="{% if request.endpoint == 'spare_parts.lifecycle' %}active{% endif %}">
+                            <i class="fas fa-recycle"></i>生命周期管理
+                        </a>
+                    </li>
+                    {# 数据分析 #}
+                    <li class="submenu-group-title">数据分析</li>
+                    <li>
+                        <a href="{{ url_for('spare_parts.dashboard') }}" class="{% if request.endpoint == 'spare_parts.dashboard' %}active{% endif %}">
+                            <i class="fas fa-tachometer-alt"></i>综合分析驾驶舱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('spare_parts.prediction') }}" class="{% if request.endpoint == 'spare_parts.prediction' %}active{% endif %}">
+                            <i class="fas fa-chart-line"></i>智能预测与补货
+                        </a>
+                    </li>
+                </ul>
             </li>
             <li class="has-submenu">
                 <a href="javascript:void(0)" class="{% if request.endpoint and request.endpoint.startswith('warehouses') %}active{% endif %}" data-tooltip="仓库管理">

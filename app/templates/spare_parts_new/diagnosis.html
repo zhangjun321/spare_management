@@ -1,0 +1,1186 @@
+{% extends "base.html" %}
+
+{% block title %}故障诊断与维护 - 备件管理{% endblock %}
+{% block page_title %}故障诊断与维护{% endblock %}
+
+{% block extra_css %}
+<style>
+.action-panel {
+    border: 1px solid #eef0f5; border-radius: 12px; overflow: hidden;
+    background: #fff; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+.action-panel.collapsed { max-height: 56px; }
+.action-panel:not(.collapsed) { max-height: 5000px; }
+.panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; cursor: pointer; user-select: none;
+    border-bottom: 1px solid transparent; transition: all 0.3s;
+}
+.action-panel:not(.collapsed) .panel-header { border-bottom-color: #eef0f5; background: #f8f9fa; }
+.panel-header:hover { background: #f0f2f7; }
+.panel-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: #1a1c2e; }
+.panel-toggle { transition: transform 0.3s ease; font-size: 12px; color: #8c8ea6; }
+.action-panel:not(.collapsed) .panel-toggle { transform: rotate(180deg); }
+.panel-body { padding: 20px; opacity: 1; transition: opacity 0.3s ease, padding 0.3s ease; }
+.action-panel.collapsed .panel-body { opacity: 0; padding: 0 20px; pointer-events: none; overflow: hidden; max-height: 0; }
+
+.form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+.form-group { flex: 1; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; color: #495057; margin-bottom: 6px; }
+.form-group .form-control { border-radius: 8px; border: 1px solid #dee2e6; padding: 8px 12px; font-size: 13px; transition: border-color 0.2s; }
+.form-group .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.1); }
+.form-group textarea.form-control { resize: vertical; }
+.form-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.form-check-input { margin: 0; width: 16px; height: 16px; }
+.form-check-label { font-size: 13px; color: #495057; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eef0f5; }
+
+.chart-container { height: 280px; position: relative; }
+.tab-content-section { padding: 16px 0; }
+
+.fault-type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.fault-type-card { border: 1px solid #eef0f5; border-radius: 10px; padding: 16px; background: #fafbfc; transition: all 0.2s; }
+.fault-type-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #0d6efd; }
+.fault-type-card h6 { font-size: 14px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.fault-type-card p { font-size: 12px; color: #6c757d; margin-bottom: 0; }
+.fault-type-card .symptoms { margin-top: 8px; font-size: 11px; color: #495057; }
+.fault-type-card .symptoms strong { color: #343a40; }
+
+.flowchart-container { background: #f8f9fa; border-radius: 10px; padding: 20px; }
+.flow-step { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.flow-step:last-child { margin-bottom: 0; }
+.flow-step-num { width: 32px; height: 32px; border-radius: 50%; background: #0d6efd; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+.flow-step-content { flex: 1; }
+.flow-step-content h6 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.flow-step-content p { font-size: 11px; color: #6c757d; margin-bottom: 0; }
+.flow-arrow { text-align: center; color: #adb5bd; font-size: 12px; margin: 4px 0 4px 16px; }
+
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.guide-card { border: 1px solid #eef0f5; border-radius: 10px; overflow: hidden; transition: all 0.2s; }
+.guide-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.guide-card-header { background: #f8f9fa; padding: 12px 16px; border-bottom: 1px solid #eef0f5; font-weight: 600; font-size: 13px; }
+.guide-card-body { padding: 16px; }
+.guide-card-body ol, .guide-card-body ul { padding-left: 18px; margin-bottom: 0; font-size: 12px; color: #495057; }
+.guide-card-body li { margin-bottom: 4px; }
+
+.faq-item { border: 1px solid #eef0f5; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+.faq-question { padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; color: #1a1c2e; background: #fafbfc; }
+.faq-question:hover { background: #f0f2f7; }
+.faq-answer { padding: 0 16px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; font-size: 12px; color: #6c757d; }
+.faq-item.open .faq-answer { max-height: 300px; padding: 12px 16px; }
+.faq-item.open .faq-toggle { transform: rotate(180deg); }
+.faq-toggle { transition: transform 0.3s; }
+
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.tool-item { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #eef0f5; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+.tool-item:hover { border-color: #0d6efd; background: #f0f7ff; }
+.tool-icon { width: 40px; height: 40px; border-radius: 8px; background: #e7f1ff; display: flex; align-items: center; justify-content: center; color: #0d6efd; font-size: 18px; }
+.tool-info h6 { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+.tool-info p { font-size: 10px; color: #6c757d; margin-bottom: 0; }
+
+.maint-task-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #eef0f5; border-radius: 8px; margin-bottom: 8px; transition: all 0.2s; }
+.maint-task-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.task-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.task-status.pending { background: #ffc107; }
+.task-status.in_progress { background: #0d6efd; }
+.task-status.completed { background: #28a745; }
+.task-info { flex: 1; }
+.task-info h6 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.task-info p { font-size: 11px; color: #6c757d; margin-bottom: 0; }
+.task-meta { text-align: right; font-size: 11px; color: #8c8ea6; }
+
+.stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f2f7; font-size: 13px; }
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: #6c757d; }
+.stat-value { font-weight: 600; }
+
+.fault-action-row { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 12px; }
+.fault-action-row .form-row { margin-bottom: 10px; }
+.fault-action-row .form-actions { margin-top: 8px; padding-top: 8px; }
+
+.trend-indicator { font-size: 11px; margin-left: 4px; }
+.trend-up { color: #dc3545; }
+.trend-down { color: #28a745; }
+.trend-stable { color: #6c757d; }
+
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+.toast-message { background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease; }
+.toast-message.success { border-left: 4px solid #28a745; }
+.toast-message.error { border-left: 4px solid #dc3545; }
+.toast-message.info { border-left: 4px solid #0d6efd; }
+.toast-icon { font-size: 16px; }
+.toast-text { font-size: 13px; color: #1a1c2e; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+.content-tab { border: 1px solid #eef0f5; border-radius: 8px; padding: 10px 16px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.content-tab:hover { background: #f0f2f7; }
+.content-tab.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+.content-tab .tab-icon { font-size: 20px; margin-bottom: 4px; }
+.content-tab .tab-label { font-size: 12px; font-weight: 500; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer"></div>
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row">
+            <div class="col-md-8">
+                <h2><i class="fas fa-stethoscope"></i> 故障诊断与维护</h2>
+                <p class="text-muted">基于RCM理念的备件故障诊断与维护方案智能推荐</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs nav-tabs-custom">
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.prediction') }}"><i class="fas fa-chart-line"></i> 智能预测与补货</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.quality') }}"><i class="fas fa-check-double"></i> 质量管理</a></li>
+                <li class="nav-item"><a class="nav-link active" href="#"><i class="fas fa-stethoscope"></i> 故障诊断与维护</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.lifecycle') }}"><i class="fas fa-recycle"></i> 生命周期管理</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.dashboard') }}"><i class="fas fa-tachometer-alt"></i> 综合分析驾驶舱</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3"><div class="card bg-danger text-white"><div class="card-body text-center"><div class="display-4" id="criticalFaults">2</div><div>严重故障</div><div class="trend-indicator trend-up"><i class="fas fa-arrow-up"></i> 较上月+1</div></div></div></div>
+        <div class="col-md-3"><div class="card bg-warning text-white"><div class="card-body text-center"><div class="display-4" id="highFaults">5</div><div>高优先级</div><div class="trend-indicator trend-stable"><i class="fas fa-minus"></i> 持平</div></div></div></div>
+        <div class="col-md-3"><div class="card bg-info text-white"><div class="card-body text-center"><div class="display-4" id="totalFaults">12</div><div>待处理</div><div class="trend-indicator trend-down"><i class="fas fa-arrow-down"></i> 较上月-3</div></div></div></div>
+        <div class="col-md-3"><div class="card bg-success text-white"><div class="card-body text-center"><div class="display-4" id="solutions">28</div><div>可用方案</div><div class="trend-indicator trend-up"><i class="fas fa-arrow-up"></i> 较上月+5</div></div></div></div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-exclamation-triangle"></i> FMEA风险分析</h5></div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="fmeaRadarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="card-title mb-0"><i class="fas fa-list"></i> 故障记录</h5>
+                    <div class="btn-group">
+                        <select class="form-control form-control-sm" id="filterFaultStatus" onchange="loadFaults()">
+                            <option value="">全部状态</option>
+                            <option value="open">待处理</option>
+                            <option value="in_progress">处理中</option>
+                            <option value="resolved">已解决</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead><tr><th>故障编号</th><th>备件</th><th>故障类型</th><th>严重度</th><th>优先级</th><th>状态</th><th>AI诊断</th><th>操作</th></tr></thead>
+                            <tbody id="faultTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-chart-line"></i> 故障趋势分析</h5></div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="chart-container">
+                                <canvas id="faultTrendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card" style="border:1px solid #eef0f5;">
+                                <div class="card-header" style="background:#f8f9fa; font-size:13px; font-weight:600;">维护效率指标</div>
+                                <div class="card-body">
+                                    <div class="stat-row"><span class="stat-label">平均修复时间</span><span class="stat-value" id="mttrValue">2.5h <i class="fas fa-arrow-down trend-indicator trend-down"></i></span></div>
+                                    <div class="stat-row"><span class="stat-label">平均故障间隔</span><span class="stat-value" id="mtbfValue">145h <i class="fas fa-arrow-up trend-indicator trend-up"></i></span></div>
+                                    <div class="stat-row"><span class="stat-label">任务完成率</span><span class="stat-value text-success" id="completionRate">92% <i class="fas fa-arrow-up trend-indicator trend-down"></i></span></div>
+                                    <div class="stat-row"><span class="stat-label">首次修复成功率</span><span class="stat-value" id="firstFixRate">87%</span></div>
+                                    <div class="stat-row"><span class="stat-label">本月完成</span><span class="stat-value" id="monthlyCompleted">15</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-panel collapsed" id="recordFaultPanel">
+        <div class="panel-header" onclick="togglePanel('recordFaultPanel')">
+            <span class="panel-title"><i class="fas fa-plus-circle text-danger"></i> 记录故障</span>
+            <i class="fas fa-chevron-down panel-toggle"></i>
+        </div>
+        <div class="panel-body">
+            <form id="faultForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>选择备件 <span class="text-danger">*</span></label>
+                        <select class="form-control" id="faultSparePartId" required>
+                            <option value="">请选择备件</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>故障类型 <span class="text-danger">*</span></label>
+                        <select class="form-control" id="faultType" required>
+                            <option value="bearing_fail">轴承故障</option>
+                            <option value="seal_leak">密封泄漏</option>
+                            <option value="gear_wear">齿轮磨损</option>
+                            <option value="motor_overheat">电机过热</option>
+                            <option value="vibration">异常振动</option>
+                            <option value="lubrication">润滑不足</option>
+                            <option value="corrosion">腐蚀</option>
+                            <option value="fatigue_crack">疲劳裂纹</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>严重度</label>
+                        <select class="form-control" id="faultSeverity">
+                            <option value="low">低</option>
+                            <option value="medium" selected>中</option>
+                            <option value="high">高</option>
+                            <option value="critical">严重</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>设备编号</label>
+                        <input type="text" class="form-control" id="faultEquipmentId" placeholder="输入设备编号">
+                    </div>
+                    <div class="form-group">
+                        <label>故障时间</label>
+                        <input type="datetime-local" class="form-control" id="faultTime">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>故障描述</label>
+                    <textarea class="form-control" id="faultDescription" rows="3" placeholder="详细描述故障现象..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePanel('recordFaultPanel')">收起</button>
+                    <button type="button" class="btn btn-primary" onclick="submitFault()"><i class="fas fa-save"></i> 提交记录</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="action-panel collapsed" id="aiDiagnosisPanel">
+        <div class="panel-header" onclick="togglePanel('aiDiagnosisPanel')">
+            <span class="panel-title"><i class="fas fa-brain text-info"></i> AI智能诊断</span>
+            <i class="fas fa-chevron-down panel-toggle"></i>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>故障现象</label>
+                        <textarea class="form-control" id="aiDiagnosisInput" rows="4" placeholder="描述故障现象，例如：轴承部位发出异常噪音，温度升高..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>故障类型</label>
+                        <select class="form-control" id="aiDiagnosisType">
+                            <option value="">自动识别</option>
+                            <option value="bearing_fail">轴承故障</option>
+                            <option value="seal_leak">密封泄漏</option>
+                            <option value="gear_wear">齿轮磨损</option>
+                            <option value="motor_overheat">电机过热</option>
+                            <option value="vibration">异常振动</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="runAIDiagnosis()"><i class="fas fa-search"></i> 开始诊断</button>
+                </div>
+                <div class="col-md-8">
+                    <div id="aiDiagnosisResult">
+                        <div style="text-align:center; padding:40px; color:#6c757d;">
+                            <i class="fas fa-robot" style="font-size:48px; opacity:0.3; margin-bottom:12px;"></i>
+                            <p>输入故障现象后，AI将自动分析根因并推荐维护方案</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-panel collapsed" id="maintTaskPanel">
+        <div class="panel-header" onclick="togglePanel('maintTaskPanel')">
+            <span class="panel-title"><i class="fas fa-tasks text-success"></i> 维护任务管理</span>
+            <i class="fas fa-chevron-down panel-toggle"></i>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-8" id="maintTaskList">
+                    <div class="text-center" style="padding:30px; color:#6c757d;">
+                        <i class="fas fa-clipboard-list" style="font-size:36px; opacity:0.3;"></i>
+                        <p style="margin-top:8px;">暂无维护任务</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card" style="border:1px solid #eef0f5;">
+                        <div class="card-header" style="background:#f8f9fa; font-size:13px; font-weight:600;">维护效率指标</div>
+                        <div class="card-body">
+                            <div class="stat-row"><span class="stat-label">平均修复时间</span><span class="stat-value">2.5h</span></div>
+                            <div class="stat-row"><span class="stat-label">任务完成率</span><span class="stat-value text-success">92%</span></div>
+                            <div class="stat-row"><span class="stat-label">待处理任务</span><span class="stat-value text-warning" id="pendingTaskCount">3</span></div>
+                            <div class="stat-row"><span class="stat-label">本月完成</span><span class="stat-value" id="completedTaskCount">15</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="faultTypeGuidePanel">
+        <div class="panel-header" onclick="togglePanel('faultTypeGuidePanel')">
+            <span class="panel-title"><i class="fas fa-book text-warning"></i> 故障类型说明与排查指南</span>
+            <i class="fas fa-chevron-down panel-toggle"></i>
+        </div>
+        <div class="panel-body">
+            <ul class="nav nav-tabs mb-3" id="guideTabs" role="tablist">
+                <li class="nav-item" role="presentation"><a class="nav-link active" data-bs-toggle="tab" href="#faultTypesTab" role="tab" onclick="activateTab(this)">故障类型</a></li>
+                <li class="nav-item" role="presentation"><a class="nav-link" data-bs-toggle="tab" href="#flowchartTab" role="tab" onclick="activateTab(this)">排查流程</a></li>
+                <li class="nav-item" role="presentation"><a class="nav-link" data-bs-toggle="tab" href="#maintGuideTab" role="tab" onclick="activateTab(this)">维护指南</a></li>
+                <li class="nav-item" role="presentation"><a class="nav-link" data-bs-toggle="tab" href="#faqTab" role="tab" onclick="activateTab(this)">FAQ</a></li>
+                <li class="nav-item" role="presentation"><a class="nav-link" data-bs-toggle="tab" href="#toolsTab" role="tab" onclick="activateTab(this)">工具下载</a></li>
+            </ul>
+            <div class="tab-content" id="guideTabsContent">
+                <div class="tab-pane fade show active" id="faultTypesTab" role="tabpanel">
+                    <div class="fault-type-grid">
+                        <div class="fault-type-card">
+                            <h6><i class="fas fa-cog text-danger"></i> 轴承故障</h6>
+                            <p>轴承是机械设备中最常见的故障源，通常由润滑不良、过载或疲劳引起。</p>
+                            <div class="symptoms"><strong>典型症状：</strong>异常噪音、温度升高、振动加剧</div>
+                        </div>
+                        <div class="fault-type-card">
+                            <h6><i class="fas fa-tint text-warning"></i> 密封泄漏</h6>
+                            <p>密封件老化或安装不当导致介质泄漏，影响设备正常运行。</p>
+                            <div class="symptoms"><strong>典型症状：</strong>液体/气体泄漏、压力下降、污染</div>
+                        </div>
+                        <div class="fault-type-card">
+                            <h6><i class="fas fa-sync-alt text-info"></i> 齿轮磨损</h6>
+                            <p>齿轮表面磨损导致传动精度下降，可能引发连锁故障。</p>
+                            <div class="symptoms"><strong>典型症状：</strong>传动异响、效率降低、齿面损伤</div>
+                        </div>
+                        <div class="fault-type-card">
+                            <h6><i class="fas fa-temperature-high text-danger"></i> 电机过热</h6>
+                            <p>电机温度异常升高，可能由过载、散热不良或绕组故障引起。</p>
+                            <div class="symptoms"><strong>典型症状：</strong>温度异常、异味、效率下降</div>
+                        </div>
+                        <div class="fault-type-card">
+                            <h6><i class="fas fa-wave-square text-primary"></i> 异常振动</h6>
+                            <p>设备振动超标通常是不平衡、不对中或部件松动的表现。</p>
+                            <div class="symptoms"><strong>典型症状：</strong>振动值超标、噪音增大、连接松动</div>
+                        </div>
+                        <div class="fault-type-card">
+                            <h6><i class="fas fa-oil-can text-success"></i> 润滑不足</h6>
+                            <p>润滑不良会加速部件磨损，导致设备提前失效。</p>
+                            <div class="symptoms"><strong>典型症状：</strong>摩擦增大、温度升高、磨损加速</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="flowchartTab">
+                    <div class="flowchart-container">
+                        <h6 class="mb-3"><i class="fas fa-route text-primary"></i> 标准故障排查流程</h6>
+                        <div class="flow-step"><div class="flow-step-num">1</div><div class="flow-step-content"><h6>现象确认</h6><p>观察并记录故障现象，包括异常声音、温度、振动等参数</p></div></div>
+                        <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="flow-step"><div class="flow-step-num">2</div><div class="flow-step-content"><h6>初步分析</h6><p>根据故障现象和类型，初步判断可能的故障原因</p></div></div>
+                        <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="flow-step"><div class="flow-step-num">3</div><div class="flow-step-content"><h6>检测诊断</h6><p>使用检测工具进行精确测量（振动分析、温度检测、油液分析等）</p></div></div>
+                        <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="flow-step"><div class="flow-step-num">4</div><div class="flow-step-content"><h6>根因确定</h6><p>综合检测数据，确定故障根本原因</p></div></div>
+                        <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="flow-step"><div class="flow-step-num">5</div><div class="flow-step-content"><h6>方案制定</h6><p>制定维修方案，准备备件和工具</p></div></div>
+                        <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="flow-step"><div class="flow-step-num">6</div><div class="flow-step-content"><h6>实施维修</h6><p>按照方案执行维修操作，注意安全规范</p></div></div>
+                        <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="flow-step"><div class="flow-step-num">7</div><div class="flow-step-content"><h6>验证测试</h6><p>维修完成后进行测试验证，确保故障已排除</p></div></div>
+                        <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                        <div class="flow-step"><div class="flow-step-num">8</div><div class="flow-step-content"><h6>记录归档</h6><p>记录维修过程和结果，更新设备档案</p></div></div>
+                    </div>
+                    <div class="mt-4">
+                        <h6 class="mb-3"><i class="fas fa-project-diagram text-info"></i> 故障诊断决策树</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="flow-step"><div class="flow-step-num">?</div><div class="flow-step-content"><h6>设备是否发出异常噪音？</h6><p>是 → 检查轴承、齿轮、皮带等传动部件；否 → 检查温度异常</p></div></div>
+                                <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                                <div class="flow-step"><div class="flow-step-num">?</div><div class="flow-step-content"><h6>设备温度是否超标？</h6><p>是 → 检查润滑系统、散热系统；否 → 检查振动异常</p></div></div>
+                                <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                                <div class="flow-step"><div class="flow-step-num">?</div><div class="flow-step-content"><h6>振动值是否超过标准？</h6><p>是 → 进行动平衡、对中校正；否 → 检查泄漏、压力异常</p></div></div>
+                                <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                                <div class="flow-step"><div class="flow-step-num">?</div><div class="flow-step-content"><h6>是否存在介质泄漏？</h6><p>是 → 检查密封件、连接部位；否 → 检查电气系统</p></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h6 class="mb-3"><i class="fas fa-clipboard-list text-success"></i> 排查记录模板</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>基本信息</h6>
+                                        <ul class="list-unstyled">
+                                            <li>设备编号：_____________</li>
+                                            <li>故障时间：_____________</li>
+                                            <li>操作人员：_____________</li>
+                                            <li>故障现象：_____________</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>检测数据</h6>
+                                        <ul class="list-unstyled">
+                                            <li>温度测量：_____________</li>
+                                            <li>振动值：_____________</li>
+                                            <li>噪音分贝：_____________</li>
+                                            <li>压力值：_____________</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="maintGuideTab">
+                    <h6 class="mb-3"><i class="fas fa-hard-hat text-danger"></i> 安全注意事项</h6>
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="alert alert-warning mb-0">
+                                        <strong><i class="fas fa-exclamation-triangle"></i> 操作前准备</strong><br>
+                                        <ul class="mb-0 mt-2" style="font-size:12px;">
+                                            <li>确认设备已停机并切断电源</li>
+                                            <li>执行锁定/挂牌(LOTO)程序</li>
+                                            <li>穿戴适当的个人防护装备(PPE)</li>
+                                            <li>准备必要的工具和备件</li>
+                                            <li>确认工作区域整洁、照明充足</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-info mb-0">
+                                        <strong><i class="fas fa-shield-alt"></i> 操作中注意</strong><br>
+                                        <ul class="mb-0 mt-2" style="font-size:12px;">
+                                            <li>严格按照操作规程执行</li>
+                                            <li>注意高温、高压部件</li>
+                                            <li>使用正确的工具和力矩</li>
+                                            <li>发现异常立即停止操作</li>
+                                            <li>保持与同事的沟通协调</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h6 class="mb-3"><i class="fas fa-tools text-primary"></i> 维护操作指南</h6>
+                    <div class="guide-grid">
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-cog text-danger"></i> 轴承更换指南</div>
+                            <div class="guide-card-body">
+                                <ol>
+                                    <li>停机并切断电源，确保锁定/挂牌</li>
+                                    <li>拆卸防护罩和相关部件</li>
+                                    <li>使用拉拔器拆卸旧轴承</li>
+                                    <li>清洁轴颈和轴承座</li>
+                                    <li>安装新轴承（热装或冷压）</li>
+                                    <li>加注适量润滑脂</li>
+                                    <li>装复部件，调整间隙</li>
+                                    <li>空载试运转，检查温度和振动</li>
+                                </ol>
+                                <div class="mt-2 p-2" style="background:#fff3cd;border-radius:6px;font-size:11px;">
+                                    <strong>提示：</strong>热装时轴承加热温度不超过120℃
+                                </div>
+                            </div>
+                        </div>
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-tint text-warning"></i> 密封件更换指南</div>
+                            <div class="guide-card-body">
+                                <ol>
+                                    <li>排空系统介质，释放压力</li>
+                                    <li>拆卸密封部位相关部件</li>
+                                    <li>取出旧密封件，清洁密封槽</li>
+                                    <li>检查密封面是否有损伤</li>
+                                    <li>安装新密封件（注意方向）</li>
+                                    <li>均匀紧固螺栓，避免偏斜</li>
+                                    <li>加注介质，检查是否泄漏</li>
+                                    <li>运行测试，观察密封效果</li>
+                                </ol>
+                                <div class="mt-2 p-2" style="background:#fff3cd;border-radius:6px;font-size:11px;">
+                                    <strong>提示：</strong>O型圈安装时可使用少量润滑剂辅助
+                                </div>
+                            </div>
+                        </div>
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-oil-can text-success"></i> 润滑维护指南</div>
+                            <div class="guide-card-body">
+                                <ul>
+                                    <li>根据设备要求选择合适的润滑剂</li>
+                                    <li>定期检查润滑点，保持清洁</li>
+                                    <li>按照周期更换润滑脂/油</li>
+                                    <li>注意润滑剂的相容性</li>
+                                    <li>记录润滑时间和用量</li>
+                                    <li>异常时取样进行油液分析</li>
+                                </ul>
+                                <div class="mt-2 p-2" style="background:#d4edda;border-radius:6px;font-size:11px;">
+                                    <strong>建议：</strong>建立润滑点台账，实行定点定量定时润滑
+                                </div>
+                            </div>
+                        </div>
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-wave-square text-primary"></i> 振动检测指南</div>
+                            <div class="guide-card-body">
+                                <ul>
+                                    <li>使用振动分析仪测量振动值</li>
+                                    <li>测量水平、垂直、轴向三个方向</li>
+                                    <li>记录振动频谱，分析特征频率</li>
+                                    <li>对比标准值，判断是否正常</li>
+                                    <li>建立趋势图，跟踪变化</li>
+                                    <li>超标时及时安排检修</li>
+                                </ul>
+                                <div class="mt-2 p-2" style="background:#cce5ff;border-radius:6px;font-size:11px;">
+                                    <strong>参考：</strong>ISO 10816振动标准，一般设备振动速度≤4.5mm/s
+                                </div>
+                            </div>
+                        </div>
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-bolt text-danger"></i> 电机维护指南</div>
+                            <div class="guide-card-body">
+                                <ol>
+                                    <li>断电并确认电机已停止运转</li>
+                                    <li>测量绝缘电阻（≥1MΩ/kV）</li>
+                                    <li>检查接线端子是否松动</li>
+                                    <li>清理电机内外灰尘</li>
+                                    <li>检查轴承状况，必要时更换</li>
+                                    <li>检查风扇和通风道是否畅通</li>
+                                    <li>测量三相电流平衡度</li>
+                                    <li>空载试运行，记录参数</li>
+                                </ol>
+                                <div class="mt-2 p-2" style="background:#fff3cd;border-radius:6px;font-size:11px;">
+                                    <strong>注意：</strong>测量绝缘电阻前应确保绕组已放电
+                                </div>
+                            </div>
+                        </div>
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-sync-alt text-info"></i> 齿轮维护指南</div>
+                            <div class="guide-card-body">
+                                <ul>
+                                    <li>检查齿面磨损、点蚀、裂纹情况</li>
+                                    <li>测量齿侧间隙是否符合标准</li>
+                                    <li>检查润滑油品质和油量</li>
+                                    <li>清理齿轮箱内部杂质</li>
+                                    <li>更换老化密封件</li>
+                                    <li>调整齿轮啮合位置</li>
+                                    <li>空载和负载试运行</li>
+                                </ul>
+                                <div class="mt-2 p-2" style="background:#cce5ff;border-radius:6px;font-size:11px;">
+                                    <strong>标准：</strong>齿侧间隙一般为模数的0.1~0.15倍
+                                </div>
+                            </div>
+                        </div>
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-link text-secondary"></i> 联轴器对中指南</div>
+                            <div class="guide-card-body">
+                                <ol>
+                                    <li>确认设备已停机并固定</li>
+                                    <li>使用百分表或激光对中仪</li>
+                                    <li>测量径向偏差和角度偏差</li>
+                                    <li>调整从动设备位置</li>
+                                    <li>复核对中精度</li>
+                                    <li>紧固地脚螺栓</li>
+                                    <li>试运转验证</li>
+                                </ol>
+                                <div class="mt-2 p-2" style="background:#fff3cd;border-radius:6px;font-size:11px;">
+                                    <strong>精度：</strong>一般设备径向偏差≤0.05mm，角度偏差≤0.05mm/m
+                                </div>
+                            </div>
+                        </div>
+                        <div class="guide-card">
+                            <div class="guide-card-header"><i class="fas fa-compress-arrows-alt text-success"></i> 皮带维护指南</div>
+                            <div class="guide-card-body">
+                                <ul>
+                                    <li>检查皮带张力是否合适</li>
+                                    <li>检查皮带表面磨损和裂纹</li>
+                                    <li>检查皮带轮磨损和对中情况</li>
+                                    <li>清洁皮带和皮带轮表面</li>
+                                    <li>调整张紧装置</li>
+                                    <li>更换老化或损坏的皮带</li>
+                                    <li>试运行检查是否打滑</li>
+                                </ul>
+                                <div class="mt-2 p-2" style="background:#d4edda;border-radius:6px;font-size:11px;">
+                                    <strong>检查：</strong>用手指按压皮带中点，下垂量应为皮带长度的1.5%~2%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="faqTab">
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">如何判断轴承是否需要更换？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">当出现以下情况时应考虑更换轴承：1) 振动值超过ISO标准限值；2) 温度持续升高超过正常范围20℃以上；3) 出现明显的异常噪音（尖叫声、摩擦声）；4) 润滑油中发现大量金属屑；5) 运行时间超过设计寿命。更换前应先确认故障确由轴承引起，避免误换。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">密封泄漏如何处理？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">首先确定泄漏位置和类型，检查密封件是否老化或损坏。轻微泄漏可尝试紧固螺栓，严重泄漏需更换密封件。更换时注意清洁密封面，选择正确的密封材料，安装时避免扭曲或过度压缩。对于O型圈密封，建议使用专用安装工具。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">设备振动超标的原因有哪些？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">常见原因包括：1) 转子不平衡；2) 轴不对中；3) 轴承损坏；4) 地脚螺栓松动；5) 齿轮磨损；6) 共振现象。需要通过振动频谱分析确定具体原因，针对性地采取平衡、对中、更换轴承等措施。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">如何选择合适的润滑剂？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">选择润滑剂需考虑：1) 设备制造商推荐；2) 工作温度范围；3) 负载大小和转速；4) 环境条件（潮湿、粉尘等）；5) 与现有润滑剂的相容性。常用类型包括矿物油、合成油、润滑脂等。不同品牌润滑剂混合使用前应确认相容性。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">预防性维护的周期如何确定？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">维护周期应基于：1) 设备制造商建议；2) 实际运行工况；3) 历史故障数据；4) 状态监测结果。一般建议：日常巡检（每日/每周）、定期保养（每月/每季度）、大修（每年/每两年）。可结合AI预测优化维护周期。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">电机过热怎么办？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">电机过热可能由以下原因引起：1) 过载运行，检查负载是否超过额定值；2) 通风不良，清理散热片和通风道；3) 绕组故障，测量绝缘电阻和三相电流；4) 轴承损坏，检查轴承状况；5) 电压不平衡，检查电源电压。应先停机冷却后再进行检查。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">齿轮箱噪音大如何处理？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">齿轮箱噪音增大的处理方法：1) 检查润滑油量和品质，及时更换变质油液；2) 检查齿轮啮合间隙，调整至合适范围；3) 检查齿轮磨损情况，磨损严重时更换；4) 检查轴承状况；5) 检查箱体是否有裂纹或变形。定期更换润滑油可有效降低噪音。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">如何延长设备使用寿命？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">延长设备寿命的关键措施：1) 严格执行预防性维护计划；2) 使用合格的润滑剂和备件；3) 避免设备过载和超速运行；4) 保持设备清洁，防止灰尘和杂质进入；5) 定期检查和更换易损件；6) 建立设备运行档案，跟踪性能变化趋势。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">紧急故障处理流程是什么？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">紧急故障处理流程：1) 立即停机，确保安全；2) 评估故障严重程度和影响范围；3) 启动应急预案，通知相关人员；4) 采取临时措施防止故障扩大；5) 组织技术人员进行故障诊断；6) 制定维修方案并实施；7) 验证修复效果；8) 记录故障原因和处理过程，完善预防措施。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">备件库存如何优化？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">备件库存优化方法：1) ABC分类管理，A类备件重点管理；2) 根据设备重要性和故障频率确定安全库存；3) 利用预测分析技术预测备件需求；4) 与供应商建立快速响应机制；5) 定期盘点，及时处理呆滞库存；6) 考虑备件通用性，减少品种数量。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">如何建立有效的设备维护体系？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">建立有效维护体系的步骤：1) 对设备进行重要性评估和分类；2) 制定针对不同类别设备的维护策略；3) 建立设备台账和技术档案；4) 制定标准操作规程和维护手册；5) 培训维护人员技能；6) 实施状态监测和故障诊断；7) 持续改进维护策略，引入数字化管理工具。</div>
+                    </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">状态监测技术有哪些？<i class="fas fa-chevron-down faq-toggle"></i></div>
+                        <div class="faq-answer">常用状态监测技术包括：1) 振动分析，适用于旋转机械；2) 油液分析，检测磨损颗粒和油品劣化；3) 红外热成像，检测温度异常；4) 超声波检测，发现早期故障；5) 电机电流特征分析(MCSA)；6) 声发射检测。多种技术结合使用可提高故障诊断准确性。</div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="toolsTab">
+                    <h6 class="mb-3"><i class="fas fa-download text-primary"></i> 维护工具下载</h6>
+                    <div class="tool-grid">
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="tool-info"><h6>轴承选型手册</h6><p>PDF · 2.5MB · SKF官方</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-excel"></i></div>
+                            <div class="tool-info"><h6>维护检查表</h6><p>Excel · 180KB · 可编辑</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="tool-info"><h6>密封件规格表</h6><p>PDF · 1.8MB · 国家标准</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-excel"></i></div>
+                            <div class="tool-info"><h6>润滑剂对照表</h6><p>Excel · 95KB · 品牌对照</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="tool-info"><h6>振动分析指南</h6><p>PDF · 3.2MB · ISO标准</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="tool-info"><h6>FMEA模板</h6><p>PDF · 500KB · RCM标准</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-excel"></i></div>
+                            <div class="tool-info"><h6>设备台账模板</h6><p>Excel · 120KB · 可定制</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="tool-info"><h6>安全操作规程</h6><p>PDF · 800KB · 国家标准</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-excel"></i></div>
+                            <div class="tool-info"><h6>备件需求预测表</h6><p>Excel · 200KB · 含公式</p></div>
+                        </div>
+                        <div class="tool-item" onclick="showToast('下载功能开发中，请联系管理员', 'info')">
+                            <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="tool-info"><h6>故障代码手册</h6><p>PDF · 1.5MB · 常用设备</p></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h6 class="mb-3"><i class="fas fa-calculator text-success"></i> 在线计算工具</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card" style="border:1px solid #eef0f5;">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-cog fa-2x text-primary mb-2"></i>
+                                        <h6>轴承寿命计算</h6>
+                                        <p class="small text-muted mb-0">基于ISO 281标准计算轴承额定寿命</p>
+                                        <button class="btn btn-sm btn-outline-primary mt-2" onclick="showToast('功能开发中', 'info')">使用工具</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card" style="border:1px solid #eef0f5;">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-weight-hanging fa-2x text-success mb-2"></i>
+                                        <h6>振动值转换</h6>
+                                        <p class="small text-muted mb-0">加速度、速度、位移单位转换</p>
+                                        <button class="btn btn-sm btn-outline-success mt-2" onclick="showToast('功能开发中', 'info')">使用工具</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card" style="border:1px solid #eef0f5;">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-thermometer-half fa-2x text-danger mb-2"></i>
+                                        <h6>温度单位转换</h6>
+                                        <p class="small text-muted mb-0">摄氏度、华氏度、开尔文转换</p>
+                                        <button class="btn btn-sm btn-outline-danger mt-2" onclick="showToast('功能开发中', 'info')">使用工具</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h6 class="mb-3"><i class="fas fa-laptop-code text-info"></i> 推荐软件工具</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-2" style="border:1px solid #eef0f5;">
+                                    <div class="card-body d-flex align-items-center">
+                                        <i class="fas fa-chart-line fa-2x text-primary mr-3" style="margin-right:12px;"></i>
+                                        <div>
+                                            <h6 class="mb-1">振动分析软件</h6>
+                                            <p class="small text-muted mb-0">专业的振动频谱分析工具，支持多种传感器</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2" style="border:1px solid #eef0f5;">
+                                    <div class="card-body d-flex align-items-center">
+                                        <i class="fas fa-oil-can fa-2x text-success mr-3" style="margin-right:12px;"></i>
+                                        <div>
+                                            <h6 class="mb-1">油液分析系统</h6>
+                                            <p class="small text-muted mb-0">润滑油品质监测和磨损颗粒分析</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2" style="border:1px solid #eef0f5;">
+                                    <div class="card-body d-flex align-items-center">
+                                        <i class="fas fa-temperature-high fa-2x text-danger mr-3" style="margin-right:12px;"></i>
+                                        <div>
+                                            <h6 class="mb-1">红外热成像软件</h6>
+                                            <p class="small text-muted mb-0">设备温度分布分析和异常检测</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2" style="border:1px solid #eef0f5;">
+                                    <div class="card-body d-flex align-items-center">
+                                        <i class="fas fa-database fa-2x text-warning mr-3" style="margin-right:12px;"></i>
+                                        <div>
+                                            <h6 class="mb-1">设备管理ERP</h6>
+                                            <p class="small text-muted mb-0">设备全生命周期管理系统</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h6 class="mb-3"><i class="fas fa-link text-info"></i> 技术文档链接</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-unstyled" style="font-size:12px;">
+                                    <li class="mb-2"><a href="https://www.iso.org/standard/34187.html" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> ISO 14224 设备可靠性数据采集标准</a></li>
+                                    <li class="mb-2"><a href="https://www.iso.org/standard/53483.html" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> ISO 10816 机械振动评估标准</a></li>
+                                    <li class="mb-2"><a href="https://www.skf.com/cn/products/maintenance-products" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> SKF轴承维护技术文档</a></li>
+                                    <li class="mb-2"><a href="https://www.tpm.org.cn/" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> TPM全面生产维护指南</a></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-unstyled" style="font-size:12px;">
+                                    <li class="mb-2"><a href="https://www.iso.org/standard/34188.html" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> ISO 13373 状态监测和诊断技术</a></li>
+                                    <li class="mb-2"><a href="https://www.iso.org/standard/34189.html" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> ISO 17359 状态监测通用指南</a></li>
+                                    <li class="mb-2"><a href="https://www.machinerylubrication.com/" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> 润滑技术在线资源</a></li>
+                                    <li class="mb-2"><a href="https://www.vibromera.eu/" target="_blank" class="text-primary"><i class="fas fa-external-link-alt"></i> 振动分析知识库</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-lightbulb"></i> 推荐维护方案</h5></div>
+                <div class="card-body">
+                    <div class="row" id="solutionsList">
+                        <div class="col-md-4"><div class="card border-info mb-3"><div class="card-body"><h6 class="card-title"><i class="fas fa-tools text-info"></i> 更换轴承</h6><p class="card-text small">标准更换方案，成功率95%</p><div class="d-flex justify-content-between"><span>预计: 2h</span><span class="badge badge-primary">AI推荐</span></div></div></div></div>
+                        <div class="col-md-4"><div class="card border-info mb-3"><div class="card-body"><h6 class="card-title"><i class="fas fa-oil-can text-info"></i> 润滑维护</h6><p class="card-text small">预防性润滑，延长寿命</p><div class="d-flex justify-content-between"><span>预计: 0.5h</span><span class="badge badge-success">高频使用</span></div></div></div></div>
+                        <div class="col-md-4"><div class="card border-info mb-3"><div class="card-body"><h6 class="card-title"><i class="fas fa-wrench text-info"></i> 调整间隙</h6><p class="card-text small">简单调整，无需更换</p><div class="d-flex justify-content-between"><span>预计: 1h</span><span class="badge badge-secondary">低成本</span></div></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let fmeaRadarChart = null;
+let faultTrendChart = null;
+var sparePartsCache = [];
+
+window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        initFmeaRadarChart();
+        initFaultTrendChart();
+        loadFaults();
+        loadSolutions();
+        loadMaintTasks();
+        initBootstrapTabs();
+    }, 200);
+    document.getElementById('faultTime').value = new Date().toISOString().slice(0, 16);
+});
+
+function initBootstrapTabs() {
+    var triggerTabList = [].slice.call(document.querySelectorAll('#guideTabs a[data-bs-toggle="tab"]'));
+    triggerTabList.forEach(function(triggerEl) {
+        var tabTrigger = new bootstrap.Tab(triggerEl);
+        triggerEl.addEventListener('click', function(event) {
+            event.preventDefault();
+            tabTrigger.show();
+        });
+    });
+}
+
+function showToast(message, type) {
+    var container = document.getElementById('toastContainer');
+    var toast = document.createElement('div');
+    toast.className = 'toast-message ' + type;
+    var icons = { success: 'fa-check-circle text-success', error: 'fa-times-circle text-danger', info: 'fa-info-circle text-info' };
+    toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + ' toast-icon"></i><span class="toast-text">' + message + '</span>';
+    container.appendChild(toast);
+    setTimeout(function() {
+        toast.style.animation = 'slideOut 0.3s ease forwards';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 3000);
+}
+
+function activateTab(linkElement) {
+    var panel = document.getElementById('faultTypeGuidePanel');
+    if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+    }
+}
+
+function initFmeaRadarChart() {
+    var canvas = document.getElementById('fmeaRadarChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    fmeaRadarChart = new Chart(canvas.getContext('2d'), {
+        type: 'radar',
+        data: {
+            labels: ['严重度', '发生度', '探测度'],
+            datasets: [
+                { label: '轴承故障', data: [8, 7, 6], borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.2)', pointBackgroundColor: '#dc3545', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4 },
+                { label: '油封故障', data: [5, 6, 4], borderColor: '#ffc107', backgroundColor: 'rgba(255, 193, 7, 0.2)', pointBackgroundColor: '#ffc107', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4 },
+                { label: '齿轮故障', data: [10, 4, 7], borderColor: '#17a2b8', backgroundColor: 'rgba(23, 162, 184, 0.2)', pointBackgroundColor: '#17a2b8', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 15 } } },
+            scales: { r: { beginAtZero: true, max: 10, ticks: { stepSize: 2, backdropColor: 'transparent' }, grid: { color: 'rgba(0, 0, 0, 0.1)' }, angleLines: { color: 'rgba(0, 0, 0, 0.1)' }, pointLabels: { font: { size: 13 } } } }
+        }
+    });
+}
+
+function initFaultTrendChart() {
+    var canvas = document.getElementById('faultTrendChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    var months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    faultTrendChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                {
+                    label: '故障数量',
+                    data: [8, 6, 7, 5, 4, 6, 3, 4, 3, 2, 3, 2],
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                },
+                {
+                    label: '修复数量',
+                    data: [7, 5, 6, 5, 4, 5, 3, 4, 3, 2, 3, 2],
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                },
+                {
+                    label: '平均修复时间(h)',
+                    data: [4.2, 3.8, 3.5, 3.2, 2.8, 3.0, 2.5, 2.3, 2.1, 2.0, 2.2, 2.5],
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.05)',
+                    tension: 0.4,
+                    fill: false,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { usePointStyle: true, padding: 15 } },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { font: { size: 11 } } },
+                y1: { position: 'right', beginAtZero: true, max: 5, grid: { drawOnChartArea: false }, ticks: { font: { size: 11 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+function togglePanel(panelId) {
+    var panel = document.getElementById(panelId);
+    if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        if (panelId === 'recordFaultPanel') loadSparePartsForDropdown();
+    } else {
+        panel.classList.add('collapsed');
+    }
+}
+
+function toggleFaq(item) { item.classList.toggle('open'); }
+
+async function loadFaults() {
+    try {
+        var status = document.getElementById('filterFaultStatus').value;
+        var url = '/api/spare_parts/faults/list' + (status ? '?status=' + status : '');
+        var response = await fetch(url);
+        var result = await response.json();
+        if (result.success) {
+            var items = result.data.items;
+            var html = items.map(function(item) {
+                var statusMap = { 'open': ['待处理', 'warning'], 'in_progress': ['处理中', 'info'], 'resolved': ['已解决', 'success'] };
+                var st = statusMap[item.status] || [item.status, 'secondary'];
+                return '<tr><td>' + (item.fault_code || '-') + '</td><td>SP' + (item.spare_part_id || '-') + '</td><td>' + getFaultTypeName(item.fault_type) + '</td><td><span class="badge badge-' + getSeverityClass(item.severity) + '">' + getSeverityText(item.severity) + '</span></td><td><span class="badge badge-' + getPriorityBadgeClass(item.priority) + '">P' + item.priority + '</span></td><td><span class="badge badge-' + st[1] + '">' + st[0] + '</span></td><td>' + (item.ai_diagnosis ? '<span class="badge badge-info">AI</span>' : '') + '</td><td><button class="btn btn-sm btn-info" onclick="showFaultAction(' + item.id + ', this)">处理</button></td></tr>';
+            }).join('');
+            document.getElementById('faultTable').innerHTML = html;
+            updateFaultStats(items);
+        }
+    } catch (error) { console.error('加载故障记录失败:', error); }
+}
+
+function showFaultAction(id, btn) {
+    var row = btn.closest('tr');
+    var existing = row.nextElementSibling;
+    if (existing && existing.classList.contains('fault-action-row')) {
+        existing.remove();
+        return;
+    }
+    var actionRow = document.createElement('tr');
+    actionRow.className = 'fault-action-row';
+    actionRow.innerHTML = '<td colspan="8">' +
+        '<div class="form-row">' +
+            '<div class="form-group"><label>状态</label><select class="form-control" id="status_' + id + '">' +
+                '<option value="open">待处理</option><option value="in_progress" selected>处理中</option><option value="resolved">已解决</option>' +
+            '</select></div>' +
+            '<div class="form-group"><label>处理备注</label><input type="text" class="form-control" id="note_' + id + '" placeholder="输入处理说明..."></div>' +
+        '</div>' +
+        '<div class="form-actions">' +
+            '<button class="btn btn-sm btn-outline-secondary" onclick="this.closest(\'tr\').remove()">取消</button>' +
+            '<button class="btn btn-sm btn-primary" onclick="updateFaultStatus(' + id + ')"><i class="fas fa-save"></i> 保存</button>' +
+        '</div>' +
+    '</td>';
+    row.parentNode.insertBefore(actionRow, row.nextSibling);
+}
+
+async function updateFaultStatus(id) {
+    var status = document.getElementById('status_' + id).value;
+    var note = document.getElementById('note_' + id).value;
+    try {
+        var response = await fetch('/api/spare_parts/faults/' + id + '/update', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status, note: note })
+        });
+        var result = await response.json();
+        if (result.success) {
+            showToast('故障状态已更新', 'success');
+            loadFaults();
+        } else { showToast('更新失败: ' + (result.error || ''), 'error'); }
+    } catch (error) { console.error('更新故障状态失败:', error); showToast('更新失败', 'error'); }
+}
+
+function updateFaultStats(items) {
+    var critical = items.filter(function(i) { return i.severity === 'critical'; }).length;
+    var high = items.filter(function(i) { return i.priority >= 8; }).length;
+    var open = items.filter(function(i) { return i.status === 'open'; }).length;
+    document.getElementById('criticalFaults').textContent = critical;
+    document.getElementById('highFaults').textContent = high;
+    document.getElementById('totalFaults').textContent = open;
+}
+
+function getFaultTypeName(type) {
+    var map = { 'bearing_fail': '轴承故障', 'seal_leak': '密封泄漏', 'gear_wear': '齿轮磨损', 'motor_overheat': '电机过热', 'vibration': '异常振动', 'lubrication': '润滑不足', 'corrosion': '腐蚀', 'fatigue_crack': '疲劳裂纹', 'other': '其他' };
+    return map[type] || type;
+}
+function getSeverityClass(s) { return ({ 'critical': 'danger', 'high': 'warning', 'medium': 'primary', 'low': 'secondary' })[s] || 'secondary'; }
+function getSeverityText(s) { return ({ 'critical': '严重', 'high': '高', 'medium': '中', 'low': '低' })[s] || s; }
+function getPriorityBadgeClass(p) { if (p >= 8) return 'danger'; if (p >= 5) return 'warning'; return 'primary'; }
+
+async function loadSolutions() {
+    try {
+        var response = await fetch('/api/spare_parts/maintenance/solutions/list');
+        var result = await response.json();
+        if (result.success && result.data.items.length > 0) {
+            document.getElementById('solutionsList').innerHTML = result.data.items.slice(0, 4).map(function(item) {
+                return '<div class="col-md-4"><div class="card border-info mb-3"><div class="card-body"><h6 class="card-title"><i class="fas fa-tools text-info"></i> ' + (item.name || item.solution_name || '') + '</h6><p class="card-text small">' + (item.description || '') + '</p><div class="d-flex justify-content-between"><span>预估: ' + (item.estimated_time || '-') + 'h</span><span class="badge ' + (item.is_ai_recommended ? 'badge-info' : 'badge-secondary') + '">' + (item.is_ai_recommended ? 'AI推荐' : '常用') + '</span></div></div></div></div>';
+            }).join('');
+            document.getElementById('solutions').textContent = result.data.total || result.data.items.length;
+        }
+    } catch (error) { console.error('加载维护方案失败:', error); }
+}
+
+async function loadSparePartsForDropdown() {
+    if (sparePartsCache.length > 0) {
+        renderSparePartsDropdown(sparePartsCache);
+        return;
+    }
+    try {
+        var response = await fetch('/api/spare_parts/quality/spare-parts');
+        var result = await response.json();
+        if (result.success) {
+            sparePartsCache = result.data.items;
+            renderSparePartsDropdown(sparePartsCache);
+        }
+    } catch (error) { console.error('加载备件列表失败:', error); }
+}
+
+function renderSparePartsDropdown(parts) {
+    var select = document.getElementById('faultSparePartId');
+    var html = '<option value="">请选择备件</option>';
+    parts.forEach(function(part) {
+        html += '<option value="' + part.id + '">' + part.part_code + ' - ' + part.name + '</option>';
+    });
+    select.innerHTML = html;
+}
+
+async function submitFault() {
+    var sparePartId = document.getElementById('faultSparePartId').value;
+    var faultType = document.getElementById('faultType').value;
+    if (!sparePartId) { showToast('请选择备件', 'error'); return; }
+    var data = {
+        spare_part_id: parseInt(sparePartId),
+        fault_type: faultType,
+        severity: document.getElementById('faultSeverity').value,
+        equipment_id: document.getElementById('faultEquipmentId').value || null,
+        fault_time: document.getElementById('faultTime').value ? document.getElementById('faultTime').value.replace('T', ' ') + ':00' : null,
+        fault_description: document.getElementById('faultDescription').value,
+        priority: document.getElementById('faultSeverity').value === 'critical' ? 10 : document.getElementById('faultSeverity').value === 'high' ? 8 : 5
+    };
+    try {
+        var response = await fetch('/api/spare_parts/faults/create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        });
+        var result = await response.json();
+        if (result.success) {
+            showToast('故障记录创建成功！', 'success');
+            togglePanel('recordFaultPanel');
+            document.getElementById('faultForm').reset();
+            document.getElementById('faultTime').value = new Date().toISOString().slice(0, 16);
+            loadFaults();
+        } else { showToast('创建失败: ' + (result.error || '未知错误'), 'error'); }
+    } catch (error) { console.error('提交故障失败:', error); showToast('提交失败: ' + error.message, 'error'); }
+}
+
+async function runAIDiagnosis() {
+    var input = document.getElementById('aiDiagnosisInput').value;
+    var faultType = document.getElementById('aiDiagnosisType').value;
+    if (!input) { showToast('请描述故障现象', 'error'); return; }
+    var resultDiv = document.getElementById('aiDiagnosisResult');
+    resultDiv.innerHTML = '<div style="text-align:center; padding:30px;"><i class="fas fa-cog fa-spin" style="font-size:24px; color:#0d6efd;"></i><p style="margin-top:10px; color:#6c757d;">AI正在分析故障...</p></div>';
+    try {
+        var response = await fetch('/api/spare_parts/ai/analyze-fault', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: input, fault_type: faultType || null })
+        });
+        var result = await response.json();
+        if (result.success) {
+            var d = result.data;
+            resultDiv.innerHTML = '<div class="card border-info"><div class="card-body">' +
+                '<h6 class="mb-3"><i class="fas fa-robot text-info"></i> AI诊断结果</h6>' +
+                '<div class="stat-row"><span class="stat-label">故障类型</span><span class="stat-value">' + getFaultTypeName(d.fault_type || faultType || '未知') + '</span></div>' +
+                '<div class="stat-row"><span class="stat-label">根因分析</span><span class="stat-value">' + (d.root_cause || '分析中...') + '</span></div>' +
+                '<div class="stat-row"><span class="stat-label">置信度</span><span class="stat-value">' + ((d.confidence || 0) * 100).toFixed(1) + '%</span></div>' +
+                '<div class="stat-row"><span class="stat-label">建议方案</span><span class="stat-value">' + (d.recommended_solution || '建议进一步检测') + '</span></div>' +
+                '<div class="stat-row"><span class="stat-label">预计耗时</span><span class="stat-value">' + (d.estimated_time || '-') + 'h</span></div>' +
+                '<div class="stat-row"><span class="stat-label">风险等级</span><span class="stat-value"><span class="badge badge-' + (d.risk_level === 'high' ? 'danger' : d.risk_level === 'medium' ? 'warning' : 'success') + '">' + (d.risk_level || '中') + '</span></span></div>' +
+                '</div></div>';
+            showToast('AI诊断完成', 'success');
+        } else { resultDiv.innerHTML = '<div class="alert alert-danger">诊断失败: ' + (result.error || '') + '</div>'; }
+    } catch (error) {
+        resultDiv.innerHTML = '<div class="card border-info"><div class="card-body">' +
+            '<h6 class="mb-3"><i class="fas fa-robot text-info"></i> AI诊断结果 (模拟)</h6>' +
+            '<div class="stat-row"><span class="stat-label">故障类型</span><span class="stat-value">' + getFaultTypeName(faultType || 'bearing_fail') + '</span></div>' +
+            '<div class="stat-row"><span class="stat-label">根因分析</span><span class="stat-value">轴承润滑不良导致异常磨损</span></div>' +
+            '<div class="stat-row"><span class="stat-label">置信度</span><span class="stat-value">87.5%</span></div>' +
+            '<div class="stat-row"><span class="stat-label">建议方案</span><span class="stat-value">更换轴承并检查润滑系统</span></div>' +
+            '<div class="stat-row"><span class="stat-label">预计耗时</span><span class="stat-value">2h</span></div>' +
+            '</div></div>';
+        showToast('AI诊断完成 (模拟数据)', 'info');
+    }
+}
+
+async function loadMaintTasks() {
+    try {
+        var response = await fetch('/api/spare_parts/maintenance/tasks');
+        var result = await response.json();
+        if (result.success && result.data.items && result.data.items.length > 0) {
+            var list = document.getElementById('maintTaskList');
+            list.innerHTML = result.data.items.map(function(task) {
+                var statusClass = task.status === 'completed' ? 'completed' : task.status === 'in_progress' ? 'in_progress' : 'pending';
+                var statusText = task.status === 'completed' ? '已完成' : task.status === 'in_progress' ? '进行中' : '待处理';
+                return '<div class="maint-task-item"><div class="task-status ' + statusClass + '"></div><div class="task-info"><h6>' + (task.name || task.title || '维护任务') + '</h6><p>' + (task.description || '') + '</p></div><div class="task-meta"><div>' + statusText + '</div><div style="font-size:10px;">' + (task.due_date || '') + '</div></div></div>';
+            }).join('');
+            document.getElementById('pendingTaskCount').textContent = result.data.items.filter(function(t) { return t.status === 'pending'; }).length;
+            document.getElementById('completedTaskCount').textContent = result.data.items.filter(function(t) { return t.status === 'completed'; }).length;
+        }
+    } catch (error) { console.error('加载维护任务失败:', error); }
+}
+
+</script>
+{% endblock %}

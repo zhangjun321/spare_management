@@ -1,5 +1,6 @@
 from app.extensions import db
 from datetime import datetime
+from sqlalchemy.orm import backref
 
 
 class Equipment(db.Model):
@@ -35,7 +36,7 @@ class Equipment(db.Model):
     department = db.relationship('Department', foreign_keys=[department_id], backref='department_equipments')
     supplier = db.relationship('Supplier', foreign_keys=[supplier_id], backref='supplier_equipments')
     maintenance_orders = db.relationship('MaintenanceOrder', foreign_keys='MaintenanceOrder.equipment_id', backref='maintenance_equipment', lazy='dynamic')
-    serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.equipment_id', backref='serial_equipment', lazy='dynamic')
+    serial_numbers = db.relationship('SerialNumber', foreign_keys='SerialNumber.equipment_id', backref=backref('serial_equipment', overlaps='equipment'), lazy='dynamic')
     specs = db.relationship('EquipmentSpecs', foreign_keys='EquipmentSpecs.equipment_id', backref='spec_equipment', uselist=False)
     status_history = db.relationship('EquipmentStatusHistory', backref='equipment', cascade='all, delete-orphan', order_by='EquipmentStatusHistory.created_at.desc()')
     

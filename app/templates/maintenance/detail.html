@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}工单详情 - 备件管理系统{% endblock %}
+
+{% block page_title %}工单详情{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 返回按钮 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{{ url_for('maintenance.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>返回工单列表
+            </a>
+        </div>
+    </div>
+
+    <!-- 工单基本信息 -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2 text-primary"></i>基本信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">工单编号</label>
+                            <p class="fw-bold mb-0">{{ order.order_number }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">设备名称</label>
+                            <p class="mb-0">{{ order.equipment.name if order.equipment else '-' }}</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">工单标题</label>
+                            <p class="mb-0">{{ order.title }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">工单类型</label>
+                            <p class="mb-0">{{ order.type or '-' }}</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">优先级</label>
+                            <p class="mb-0">
+                                <span class="badge 
+                                    {% if order.priority == 'high' %}bg-danger
+                                    {% elif order.priority == 'medium' %}bg-warning
+                                    {% else %}bg-secondary
+                                    {% endif %}">
+                                    {% if order.priority == 'high' %}高
+                                    {% elif order.priority == 'medium' %}中
+                                    {% else %}低
+                                    {% endif %}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">状态</label>
+                            <p class="mb-0">
+                                <span class="badge 
+                                    {% if order.status == 'completed' %}bg-success
+                                    {% elif order.status == 'in_progress' %}bg-info
+                                    {% elif order.status == 'assigned' %}bg-primary
+                                    {% elif order.status == 'pending' %}bg-warning
+                                    {% else %}bg-secondary
+                                    {% endif %}">
+                                    {% if order.status == 'completed' %}已完成
+                                    {% elif order.status == 'in_progress' %}进行中
+                                    {% elif order.status == 'assigned' %}已分配
+                                    {% elif order.status == 'pending' %}待处理
+                                    {% else %}{{ order.status }}
+                                    {% endif %}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">报修人</label>
+                            <p class="mb-0">{{ order.requester.username if order.requester else '-' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">指派给</label>
+                            <p class="mb-0">{{ order.assignee.username if order.assignee else '未分配' }}</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">创建时间</label>
+                            <p class="mb-0">{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">更新时间</label>
+                            <p class="mb-0">{{ order.updated_at.strftime('%Y-%m-%d %H:%M') if order.updated_at else '-' }}</p>
+                        </div>
+                    </div>
+                    {% if order.completed_date %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">完成时间</label>
+                            <p class="mb-0">{{ order.completed_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if order.description %}
+                    <div class="row">
+                        <div class="col-12">
+                            <label class="text-muted small">工单描述</label>
+                            <p class="mb-0">{{ order.description }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if order.remark %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label class="text-muted small">备注</label>
+                            <p class="mb-0">{{ order.remark }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷操作 -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2 text-warning"></i>快捷操作</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.status == 'pending' %}
+                    <button class="btn btn-primary w-100 mb-2">
+                        <i class="fas fa-user-plus me-2"></i>分配工单
+                    </button>
+                    <button class="btn btn-info w-100 mb-2">
+                        <i class="fas fa-play me-2"></i>开始处理
+                    </button>
+                    {% elif order.status == 'assigned' or order.status == 'in_progress' %}
+                    <button class="btn btn-success w-100 mb-2">
+                        <i class="fas fa-check me-2"></i>完成工单
+                    </button>
+                    {% endif %}
+                    <button class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-edit me-2"></i>编辑工单
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

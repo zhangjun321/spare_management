@@ -18,7 +18,7 @@ class SupplierEvaluation(db.Model):
     remark = db.Column(db.Text, comment='备注')
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     
-    supplier = db.relationship('Supplier', foreign_keys=[supplier_id])
+    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], overlaps="evaluations")
     
     def __repr__(self):
         return f'<SupplierEvaluation {self.id}>'

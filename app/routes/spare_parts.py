@@ -1139,3 +1139,46 @@ def debug_query_test():
         'status_distribution': status_dist,
         'active_distribution': active_dist
     })
+
+
+@spare_parts_bp.route('/dashboard')
+@login_required
+def dashboard():
+    """综合分析驾驶舱"""
+    return render_template('spare_parts_new/dashboard.html')
+
+
+@spare_parts_bp.route('/prediction')
+@login_required
+def prediction():
+    """智能预测与补货"""
+    return render_template('spare_parts_new/prediction.html')
+
+
+@spare_parts_bp.route('/quality')
+@login_required
+def quality():
+    """备件质量管理"""
+    return render_template('spare_parts_new/quality.html')
+
+
+@spare_parts_bp.route('/diagnosis')
+@login_required
+def diagnosis():
+    """故障诊断与维护"""
+    return render_template('spare_parts_new/diagnosis.html')
+
+
+@spare_parts_bp.route('/lifecycle')
+@login_required
+def lifecycle():
+    """生命周期管理"""
+    return render_template('spare_parts_new/lifecycle.html')
+
+
+@spare_parts_bp.route('/workstation')
+@login_required
+def workstation():
+    """工作台"""
+    from datetime import datetime
+    return render_template('spare_parts_new/workstation.html', now=datetime.now())

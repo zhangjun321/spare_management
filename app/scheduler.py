@@ -167,6 +167,22 @@ def check_stock_age_warnings():
             pass
 
 
+def daily_todo_summary_email():
+    """每日待办汇总邮件（每天上午8点自动发送）"""
+    logger.info("开始发送每日待办汇总邮件...")
+    try:
+        from app.services.workstation_email import send_daily_todo_summary
+        success = send_daily_todo_summary()
+        logger.info(f"每日待办汇总邮件发送{'成功' if success else '失败'}")
+    except Exception as e:
+        logger.error(f"每日待办汇总邮件发送失败：{str(e)}")
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
+
+
 def simulate_equipment_updates():
     """定时模拟设备数据推送（用于演示）"""
     logger.info("开始模拟设备数据推送...")
@@ -228,6 +244,12 @@ def init_scheduler(app=None):
         def wrapped_check_stock_age():
             with app.app_context():
                 check_stock_age_warnings()
+        
+        # 每日待办汇总邮件（每天上午8点）
+        @scheduler.scheduled_job('cron', hour=8, minute=0, id='daily_todo_summary_email')
+        def wrapped_daily_todo_email():
+            with app.app_context():
+                daily_todo_summary_email()
         
         # 设备数据模拟推送（每10秒）
         @scheduler.scheduled_job('interval', seconds=10, id='simulate_equipment_updates')

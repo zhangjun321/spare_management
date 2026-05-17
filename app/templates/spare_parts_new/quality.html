@@ -1,0 +1,816 @@
+{% extends "base.html" %}
+
+{% block title %}备件质量管理 - 备件管理{% endblock %}
+{% block page_title %}备件质量管理{% endblock %}
+
+{% block extra_css %}
+<style>
+.action-panel {
+    border: 1px solid #eef0f5; border-radius: 12px; overflow: hidden;
+    background: #fff; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+.action-panel.collapsed { max-height: 56px; }
+.action-panel:not(.collapsed) { max-height: 2000px; }
+.panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; cursor: pointer; user-select: none;
+    border-bottom: 1px solid transparent; transition: all 0.3s;
+}
+.action-panel:not(.collapsed) .panel-header { border-bottom-color: #eef0f5; background: #f8f9fa; }
+.panel-header:hover { background: #f0f2f7; }
+.panel-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: #1a1c2e; }
+.panel-toggle { transition: transform 0.3s ease; font-size: 12px; color: #8c8ea6; }
+.action-panel:not(.collapsed) .panel-toggle { transform: rotate(180deg); }
+.panel-body { padding: 20px; opacity: 1; transition: opacity 0.3s ease, padding 0.3s ease; }
+.action-panel.collapsed .panel-body { opacity: 0; padding: 0 20px; pointer-events: none; overflow: hidden; max-height: 0; }
+
+.insp-form .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+.insp-form .form-group { flex: 1; }
+.insp-form label { display: block; font-size: 13px; font-weight: 500; color: #495057; margin-bottom: 6px; }
+.insp-form .form-control { border-radius: 8px; border: 1px solid #dee2e6; padding: 8px 12px; font-size: 13px; transition: border-color 0.2s; }
+.insp-form .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.1); }
+.insp-form textarea.form-control { resize: vertical; }
+.insp-form .form-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.insp-form .form-check-input { margin: 0; width: 16px; height: 16px; }
+.insp-form .form-check-label { font-size: 13px; color: #495057; }
+.insp-form .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eef0f5; }
+
+.ai-detect-panel { display: flex; gap: 20px; min-height: 400px; }
+.ai-upload-section { flex: 0 0 360px; display: flex; flex-direction: column; }
+.ai-result-section { flex: 1; display: flex; flex-direction: column; }
+.upload-area {
+    border: 2px dashed #d0d5dd; border-radius: 12px; padding: 24px;
+    text-align: center; transition: all 0.3s; background: #fafbfc; flex: 1;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+}
+.upload-area.drag-over { border-color: #0d6efd; background: #e7f1ff; }
+.upload-icon { font-size: 40px; color: #6c757d; margin-bottom: 10px; }
+.upload-area h5 { color: #343a40; margin-bottom: 6px; font-size: 14px; }
+.upload-hint { color: #6c757d; font-size: 12px; margin-bottom: 12px; }
+.preview-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px; margin-top: 12px; max-height: 150px; overflow-y: auto;
+}
+.preview-item {
+    position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 1; border: 2px solid #e9ecef;
+}
+.preview-item img { width: 100%; height: 100%; object-fit: cover; }
+.remove-preview {
+    position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #fff;
+    border: none; border-radius: 50%; width: 18px; height: 18px; cursor: pointer;
+    font-size: 8px; display: flex; align-items: center; justify-content: center;
+}
+.ai-actions { margin-top: 12px; }
+.result-section h5, .defect-summary h5 {
+    font-size: 14px; font-weight: 600; color: #1a1c2e; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+}
+.detection-results { flex: 1; overflow-y: auto; max-height: 350px; }
+.empty-result, .detecting { text-align: center; padding: 30px 20px; color: #6c757d; }
+.empty-result i, .detecting i { font-size: 36px; margin-bottom: 10px; opacity: 0.5; }
+.result-item { margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+.result-filename { font-size: 12px; color: #495057; margin-bottom: 8px; }
+.result-pass { color: #28a745; font-size: 13px; }
+.result-error { color: #dc3545; font-size: 13px; }
+.defect-count-badge {
+    display: inline-block; background: #ffc107; color: #000; padding: 2px 8px;
+    border-radius: 10px; font-size: 11px; font-weight: 600; margin-bottom: 8px;
+}
+.defect-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+.defect-table th, .defect-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #e9ecef; }
+.defect-table th { background: #e9ecef; font-weight: 600; }
+.defect-type-badge {
+    display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; color: #fff;
+}
+.defect-surface_defect { background: #ffc107; }
+.defect-crack { background: #dc3545; }
+.defect-rust { background: #fd7e14; }
+.defect-wear { background: #6f42c1; }
+.defect-deformation { background: #20c997; }
+.defect-dimension { background: #e83e8c; }
+.defect-missing_part { background: #0dcaf0; }
+.defect-contamination { background: #6c757d; }
+.severity-badge {
+    display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; color: #fff;
+}
+.severity-low { background: #28a745; }
+.severity-medium { background: #ffc107; color: #000; }
+.severity-high { background: #fd7e14; }
+.severity-critical { background: #dc3545; }
+.disposition-scrap { color: #dc3545; font-weight: 600; }
+.disposition-repair { color: #fd7e14; font-weight: 600; }
+.disposition-return { color: #ffc107; font-weight: 600; }
+.disposition-use { color: #28a745; font-weight: 600; }
+.defect-summary { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e9ecef; }
+.defect-type-chart { margin-bottom: 12px; }
+.defect-type-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.defect-type-label { width: 70px; font-size: 11px; text-align: right; }
+.defect-bar { flex: 1; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden; }
+.defect-bar-fill { height: 100%; background: linear-gradient(90deg, #dc3545, #ffc107); border-radius: 3px; }
+.defect-count { width: 24px; font-size: 11px; font-weight: 600; }
+.summary-stats { background: #f8f9fa; border-radius: 6px; padding: 10px; }
+.stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; }
+.stat-row:last-child { margin-bottom: 0; }
+.stat-label { color: #6c757d; }
+.stat-value { font-weight: 600; }
+.save-actions { display: flex; gap: 10px; margin-top: 12px; }
+.save-actions .btn { flex: 1; font-size: 12px; padding: 6px 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div class="row">
+            <div class="col-md-8">
+                <h2><i class="fas fa-check-double"></i> 备件质量管理</h2>
+                <p class="text-muted">基于TPM理念的备件质量检验与缺陷检测</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs nav-tabs-custom">
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.prediction') }}"><i class="fas fa-chart-line"></i> 智能预测与补货</a></li>
+                <li class="nav-item"><a class="nav-link active" href="#"><i class="fas fa-check-double"></i> 质量管理</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.diagnosis') }}"><i class="fas fa-stethoscope"></i> 故障诊断与维护</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.lifecycle') }}"><i class="fas fa-recycle"></i> 生命周期管理</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spare_parts.dashboard') }}"><i class="fas fa-tachometer-alt"></i> 综合分析驾驶舱</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-success display-4" id="qualityPassRate">95.2%</div><div class="text-muted">总体合格率</div></div></div></div>
+        <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-info display-4" id="totalInspections">128</div><div class="text-muted">本月检验数</div></div></div></div>
+        <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-warning display-4" id="defectCount">6</div><div class="text-muted">发现缺陷数</div></div></div></div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-chart-line"></i> 质量趋势</h5></div>
+                <div class="card-body">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="qualityTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-chart-pie"></i> 缺陷分布</h5></div>
+                <div class="card-body">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="defectDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-panel collapsed" id="inspectionPanel">
+        <div class="panel-header" onclick="togglePanel('inspectionPanel')">
+            <span class="panel-title"><i class="fas fa-plus-circle text-primary"></i> 新建质量检验</span>
+            <i class="fas fa-chevron-down panel-toggle"></i>
+        </div>
+        <div class="panel-body">
+            <form class="insp-form" id="inspectionForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>选择备件 <span class="text-danger">*</span></label>
+                        <select class="form-control" id="inspSparePartId" required>
+                            <option value="">请选择备件</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>检验类型 <span class="text-danger">*</span></label>
+                        <select class="form-control" id="inspType" required>
+                            <option value="incoming">入库检验</option>
+                            <option value="outgoing">出库检验</option>
+                            <option value="periodic">定期检验</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>抽样数量</label>
+                        <input type="number" class="form-control" id="inspSampleQty" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>合格数量 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="inspPassedQty" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>不合格数量</label>
+                        <input type="number" class="form-control" id="inspFailedQty" min="0" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>质量评分 (0-100)</label>
+                        <input type="number" class="form-control" id="inspQualityScore" min="0" max="100" step="0.1" value="100">
+                    </div>
+                    <div class="form-group">
+                        <label>检验结果</label>
+                        <select class="form-control" id="inspResult">
+                            <option value="passed">合格</option>
+                            <option value="failed">不合格</option>
+                            <option value="conditional">有条件通过</option>
+                            <option value="pending">待判定</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>备注</label>
+                    <textarea class="form-control" id="inspRemark" rows="2" placeholder="请输入检验备注..."></textarea>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="inspAiInspection">
+                    <label class="form-check-label" for="inspAiInspection">AI辅助检验</label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePanel('inspectionPanel')">收起</button>
+                    <button type="button" class="btn btn-primary" onclick="submitInspection()"><i class="fas fa-save"></i> 提交检验</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="action-panel collapsed" id="aiDetectPanel">
+        <div class="panel-header" onclick="togglePanel('aiDetectPanel')">
+            <span class="panel-title"><i class="fas fa-eye text-info"></i> AI缺陷检测</span>
+            <i class="fas fa-chevron-down panel-toggle"></i>
+        </div>
+        <div class="panel-body">
+            <div class="ai-detect-panel">
+                <div class="ai-upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-content">
+                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                            <h5>拖拽图片到此处或点击上传</h5>
+                            <p class="upload-hint">支持 JPG、PNG 格式，最大 10MB</p>
+                            <input type="file" id="fileInput" accept="image/*" multiple style="display:none;" onchange="handleFileSelect(event)">
+                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                        </div>
+                    </div>
+                    <div class="preview-grid" id="previewGrid"></div>
+                    <div class="ai-actions">
+                        <button class="btn btn-primary btn-block btn-sm" id="detectBtn" onclick="startAIDetection()" disabled>
+                            <i class="fas fa-search"></i> 开始检测
+                        </button>
+                    </div>
+                </div>
+                <div class="ai-result-section">
+                    <div class="result-section">
+                        <h5><i class="fas fa-chart-bar"></i> 检测结果</h5>
+                        <div id="detectionResults" class="detection-results">
+                            <div class="empty-result">
+                                <i class="fas fa-image"></i>
+                                <p>上传图片后将显示检测结果</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="defect-summary" id="defectSummary" style="display:none;">
+                        <h5><i class="fas fa-exclamation-triangle"></i> 缺陷汇总</h5>
+                        <div id="defectList"></div>
+                        <div class="summary-stats" id="summaryStats"></div>
+                    </div>
+                    <div class="save-actions" id="saveActions" style="display:none;">
+                        <button class="btn btn-success" onclick="saveDefectRecords()">
+                            <i class="fas fa-save"></i> 保存缺陷记录
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="exportReport()">
+                            <i class="fas fa-file-export"></i> 导出报告
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="card-title mb-0"><i class="fas fa-list"></i> 质量检验记录</h5>
+                    <div class="btn-group">
+                        <select class="form-control form-control-sm" id="filterInspectionType">
+                            <option value="">全部类型</option>
+                            <option value="incoming">入库检验</option>
+                            <option value="outgoing">出库检验</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead><tr><th>检验编号</th><th>备件编码</th><th>检验类型</th><th>抽样数</th><th>合格数</th><th>不合格数</th><th>质量评分</th><th>结果</th><th>AI辅助</th><th>检验时间</th></tr></thead>
+                            <tbody id="inspectionsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+var qualityTrendChart = null;
+var defectDistributionChart = null;
+
+window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        initQualityCharts();
+        loadInspections();
+    }, 200);
+});
+
+function initQualityCharts() {
+    console.log('初始化质量图表...');
+    var trendCanvas = document.getElementById('qualityTrendChart');
+    var defectCanvas = document.getElementById('defectDistributionChart');
+    if (!trendCanvas || !defectCanvas) { console.error('找不到图表元素'); return; }
+    if (typeof Chart === 'undefined') { console.error('Chart.js未加载'); return; }
+
+    qualityTrendChart = new Chart(trendCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+            datasets: [{
+                label: '合格率',
+                data: [92, 95, 98, 93, 96, 94, 95],
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#28a745',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) { return context.parsed.y + '%'; }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: 85,
+                    max: 100,
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                    ticks: {
+                        callback: function(value) { return value + '%'; }
+                    }
+                },
+                x: { grid: { color: 'rgba(0, 0, 0, 0.05)' } }
+            }
+        }
+    });
+
+    defectDistributionChart = new Chart(defectCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['尺寸超差', '表面缺陷', '材质问题', '包装损坏'],
+            datasets: [{
+                data: [2, 1, 1, 1],
+                backgroundColor: ['#dc3545', '#ffc107', '#007bff', '#6c757d'],
+                borderWidth: 3,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '50%',
+            plugins: {
+                legend: { position: 'right', labels: { usePointStyle: true, padding: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed + ' 件';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    console.log('质量图表初始化完成');
+}
+
+async function loadInspections() {
+    try {
+        var response = await fetch('/api/spare_parts/quality/inspections/list');
+        var result = await response.json();
+        if (result.success) {
+            document.getElementById('inspectionsTable').innerHTML = result.data.items.map(function(item) {
+                return '<tr><td>' + (item.inspection_code || '-') + '</td><td>SP' + (item.spare_part_id || '-') + '</td><td>' + (item.inspection_type || '-') + '</td><td>' + (item.sample_quantity || '-') + '</td><td>' + (item.passed_quantity || '-') + '</td><td>' + (item.failed_quantity || '-') + '</td><td><span class="badge badge-' + (item.quality_score >= 80 ? 'success' : 'warning') + '">' + item.quality_score + '</span></td><td><span class="badge badge-' + (item.inspection_result === 'passed' ? 'success' : 'danger') + '">' + (item.inspection_result === 'passed' ? '合格' : '不合格') + '</span></td><td>' + (item.ai_inspection ? '<span class="badge badge-info">AI</span>' : '') + '</td><td>' + (item.inspection_date || '-') + '</td></tr>';
+            }).join('');
+        }
+    } catch (error) { console.error('加载检验记录失败:', error); }
+}
+
+function togglePanel(panelId) {
+    var panel = document.getElementById(panelId);
+    if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        if (panelId === 'inspectionPanel') {
+            loadSparePartsForDropdown();
+        }
+    } else {
+        panel.classList.add('collapsed');
+    }
+}
+
+var currentDetectionResults = [];
+var sparePartsCache = [];
+
+function resetInspectionForm() {
+    document.getElementById('inspSampleQty').value = 0;
+    document.getElementById('inspPassedQty').value = 0;
+    document.getElementById('inspFailedQty').value = 0;
+    document.getElementById('inspQualityScore').value = 100;
+    document.getElementById('inspResult').value = 'passed';
+    document.getElementById('inspRemark').value = '';
+    document.getElementById('inspAiInspection').checked = false;
+}
+
+async function loadSparePartsForDropdown() {
+    if (sparePartsCache.length > 0) {
+        renderSparePartsDropdown(sparePartsCache);
+        return;
+    }
+    
+    try {
+        var response = await fetch('/api/spare_parts/quality/spare-parts');
+        var result = await response.json();
+        if (result.success) {
+            sparePartsCache = result.data.items;
+            renderSparePartsDropdown(sparePartsCache);
+        }
+    } catch (error) {
+        console.error('加载备件列表失败:', error);
+    }
+}
+
+function renderSparePartsDropdown(parts) {
+    var select = document.getElementById('inspSparePartId');
+    var html = '<option value="">请选择备件</option>';
+    parts.forEach(function(part) {
+        html += '<option value="' + part.id + '">' + part.part_code + ' - ' + part.name + ' (库存: ' + part.current_stock + part.unit + ')</option>';
+    });
+    select.innerHTML = html;
+}
+
+async function submitInspection() {
+    var sparePartId = document.getElementById('inspSparePartId').value;
+    var inspectionType = document.getElementById('inspType').value;
+    var passedQty = parseInt(document.getElementById('inspPassedQty').value) || 0;
+    var failedQty = parseInt(document.getElementById('inspFailedQty').value) || 0;
+    var qualityScore = parseFloat(document.getElementById('inspQualityScore').value);
+    
+    if (!sparePartId) {
+        alert('请选择备件');
+        return;
+    }
+    
+    var inspectedQty = passedQty + failedQty;
+    
+    var data = {
+        spare_part_id: parseInt(sparePartId),
+        inspection_type: inspectionType,
+        sample_quantity: parseInt(document.getElementById('inspSampleQty').value) || inspectedQty,
+        inspected_quantity: inspectedQty,
+        passed_quantity: passedQty,
+        failed_quantity: failedQty,
+        inspection_result: document.getElementById('inspResult').value,
+        quality_score: qualityScore,
+        defect_count: failedQty,
+        ai_inspection: document.getElementById('inspAiInspection').checked,
+        remark: document.getElementById('inspRemark').value
+    };
+    
+    try {
+        var response = await fetch('/api/spare_parts/quality/inspections/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        var result = await response.json();
+        if (result.success) {
+            alert('检验记录创建成功！');
+            togglePanel('inspectionPanel');
+            resetInspectionForm();
+            loadInspections();
+            refreshKPIStats();
+        } else {
+            alert('创建失败: ' + (result.error || '未知错误'));
+        }
+    } catch (error) {
+        console.error('提交检验失败:', error);
+        alert('提交失败: ' + error.message);
+    }
+}
+
+async function refreshKPIStats() {
+    try {
+        var response = await fetch('/api/spare_parts/quality/inspections/list?per_page=1');
+        var result = await response.json();
+        if (result.success && result.data.total !== undefined) {
+            document.getElementById('totalInspections').textContent = result.data.total;
+        }
+    } catch (e) {}
+}
+
+function resetDetectionForm() {
+    document.getElementById('previewGrid').innerHTML = '';
+    document.getElementById('detectionResults').innerHTML = '<div class="empty-result"><i class="fas fa-image"></i><p>上传图片后将显示检测结果</p></div>';
+    document.getElementById('defectSummary').style.display = 'none';
+    document.getElementById('saveActions').style.display = 'none';
+    currentDetectionResults = [];
+}
+
+function setupDragAndDrop() {
+    var uploadArea = document.getElementById('uploadArea');
+    if (!uploadArea) return;
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(eventName) {
+        uploadArea.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    ['dragenter', 'dragover'].forEach(function(eventName) {
+        uploadArea.addEventListener(eventName, function() {
+            uploadArea.classList.add('drag-over');
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(function(eventName) {
+        uploadArea.addEventListener(eventName, function() {
+            uploadArea.classList.remove('drag-over');
+        });
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        var files = e.dataTransfer.files;
+        handleFiles(files);
+    });
+}
+
+function handleFileSelect(event) {
+    handleFiles(event.target.files);
+}
+
+function handleFiles(files) {
+    var previewGrid = document.getElementById('previewGrid');
+    var detectBtn = document.getElementById('detectBtn');
+    
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        if (file.size > 10 * 1024 * 1024) {
+            alert('文件 ' + file.name + ' 超过10MB限制');
+            continue;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var preview = document.createElement('div');
+            preview.className = 'preview-item';
+            preview.innerHTML = '<img src="' + e.target.result + '" alt="preview"><button class="remove-preview" onclick="removePreview(this)"><i class="fas fa-times"></i></button>';
+            preview.dataset.imageData = e.target.result;
+            preview.dataset.fileName = file.name;
+            previewGrid.appendChild(preview);
+            detectBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removePreview(btn) {
+    var preview = btn.parentElement;
+    preview.remove();
+    var previewGrid = document.getElementById('previewGrid');
+    if (previewGrid.children.length === 0) {
+        document.getElementById('detectBtn').disabled = true;
+    }
+}
+
+async function startAIDetection() {
+    var previews = document.querySelectorAll('.preview-item');
+    if (previews.length === 0) return;
+    
+    var detectBtn = document.getElementById('detectBtn');
+    detectBtn.disabled = true;
+    detectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 检测中...';
+    
+    var resultsContainer = document.getElementById('detectionResults');
+    resultsContainer.innerHTML = '<div class="detecting"><i class="fas fa-cog fa-spin"></i><p>AI正在分析图片...</p></div>';
+    
+    currentDetectionResults = [];
+    
+    for (var i = 0; i < previews.length; i++) {
+        var preview = previews[i];
+        var imageData = preview.dataset.imageData;
+        var fileName = preview.dataset.fileName;
+        
+        try {
+            var formData = new FormData();
+            formData.append('image', imageData);
+            formData.append('filename', fileName);
+            
+            var response = await fetch('/api/spare_parts/quality/ai-detect', {
+                method: 'POST',
+                body: formData
+            });
+            
+            var result = await response.json();
+            if (result.success) {
+                currentDetectionResults.push({
+                    filename: fileName,
+                    defects: result.data.defects || [],
+                    summary: result.data.summary || {}
+                });
+            }
+        } catch (error) {
+            console.error('检测失败:', error);
+            currentDetectionResults.push({
+                filename: fileName,
+                defects: [],
+                summary: { error: '检测失败' }
+            });
+        }
+    }
+    
+    displayDetectionResults();
+    detectBtn.disabled = false;
+    detectBtn.innerHTML = '<i class="fas fa-search"></i> 开始检测';
+}
+
+function displayDetectionResults() {
+    var resultsContainer = document.getElementById('detectionResults');
+    var defectSummary = document.getElementById('defectSummary');
+    var saveActions = document.getElementById('saveActions');
+    
+    if (currentDetectionResults.length === 0) {
+        resultsContainer.innerHTML = '<div class="empty-result"><i class="fas fa-exclamation-circle"></i><p>未检测到任何结果</p></div>';
+        return;
+    }
+    
+    var allDefects = [];
+    var html = '';
+    
+    currentDetectionResults.forEach(function(result, index) {
+        html += '<div class="result-item">';
+        html += '<h6 class="result-filename"><i class="fas fa-image"></i> ' + result.filename + '</h6>';
+        
+        if (result.summary.error) {
+            html += '<div class="result-error"><i class="fas fa-exclamation-triangle"></i> ' + result.summary.error + '</div>';
+        } else if (result.defects.length === 0) {
+            html += '<div class="result-pass"><i class="fas fa-check-circle"></i> 未检测到缺陷</div>';
+        } else {
+            html += '<div class="defect-count-badge">发现 ' + result.defects.length + ' 个缺陷</div>';
+            html += '<table class="defect-table"><thead><tr><th>缺陷类型</th><th>严重程度</th><th>置信度</th><th>位置</th><th>处理建议</th></tr></thead><tbody>';
+            
+            result.defects.forEach(function(defect) {
+                allDefects.push(defect);
+                html += '<tr>';
+                html += '<td><span class="defect-type-badge defect-' + defect.type + '">' + getDefectTypeName(defect.type) + '</span></td>';
+                html += '<td><span class="severity-badge severity-' + defect.severity + '">' + getSeverityName(defect.severity) + '</span></td>';
+                html += '<td>' + (defect.confidence * 100).toFixed(1) + '%</td>';
+                html += '<td>' + (defect.position || '-') + '</td>';
+                html += '<td>' + getDispositionSuggestion(defect) + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+        }
+        
+        html += '</div>';
+    });
+    
+    resultsContainer.innerHTML = html;
+    
+    if (allDefects.length > 0) {
+        defectSummary.style.display = 'block';
+        saveActions.style.display = 'flex';
+        
+        var defectList = document.getElementById('defectList');
+        var summaryStats = document.getElementById('summaryStats');
+        
+        var typeCount = {};
+        var severityCount = { low: 0, medium: 0, high: 0, critical: 0 };
+        
+        allDefects.forEach(function(d) {
+            typeCount[d.type] = (typeCount[d.type] || 0) + 1;
+            severityCount[d.severity] = (severityCount[d.severity] || 0) + 1;
+        });
+        
+        var listHtml = '<div class="defect-type-chart">';
+        for (var type in typeCount) {
+            listHtml += '<div class="defect-type-row"><span class="defect-type-label">' + getDefectTypeName(type) + '</span><div class="defect-bar"><div class="defect-bar-fill" style="width:' + (typeCount[type] / allDefects.length * 100) + '%"></div></div><span class="defect-count">' + typeCount[type] + '</span></div>';
+        }
+        listHtml += '</div>';
+        defectList.innerHTML = listHtml;
+        
+        var criticalCount = severityCount.critical + severityCount.high;
+        summaryStats.innerHTML = '<div class="stat-row"><span class="stat-label">总缺陷数</span><span class="stat-value">' + allDefects.length + '</span></div>' +
+            '<div class="stat-row"><span class="stat-label">高危缺陷</span><span class="stat-value text-danger">' + criticalCount + '</span></div>' +
+            '<div class="stat-row"><span class="stat-label">检测图片数</span><span class="stat-value">' + currentDetectionResults.length + '</span></div>';
+    }
+}
+
+function getDefectTypeName(type) {
+    var map = {
+        'surface_defect': '表面缺陷',
+        'crack': '裂纹',
+        'rust': '锈蚀',
+        'wear': '磨损',
+        'deformation': '变形',
+        'dimension': '尺寸超差',
+        'missing_part': '零件缺失',
+        'contamination': '污染'
+    };
+    return map[type] || type;
+}
+
+function getSeverityName(severity) {
+    var map = {
+        'low': '低',
+        'medium': '中',
+        'high': '高',
+        'critical': '严重'
+    };
+    return map[severity] || severity;
+}
+
+function getDispositionSuggestion(defect) {
+    if (defect.severity === 'critical') return '<span class="disposition-scrap">报废处理</span>';
+    if (defect.severity === 'high') return '<span class="disposition-repair">返修处理</span>';
+    if (defect.severity === 'medium') return '<span class="disposition-return">退回供应商</span>';
+    return '<span class="disposition-use">降级使用</span>';
+}
+
+async function saveDefectRecords() {
+    if (currentDetectionResults.length === 0) return;
+    
+    var defectsToSave = [];
+    currentDetectionResults.forEach(function(result) {
+        result.defects.forEach(function(defect) {
+            defectsToSave.push({
+                defect_type: defect.type,
+                severity: defect.severity,
+                description: defect.description || '',
+                position: defect.position || '',
+                ai_confidence: defect.confidence,
+                suggested_disposition: defect.disposition || 'repair'
+            });
+        });
+    });
+    
+    try {
+        var response = await fetch('/api/spare_parts/quality/defects/batch-save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ defects: defectsToSave })
+        });
+        
+        var result = await response.json();
+        if (result.success) {
+            alert('成功保存 ' + result.data.count + ' 条缺陷记录');
+            togglePanel('aiDetectPanel');
+            resetDetectionForm();
+        } else {
+            alert('保存失败: ' + (result.error || '未知错误'));
+        }
+    } catch (error) {
+        console.error('保存缺陷记录失败:', error);
+        alert('保存失败: ' + error.message);
+    }
+}
+
+function exportReport() {
+    alert('导出报告功能开发中...');
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+    setupDragAndDrop();
+});
+</script>
+{% endblock %}

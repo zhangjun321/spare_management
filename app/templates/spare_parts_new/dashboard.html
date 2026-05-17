@@ -1,0 +1,756 @@
+{% extends "base.html" %}
+
+{% block title %}备件综合分析驾驶舱 - 备件管理{% endblock %}
+{% block page_title %}备件综合分析驾驶舱{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="row mb-4" id="reportContentSection" style="display: none;">
+        <div class="col-12">
+            <div class="card report-content-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-file-alt text-primary"></i>
+                        <span id="reportContentTitle">报告内容</span>
+                    </h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="closeReportContent()">
+                        <i class="fas fa-times"></i> 关闭
+                    </button>
+                </div>
+                <div class="card-body" id="reportContentBody">
+                    <div class="text-center py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        <p class="mt-2 text-muted">正在生成报告内容...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="kpi-card kpi-primary">
+                <div class="kpi-icon"><i class="fas fa-cogs"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-label">备件总数</span>
+                    <span class="kpi-value" id="totalSpareParts">-</span>
+                    <span class="kpi-desc">活跃备件类型</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="kpi-card kpi-warning">
+                <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-label">待处理故障</span>
+                    <span class="kpi-value" id="totalOpenFaults">-</span>
+                    <span class="kpi-desc">需关注的故障</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="kpi-card kpi-success">
+                <div class="kpi-icon"><i class="fas fa-award"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-label">质量合格率</span>
+                    <span class="kpi-value" id="qualityPassRate">-%</span>
+                    <span class="kpi-desc">检验通过</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="kpi-card kpi-danger">
+                <div class="kpi-icon"><i class="fas fa-shipping-fast"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-label">紧急补货</span>
+                    <span class="kpi-value" id="criticalSuggestions">-</span>
+                    <span class="kpi-desc">需立即处理</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="kpi-card kpi-teal">
+                <div class="kpi-icon"><i class="fas fa-sync-alt"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-label">库存周转率</span>
+                    <span class="kpi-value" id="turnoverRate">-</span>
+                    <span class="kpi-desc">月均周转次数</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="kpi-card kpi-indigo">
+                <div class="kpi-icon"><i class="fas fa-yen-sign"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-label">备件总价值</span>
+                    <span class="kpi-value" id="totalValue">-</span>
+                    <span class="kpi-desc">万元</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card collapsible-card" id="kpiTrendCard">
+                <div class="card-header" onclick="toggleCard('kpiTrendCard', 'kpiTrendIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-chart-line text-primary"></i>
+                        <h5 class="card-title mb-0">KPI趋势</h5>
+                    </div>
+                    <div class="card-actions" onclick="event.stopPropagation();">
+                        <button class="btn btn-sm btn-outline-secondary active" onclick="updateKpiRange(this, 7)">近7天</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="updateKpiRange(this, 30)">近30天</button>
+                        <i class="fas fa-chevron-down toggle-icon" id="kpiTrendIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="kpiTrendCardBody">
+                    <div class="card-body p-0">
+                        <div class="chart-container chart-container-lg">
+                            <canvas id="kpiTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card collapsible-card" id="inventoryHealthCard">
+                <div class="card-header" onclick="toggleCard('inventoryHealthCard', 'inventoryHealthIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-heartbeat text-primary"></i>
+                        <h5 class="card-title mb-0">库存健康度</h5>
+                    </div>
+                    <div class="card-actions">
+                        <i class="fas fa-chevron-down toggle-icon" id="inventoryHealthIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="inventoryHealthCardBody">
+                    <div class="card-body p-0">
+                        <div class="chart-container">
+                            <canvas id="inventoryHealthChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-4">
+            <div class="card collapsible-card" id="faultTypeCard">
+                <div class="card-header" onclick="toggleCard('faultTypeCard', 'faultTypeIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-bug text-danger"></i>
+                        <h5 class="card-title mb-0">故障类型分布</h5>
+                    </div>
+                    <div class="card-actions">
+                        <i class="fas fa-chevron-down toggle-icon" id="faultTypeIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="faultTypeCardBody">
+                    <div class="card-body p-0">
+                        <div class="chart-container">
+                            <canvas id="faultTypeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card collapsible-card" id="categoryCard">
+                <div class="card-header" onclick="toggleCard('categoryCard', 'categoryIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-tags text-info"></i>
+                        <h5 class="card-title mb-0">备件类别占比</h5>
+                    </div>
+                    <div class="card-actions">
+                        <i class="fas fa-chevron-down toggle-icon" id="categoryIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="categoryCardBody">
+                    <div class="card-body p-0">
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card collapsible-card" id="replenishmentCard">
+                <div class="card-header" onclick="toggleCard('replenishmentCard', 'replenishmentIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-truck text-success"></i>
+                        <h5 class="card-title mb-0">补货建议</h5>
+                    </div>
+                    <div class="card-actions">
+                        <i class="fas fa-chevron-down toggle-icon" id="replenishmentIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="replenishmentCardBody">
+                    <div class="card-body p-0">
+                        <div class="chart-container">
+                            <canvas id="replenishmentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card collapsible-card" id="alertsCard">
+                <div class="card-header" onclick="toggleCard('alertsCard', 'alertsIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-bell text-warning"></i>
+                        <h5 class="card-title mb-0">最近告警</h5>
+                        <span class="count-badge count-badge-danger" id="alertsCount">0</span>
+                    </div>
+                    <div class="card-actions">
+                        <a href="#" class="btn btn-sm btn-link" onclick="event.stopPropagation();">查看全部</a>
+                        <i class="fas fa-chevron-down toggle-icon" id="alertsIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="alertsBody">
+                    <div class="card-body p-0">
+                        <div class="alert-list" id="recentAlerts">
+                            <div class="alert-list-item loading">
+                                <div class="skeleton-line" style="width: 70%;"></div>
+                                <div class="skeleton-line" style="width: 50%;"></div>
+                            </div>
+                            <div class="alert-list-item loading">
+                                <div class="skeleton-line" style="width: 80%;"></div>
+                                <div class="skeleton-line" style="width: 40%;"></div>
+                            </div>
+                            <div class="alert-list-item loading">
+                                <div class="skeleton-line" style="width: 60%;"></div>
+                                <div class="skeleton-line" style="width: 55%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card collapsible-card" id="reportsCard">
+                <div class="card-header" onclick="toggleCard('reportsCard', 'reportsIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-file-alt text-info"></i>
+                        <h5 class="card-title mb-0">智能报告</h5>
+                        <span class="count-badge count-badge-info" id="reportsCount">0</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); generateReport();">
+                            <i class="fas fa-plus"></i> 生成
+                        </button>
+                        <i class="fas fa-chevron-down toggle-icon" id="reportsIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="reportsBody">
+                    <div class="card-body p-0">
+                        <div class="report-list" id="recentReports">
+                            <div class="report-list-item text-center py-4">
+                                <i class="fas fa-inbox fa-2x mb-2 text-muted"></i>
+                                <p class="mb-0 small text-muted">暂无报告，点击"生成"创建AI报告</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card collapsible-card" id="inspectionsCard">
+                <div class="card-header" onclick="toggleCard('inspectionsCard', 'inspectionsIcon')">
+                    <div class="card-title-wrap">
+                        <i class="fas fa-clipboard-check text-success"></i>
+                        <h5 class="card-title mb-0">最近检验</h5>
+                        <span class="count-badge count-badge-success" id="inspectionsCount">0</span>
+                    </div>
+                    <div class="card-actions">
+                        <i class="fas fa-chevron-down toggle-icon" id="inspectionsIcon"></i>
+                    </div>
+                </div>
+                <div class="card-collapse" id="inspectionsBody">
+                    <div class="card-body p-0">
+                        <div class="inspection-list" id="recentInspections">
+                            <div class="inspection-list-item loading">
+                                <div class="skeleton-line" style="width: 65%;"></div>
+                                <div class="skeleton-line" style="width: 45%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-container { padding: 0; }
+.kpi-card {
+    background: #fff; border-radius: 12px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04); border: 1px solid #eef0f5;
+    transition: all 0.3s ease; height: 100%;
+}
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+.kpi-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.kpi-primary .kpi-icon { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+.kpi-warning .kpi-icon { background: linear-gradient(135deg, #f093fb, #f5576c); color: #fff; }
+.kpi-success .kpi-icon { background: linear-gradient(135deg, #4facfe, #00f2fe); color: #fff; }
+.kpi-danger .kpi-icon { background: linear-gradient(135deg, #fa709a, #fee140); color: #fff; }
+.kpi-teal .kpi-icon { background: linear-gradient(135deg, #38d9a9, #20c997); color: #fff; }
+.kpi-indigo .kpi-icon { background: linear-gradient(135deg, #5c7cfa, #4263eb); color: #fff; }
+.kpi-content { display: flex; flex-direction: column; }
+.kpi-label { font-size: 11px; color: #8c8ea6; font-weight: 500; margin-bottom: 2px; }
+.kpi-value { font-size: 22px; font-weight: 700; color: #1a1c2e; line-height: 1.2; }
+.kpi-desc { font-size: 10px; color: #a8aab5; margin-top: 1px; }
+.card-actions { display: flex; align-items: center; gap: 4px; }
+.card-actions .btn { font-size: 11px; padding: 3px 10px; border-radius: 6px; }
+.chart-container { height: 260px; position: relative; }
+.chart-container-lg { height: 260px; }
+.collapsible-card {
+    border: 1px solid #eef0f5; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    overflow: hidden; margin-bottom: 20px; display: flex; flex-direction: column;
+}
+.collapsible-card .card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid #f0f2f7; background: #fff;
+    cursor: pointer; user-select: none; transition: background 0.2s; flex-shrink: 0;
+}
+.collapsible-card .card-header:hover { background: #fafbfd; }
+.card-title-wrap { display: flex; align-items: center; gap: 8px; }
+.card-title-wrap i { font-size: 14px; opacity: 0.8; }
+.card-title-wrap .card-title { font-size: 14px; font-weight: 600; color: #1a1c2e; }
+.toggle-icon { font-size: 12px; color: #8c8ea6; transition: transform 0.3s ease; }
+.card-collapse { max-height: 350px; opacity: 1; overflow: hidden; transition: max-height 0.35s ease, opacity 0.25s ease; }
+.card-collapse.collapsed { max-height: 0; opacity: 0; }
+.card-collapse .card-body { min-height: 260px; max-height: 260px; overflow-y: auto; }
+.card-collapse .card-body::-webkit-scrollbar { width: 6px; }
+.card-collapse .card-body::-webkit-scrollbar-track { background: #f5f5f5; border-radius: 3px; }
+.card-collapse .card-body::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+.card-collapse .card-body::-webkit-scrollbar-thumb:hover { background: #b0b0b0; }
+.count-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+    font-size: 10px; font-weight: 600; color: #fff;
+}
+.count-badge-danger { background: linear-gradient(135deg, #f093fb, #f5576c); }
+.count-badge-info { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.count-badge-success { background: linear-gradient(135deg, #38d9a9, #20c997); }
+.alert-list, .report-list, .inspection-list { padding: 0; min-height: 260px; }
+.alert-list-item, .report-list-item, .inspection-list-item {
+    padding: 12px 18px; border-bottom: 1px solid #f0f2f7; transition: background 0.2s;
+}
+.alert-list-item:hover, .report-list-item:hover, .inspection-list-item:hover { background: #fafbfd; }
+.alert-list-item:last-child, .report-list-item:last-child, .inspection-list-item:last-child { border-bottom: none; }
+.alert-list-item .alert-type {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; margin-bottom: 3px;
+}
+.alert-list-item .alert-message { font-size: 11px; color: #8c8ea6; line-height: 1.4; }
+.alert-list-item .alert-time { font-size: 10px; color: #a8aab5; float: right; }
+.alert-danger { border-left: 3px solid #f5576c; }
+.alert-warning { border-left: 3px solid #ffa94d; }
+.alert-info { border-left: 3px solid #4facfe; }
+.report-list-item {
+    cursor: pointer; text-decoration: none; color: inherit; display: block;
+}
+.report-list-item .report-title {
+    font-size: 12px; font-weight: 600; color: #1a1c2e; margin-bottom: 3px;
+    display: flex; align-items: center; gap: 5px;
+}
+.report-list-item .report-preview {
+    font-size: 11px; color: #8c8ea6; margin-bottom: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.report-list-item .report-badges { display: flex; gap: 4px; }
+.report-list-item .badge { font-size: 9px; padding: 1px 6px; border-radius: 4px; }
+.inspection-list-item .inspection-name {
+    font-size: 12px; font-weight: 600; color: #1a1c2e; margin-bottom: 2px;
+}
+.inspection-list-item .inspection-detail {
+    font-size: 11px; color: #8c8ea6; display: flex; gap: 12px;
+}
+.inspection-passed { border-left: 3px solid #38d9a9; }
+.inspection-failed { border-left: 3px solid #f5576c; }
+.inspection-pending { border-left: 3px solid #ffa94d; }
+.report-content-card {
+    border: 1px solid #eef0f5; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 24px;
+}
+.report-content-card .card-header {
+    background: linear-gradient(135deg, #f8f9ff, #fff); padding: 14px 20px; border-bottom: 1px solid #eef0f7;
+}
+.skeleton-line {
+    height: 12px; background: linear-gradient(90deg, #f0f2f7 25%, #e4e7ee 50%, #f0f2f7 75%);
+    background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px; margin-bottom: 8px;
+}
+@keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.alert-list-item.loading, .inspection-list-item.loading { pointer-events: none; }
+@media (max-width: 1200px) { .kpi-card { padding: 14px 16px; } .kpi-value { font-size: 20px; } }
+@media (max-width: 768px) { .kpi-value { font-size: 18px; } .chart-container, .chart-container-lg { height: 220px; } }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+var inventoryHealthChart, kpiTrendChart, faultTypeChart, categoryChart, replenishmentChart;
+
+window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        initCharts();
+        loadDashboardData();
+        setInterval(loadDashboardData, 30000);
+    }, 200);
+});
+
+function initCharts() {
+    var invCanvas = document.getElementById('inventoryHealthChart');
+    var kpiCanvas = document.getElementById('kpiTrendChart');
+    var faultCanvas = document.getElementById('faultTypeChart');
+    var catCanvas = document.getElementById('categoryChart');
+    var repCanvas = document.getElementById('replenishmentChart');
+    if (!invCanvas || !kpiCanvas || !faultCanvas || !catCanvas || !repCanvas || typeof Chart === 'undefined') return;
+
+    inventoryHealthChart = new Chart(invCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: ['健康', '低库存', '缺货', '超储'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#38d9a9','#ffa94d','#f5576c','#4facfe'], borderWidth: 2, borderColor: '#fff' }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 10, font: { size: 10 } } } } }
+    });
+
+    kpiTrendChart = new Chart(kpiCanvas.getContext('2d'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: '合格率', data: [], borderColor: '#667eea', backgroundColor: 'rgba(102,126,234,0.1)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointHoverRadius: 5 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 70, max: 100, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { callback: v => v+'%', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+    });
+
+    faultTypeChart = new Chart(faultCanvas.getContext('2d'), {
+        type: 'pie',
+        data: { labels: ['磨损','腐蚀','断裂','变形','其他'], datasets: [{ data: [0,0,0,0,0], backgroundColor: ['#f5576c','#ffa94d','#4facfe','#ffd43b','#868e96'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 8, font: { size: 10 } } } } }
+    });
+
+    categoryChart = new Chart(catCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: ['轴承','密封件','液压件','电气','其他'], datasets: [{ data: [0,0,0,0,0], backgroundColor: ['#667eea','#38d9a9','#ffa94d','#f5576c','#868e96'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '50%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 8, font: { size: 10 } } } } }
+    });
+
+    replenishmentChart = new Chart(repCanvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: ['紧急','高','中','低'], datasets: [{ label: '补货建议', data: [0,0,0,0], backgroundColor: ['#f5576c','#ffa94d','#ffd43b','#38d9a9'], borderRadius: 6, barThickness: 28 }] },
+        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+    });
+}
+
+async function loadDashboardData() {
+    try {
+        var resp = await fetch('/api/spare_parts/dashboard/overview');
+        if (!resp.ok) return;
+        var res = await resp.json();
+        if (res.success) {
+            var d = res.data;
+            document.getElementById('totalSpareParts').textContent = d.overview.total_spare_parts;
+            document.getElementById('totalOpenFaults').textContent = d.overview.total_open_faults;
+            document.getElementById('qualityPassRate').textContent = d.quality.pass_rate + '%';
+            document.getElementById('criticalSuggestions').textContent = d.overview.critical_replenishment_suggestions;
+            document.getElementById('turnoverRate').textContent = (d.inventory.turnover_rate || 0).toFixed(1);
+            document.getElementById('totalValue').textContent = (d.inventory.total_value / 10000 || 0).toFixed(1);
+            if (inventoryHealthChart) {
+                inventoryHealthChart.data.datasets[0].data = [d.inventory_health.healthy_count, d.inventory_health.low_stock_count, d.inventory_health.out_of_stock_count, d.inventory_health.overstocked_count];
+                inventoryHealthChart.update();
+            }
+        }
+    } catch(e) { console.error('加载驾驶舱数据失败:', e); }
+    loadAlerts();
+    loadReports();
+    loadInspections();
+    loadKpiTrend();
+    loadFaultDistribution();
+    loadCategoryDistribution();
+    loadReplenishmentStats();
+}
+
+async function loadAlerts() {
+    try {
+        var resp = await fetch('/api/spare_parts/dashboard/alerts');
+        if (!resp.ok) { updateAlertsCount(0); return; }
+        var res = await resp.json();
+        var c = document.getElementById('recentAlerts');
+        if (res.success && res.data.alerts.length > 0) {
+            updateAlertsCount(res.data.alerts.length);
+            c.innerHTML = res.data.alerts.map(function(a) {
+                return '<div class="alert-list-item alert-' + a.type + '">' +
+                    '<div class="d-flex justify-content-between align-items-start"><div>' +
+                    '<div class="alert-type"><i class="fas ' + a.icon + '"></i> ' + a.title + '</div>' +
+                    '<div class="alert-message">' + a.message + '</div></div>' +
+                    '<span class="alert-time">' + a.time + '</span></div></div>';
+            }).join('');
+        } else {
+            updateAlertsCount(0);
+            c.innerHTML = '<div class="alert-list-item text-center py-4"><i class="fas fa-check-circle fa-2x mb-2 text-success"></i><p class="mb-0 small text-muted">当前无告警</p></div>';
+        }
+    } catch(e) { updateAlertsCount(0); }
+}
+
+async function loadReports() {
+    try {
+        var resp = await fetch('/api/spare_parts/reports/list?page=1&per_page=10');
+        if (!resp.ok) { updateReportsCount(0); return; }
+        var res = await resp.json();
+        if (res.success && res.data.items.length > 0) {
+            updateReportsCount(res.data.items.length);
+            document.getElementById('recentReports').innerHTML = res.data.items.map(function(item) {
+                return '<a href="javascript:void(0)" class="report-list-item" onclick="viewReport(' + item.id + ')">' +
+                    '<div class="report-title"><i class="fas fa-robot text-primary"></i> ' + item.title + '</div>' +
+                    '<div class="report-preview">' + (item.content ? item.content.substring(0, 50) + '...' : 'AI生成的备件管理分析报告') + '</div>' +
+                    '<div class="report-badges">' +
+                    '<span class="badge ' + (item.is_ai_generated ? 'badge-info' : 'badge-secondary') + '">' + (item.is_ai_generated ? 'AI生成' : '手动') + '</span>' +
+                    '<span class="badge badge-light">' + (item.generated_at || '') + '</span></div></a>';
+            }).join('');
+        } else { updateReportsCount(0); }
+    } catch(e) { updateReportsCount(0); }
+}
+
+async function loadInspections() {
+    try {
+        var resp = await fetch('/api/spare_parts/dashboard/recent-inspections');
+        if (!resp.ok) { updateInspectionsCount(0); return; }
+        var res = await resp.json();
+        var c = document.getElementById('recentInspections');
+        if (res.success && res.data.items.length > 0) {
+            updateInspectionsCount(res.data.items.length);
+            c.innerHTML = res.data.items.map(function(item) {
+                var cls = item.result === 'passed' ? 'inspection-passed' : (item.result === 'failed' ? 'inspection-failed' : 'inspection-pending');
+                var statusText = item.result === 'passed' ? '合格' : (item.result === 'failed' ? '不合格' : '待检');
+                return '<div class="inspection-list-item ' + cls + '">' +
+                    '<div class="inspection-name"><i class="fas fa-clipboard-check"></i> ' + item.spare_part_name + '</div>' +
+                    '<div class="inspection-detail"><span>' + item.date + '</span><span>抽样: ' + item.sample_qty + '</span><span>状态: ' + statusText + '</span></div></div>';
+            }).join('');
+        } else {
+            updateInspectionsCount(0);
+            c.innerHTML = '<div class="inspection-list-item text-center py-4 text-muted"><p class="mb-0 small">暂无检验记录</p></div>';
+        }
+    } catch(e) { updateInspectionsCount(0); }
+}
+
+async function loadKpiTrend() {
+    try {
+        var resp = await fetch('/api/spare_parts/dashboard/kpi-trend');
+        if (!resp.ok) return;
+        var res = await resp.json();
+        if (res.success && kpiTrendChart) {
+            kpiTrendChart.data.labels = res.data.labels;
+            kpiTrendChart.data.datasets[0].data = res.data.pass_rates;
+            kpiTrendChart.update();
+        }
+    } catch(e) {}
+}
+
+async function loadFaultDistribution() {
+    try {
+        var resp = await fetch('/api/spare_parts/dashboard/fault-distribution');
+        if (!resp.ok) return;
+        var res = await resp.json();
+        if (res.success && faultTypeChart) {
+            faultTypeChart.data.datasets[0].data = [res.data.wear, res.data.corrosion, res.data.fracture, res.data.deformation, res.data.other];
+            faultTypeChart.update();
+        }
+    } catch(e) {}
+}
+
+async function loadCategoryDistribution() {
+    try {
+        var resp = await fetch('/api/spare_parts/dashboard/category-distribution');
+        if (!resp.ok) return;
+        var res = await resp.json();
+        if (res.success && categoryChart) {
+            categoryChart.data.datasets[0].data = res.data;
+            categoryChart.update();
+        }
+    } catch(e) {}
+}
+
+async function loadReplenishmentStats() {
+    try {
+        var resp = await fetch('/api/spare_parts/dashboard/replenishment-stats');
+        if (!resp.ok) return;
+        var res = await resp.json();
+        if (res.success && replenishmentChart) {
+            replenishmentChart.data.datasets[0].data = res.data;
+            replenishmentChart.update();
+        }
+    } catch(e) {}
+}
+
+function updateKpiRange(btn, days) {
+    btn.parentElement.querySelectorAll('.btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    loadKpiTrend();
+}
+
+function viewReport(reportId) {
+    var modal = document.getElementById('reportDetailModal');
+    modal.style.display = 'block'; modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    var backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show'; backdrop.id = 'reportDetailBackdrop';
+    document.body.appendChild(backdrop);
+    document.getElementById('reportDetailBody').innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">加载报告内容...</p></div>';
+    fetch('/api/spare_parts/reports/' + reportId)
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                var r = res.data;
+                document.getElementById('reportDetailTitle').innerHTML = '<i class="fas fa-file-alt text-primary"></i> ' + r.title;
+                document.getElementById('reportDetailBody').innerHTML = '<div class="mb-3"><span class="badge ' + (r.is_ai_generated ? 'badge-info' : 'badge-secondary') + '">' + (r.is_ai_generated ? 'AI生成' : '手动') + '</span> ' +
+                    '<span class="badge badge-light">' + r.report_type + '报告</span> ' +
+                    '<span class="badge badge-light">生成时间: ' + r.generated_at + '</span></div>' +
+                    '<div class="card"><div class="card-body"><p class="card-text" style="white-space: pre-wrap; line-height: 1.8;">' + r.content + '</p></div></div>';
+            } else {
+                document.getElementById('reportDetailBody').innerHTML = '<div class="alert alert-danger">加载失败: ' + (res.error || '未知错误') + '</div>';
+            }
+        })
+        .catch(function(e) { document.getElementById('reportDetailBody').innerHTML = '<div class="alert alert-danger">网络错误: ' + e.message + '</div>'; });
+}
+
+function closeReportDetail() {
+    var modal = document.getElementById('reportDetailModal');
+    modal.classList.remove('show'); modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+    var backdrop = document.getElementById('reportDetailBackdrop');
+    if (backdrop) backdrop.remove();
+}
+
+function setStepComplete(stepNum, success) {
+    var step = document.getElementById('step' + stepNum);
+    if (!step) return;
+    var icon = step.querySelector('.step-icon i');
+    var text = step.querySelector('small');
+    var status = step.querySelector('.step-status');
+    if (success) { icon.className = 'fas fa-check-circle'; text.className = 'text-success'; status.innerHTML = '<i class="fas fa-check text-success"></i>'; }
+    else { icon.className = 'fas fa-times-circle'; text.className = 'text-danger'; status.innerHTML = '<i class="fas fa-times text-danger"></i>'; }
+}
+
+function setStepActive(stepNum) {
+    var step = document.getElementById('step' + stepNum);
+    if (!step) return;
+    step.querySelector('.step-icon i').className = 'fas fa-spinner fa-spin';
+}
+
+function updateProgress(pct, title, desc) {
+    document.getElementById('reportProgressBar').style.width = pct + '%';
+    document.getElementById('reportStepTitle').textContent = title;
+    document.getElementById('reportStepDesc').textContent = desc;
+}
+
+function resetReportModal() {
+    for (var i = 1; i <= 5; i++) {
+        var step = document.getElementById('step' + i);
+        step.querySelector('.step-icon i').className = 'fas fa-circle text-muted';
+        step.querySelector('small').className = 'text-muted';
+        step.querySelector('.step-status').innerHTML = '';
+    }
+    updateProgress(0, '正在生成报告...', 'AI正在分析数据');
+    document.getElementById('reportStepIcon').innerHTML = '<i class="fas fa-cog fa-spin fa-3x text-primary"></i>';
+    document.getElementById('reportModalCloseBtn').style.display = 'none';
+}
+
+async function generateReport() {
+    var modal = document.getElementById('reportProgressModal');
+    resetReportModal();
+    modal.classList.add('show'); modal.style.display = 'block';
+    document.body.classList.add('modal-open');
+    var backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show'; backdrop.id = 'reportModalBackdrop';
+    document.body.appendChild(backdrop);
+    var steps = [
+        { num: 1, title: '收集备件数据', desc: '正在获取备件库存信息...', pct: 15 },
+        { num: 2, title: '分析库存健康度', desc: '正在评估库存健康状态...', pct: 35 },
+        { num: 3, title: '生成质量趋势分析', desc: '正在分析质量检验数据...', pct: 55 },
+        { num: 4, title: '生成故障诊断建议', desc: '正在生成维护建议...', pct: 75 },
+        { num: 5, title: '汇总报告内容', desc: '正在生成最终报告...', pct: 95 }
+    ];
+    var apiCallSuccess = false, apiResultData = null;
+    for (var i = 0; i < steps.length; i++) {
+        var step = steps[i];
+        setStepActive(step.num); updateProgress(step.pct, step.title, step.desc);
+        await sleep(600);
+        if (i < steps.length - 1) { setStepComplete(step.num, true); }
+        else {
+            try {
+                var resp = await fetch('/api/spare_parts/reports/generate', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report_type: 'weekly' })
+                });
+                var res = await resp.json();
+                if (res.success) { apiCallSuccess = true; apiResultData = res.data; setStepComplete(step.num, true); }
+                else { setStepComplete(step.num, false); }
+            } catch(e) { setStepComplete(step.num, false); }
+        }
+    }
+    if (apiCallSuccess) {
+        updateProgress(100, '报告生成完成！', 'AI报告已成功生成');
+        document.getElementById('reportStepIcon').innerHTML = '<i class="fas fa-check-circle fa-3x text-success"></i>';
+        document.getElementById('reportModalCloseBtn').style.display = 'inline-block';
+        setTimeout(function() { closeReportModal(); displayReportContent(apiResultData); }, 500);
+    } else {
+        updateProgress(100, '报告生成完成', '部分步骤可能存在异常');
+        document.getElementById('reportStepIcon').innerHTML = '<i class="fas fa-exclamation-triangle fa-3x text-warning"></i>';
+        document.getElementById('reportModalCloseBtn').style.display = 'inline-block';
+    }
+}
+
+function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
+
+function closeReportModal() {
+    var modal = document.getElementById('reportProgressModal');
+    modal.classList.remove('show'); modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+    var backdrop = document.getElementById('reportModalBackdrop');
+    if (backdrop) backdrop.remove();
+}
+
+function closeReportContent() { document.getElementById('reportContentSection').style.display = 'none'; }
+
+function displayReportContent(report) {
+    var section = document.getElementById('reportContentSection');
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('reportContentTitle').textContent = report.title;
+    document.getElementById('reportContentBadges').innerHTML =
+        '<span class="badge badge-info mr-1">AI生成</span>' +
+        '<span class="badge badge-light mr-1">' + report.report_type + '报告</span>' +
+        '<span class="badge badge-light mr-1">生成时间: ' + report.generated_at + '</span>';
+    document.getElementById('reportContentBody').innerHTML =
+        '<div style="white-space: pre-wrap; line-height: 1.8; font-size: 14px;">' + (report.content || 'AI正在分析备件管理数据，生成详细报告内容...') + '</div>';
+}
+
+function toggleCard(cardId, iconId) {
+    var body = document.getElementById(cardId.replace('Card', 'Body')) || document.getElementById(cardId.replace('Card', 'CardBody'));
+    var icon = document.getElementById(iconId);
+    if (!body || !icon) return;
+    
+    if (body.classList.contains('collapsed')) {
+        body.classList.remove('collapsed');
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        body.classList.add('collapsed');
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+function updateAlertsCount(count) { var b = document.getElementById('alertsCount'); if (b) { b.textContent = count; b.style.display = count > 0 ? 'inline-flex' : 'none'; } }
+function updateReportsCount(count) { var b = document.getElementById('reportsCount'); if (b) { b.textContent = count; b.style.display = count > 0 ? 'inline-flex' : 'none'; } }
+function updateInspectionsCount(count) { var b = document.getElementById('inspectionsCount'); if (b) { b.textContent = count; b.style.display = count > 0 ? 'inline-flex' : 'none'; } }
+
+function refreshDashboard() { loadDashboardData(); }
+</script>
+{% endblock %}

@@ -588,85 +588,94 @@ def direct_amap_test():
 @login_required
 def api_locations():
     """获取所有设备的地理位置信息（用于地图展示）"""
-    # 获取筛选参数
-    filter_site_name = request.args.get('site_name', '')
-    filter_series = request.args.get('series', '')
-    filter_category = request.args.get('category', '')
-    filter_province = request.args.get('province', '')
-    filter_city = request.args.get('city', '')
-    
-    # 构建查询
-    query = Equipment.query.filter(
-        Equipment.latitude.isnot(None),
-        Equipment.longitude.isnot(None)
-    )
-    
-    # 按站点名称筛选（包含）
-    if filter_site_name:
-        query = query.filter(Equipment.site_name.contains(filter_site_name))
-    
-    # 按设备系列筛选
-    if filter_series:
-        query = query.filter(Equipment.series == filter_series)
-    
-    # 按设备类别筛选
-    if filter_category:
-        query = query.filter(Equipment.category == filter_category)
-    
-    # 按省份/城市筛选（从地址中解析）
-    if filter_province or filter_city:
-        addr_filter = (Equipment.map_address.isnot(None) | Equipment.location.isnot(None))
-        query = query.filter(addr_filter)
+    try:
+        # 获取筛选参数
+        filter_site_name = request.args.get('site_name', '')
+        filter_series = request.args.get('series', '')
+        filter_category = request.args.get('category', '')
+        filter_province = request.args.get('province', '')
+        filter_city = request.args.get('city', '')
         
-        if filter_province:
-            query = query.filter(
-                (Equipment.map_address.contains(filter_province)) |
-                (Equipment.location.contains(filter_province))
+        # 统计各状态数量
+        try:
+            total_count = Equipment.query.count()
+            running_count = Equipment.query.filter_by(status='running').count()
+            stopped_count = Equipment.query.filter_by(status='stopped').count()
+            maintenance_count = Equipment.query.filter_by(status='maintenance').count()
+            scrapped_count = Equipment.query.filter_by(status='scrapped').count()
+        except Exception as e:
+            total_count = 0
+            running_count = 0
+            stopped_count = 0
+            maintenance_count = 0
+            scrapped_count = 0
+        
+        # 获取所有筛选选项
+        try:
+            all_site_names = db.session.query(Equipment.site_name).filter(
+                Equipment.site_name.isnot(None)
+            ).distinct().all()
+            all_series = db.session.query(Equipment.series).filter(
+                Equipment.series.isnot(None)
+            ).distinct().all()
+            all_categories = db.session.query(Equipment.category).filter(
+                Equipment.category.isnot(None)
+            ).distinct().all()
+        except Exception:
+            all_site_names = []
+            all_series = []
+            all_categories = []
+        
+        # 构建查询
+        try:
+            query = Equipment.query.filter(
+                Equipment.latitude.isnot(None),
+                Equipment.longitude.isnot(None)
             )
+            
+            # 按站点名称筛选（包含）
+            if filter_site_name:
+                query = query.filter(Equipment.site_name.contains(filter_site_name))
+            
+            # 按设备系列筛选
+            if filter_series:
+                query = query.filter(Equipment.series == filter_series)
+            
+            # 按设备类别筛选
+            if filter_category:
+                query = query.filter(Equipment.category == filter_category)
+            
+            # 按省份/城市筛选（从地址中解析）
+            if filter_province or filter_city:
+                addr_filter = (Equipment.map_address.isnot(None) | Equipment.location.isnot(None))
+                query = query.filter(addr_filter)
+                
+                if filter_province:
+                    query = query.filter(
+                        (Equipment.map_address.contains(filter_province)) |
+                        (Equipment.location.contains(filter_province))
+                    )
+                
+                if filter_city:
+                    query = query.filter(
+                        (Equipment.map_address.contains(filter_city)) |
+                        (Equipment.location.contains(filter_city))
+                    )
+            
+            equipments = query.all()
+        except Exception:
+            equipments = []
         
-        if filter_city:
-            query = query.filter(
-                (Equipment.map_address.contains(filter_city)) |
-                (Equipment.location.contains(filter_city))
-            )
-    
-    equipments = query.all()
-    
-    # 统计各状态数量
-    total_count = Equipment.query.count()
-    running_count = Equipment.query.filter_by(status='running').count()
-    stopped_count = Equipment.query.filter_by(status='stopped').count()
-    maintenance_count = Equipment.query.filter_by(status='maintenance').count()
-    scrapped_count = Equipment.query.filter_by(status='scrapped').count()
-    
-    # 获取所有筛选选项
-    all_site_names = db.session.query(Equipment.site_name).filter(
-        Equipment.site_name.isnot(None)
-    ).distinct().all()
-    all_series = db.session.query(Equipment.series).filter(
-        Equipment.series.isnot(None)
-    ).distinct().all()
-    all_categories = db.session.query(Equipment.category).filter(
-        Equipment.category.isnot(None)
-    ).distinct().all()
-    
-    # 获取地址中的省份和城市
-    all_locations = db.session.query(Equipment.map_address, Equipment.location).filter(
-        (Equipment.map_address.isnot(None)) | (Equipment.location.isnot(None))
-    ).all()
-    
-    # 解析省份和城市（简单实现）
-    provinces = set()
-    cities = set()
-    for loc in all_locations:
-        addr = loc[0] or loc[1] or ''
-        # 简单识别省份和城市
-        province_keywords = ['省', '北京', '上海', '天津', '重庆']
-        city_keywords = ['市', '州', '盟', '地区']
-        
-        for keyword in province_keywords:
-            if keyword in addr:
-                # 简单提取
+        # 解析省份和城市
+        provinces = set()
+        cities = set()
+        try:
+            all_locations = db.session.query(Equipment.map_address, Equipment.location).filter(
+                (Equipment.map_address.isnot(None)) | (Equipment.location.isnot(None))
+            ).all()
+            
+            for loc in all_locations:
+                addr = loc[0] or loc[1] or ''
                 for province in ['北京', '上海', '天津', '重庆', '河北', '山西', '辽宁', '吉林', '黑龙江', 
                                 '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南',
                                 '广东', '广西', '海南', '四川', '贵州', '云南', '陕西', '甘肃', '青海',
@@ -674,78 +683,124 @@ def api_locations():
                     if province in addr:
                         provinces.add(province)
                         break
+                
+                if '市' in addr:
+                    idx = addr.find('市')
+                    if idx > 0:
+                        city = addr[max(0, idx-3):idx+1]
+                        if city and len(city) <= 6:
+                            cities.add(city)
+        except Exception:
+            pass
         
-        if '市' in addr:
-            idx = addr.find('市')
-            if idx > 0:
-                city = addr[max(0, idx-3):idx+1]
-                if city and len(city) <= 6:
-                    cities.add(city)
-    
-    result = []
-    for eq in equipments:
-        # 根据状态设置不同的标记配置
-        if eq.status == 'running':
-            color = '#52c41a'
-            icon = 'check-circle'
-            status_label = '运行中'
-        elif eq.status == 'stopped':
-            color = '#86909c'
-            icon = 'pause-circle'
-            status_label = '停机'
-        elif eq.status == 'maintenance':
-            color = '#faad14'
-            icon = 'tool'
-            status_label = '维修中'
-        else:
-            color = '#ff4d4f'
-            icon = 'close-circle'
-            status_label = '已报废'
+        result = []
+        for eq in equipments:
+            try:
+                # 根据状态设置不同的标记配置
+                if eq.status == 'running':
+                    color = '#52c41a'
+                    icon = 'check-circle'
+                    status_label = '运行中'
+                elif eq.status == 'stopped':
+                    color = '#86909c'
+                    icon = 'pause-circle'
+                    status_label = '停机'
+                elif eq.status == 'maintenance':
+                    color = '#faad14'
+                    icon = 'tool'
+                    status_label = '维修中'
+                else:
+                    color = '#ff4d4f'
+                    icon = 'close-circle'
+                    status_label = '已报废'
+                
+                # 解析地址获取城市信息
+                full_address = eq.map_address or eq.location or ''
+                city = ''
+                if '市' in full_address:
+                    idx = full_address.find('市')
+                    if idx > 0:
+                        city = full_address[max(0, idx-3):idx+1]
+                
+                # 安全获取部门名称
+                dept_name = None
+                try:
+                    dept_name = eq.department.name if eq.department else None
+                except Exception:
+                    dept_name = None
+                
+                # 安全转换经纬度
+                try:
+                    lat = float(eq.latitude) if eq.latitude is not None else None
+                    lng = float(eq.longitude) if eq.longitude is not None else None
+                except (TypeError, ValueError):
+                    lat = None
+                    lng = None
+                
+                # 跳过没有有效坐标的设备
+                if lat is None or lng is None:
+                    continue
+                
+                item = {
+                    'id': eq.id,
+                    'equipment_code': eq.equipment_code or '',
+                    'name': eq.name or '未知设备',
+                    'model': eq.model or '',
+                    'series': eq.series or '',
+                    'category': eq.category or '',
+                    'status': eq.status or 'running',
+                    'status_label': status_label,
+                    'latitude': lat,
+                    'longitude': lng,
+                    'map_address': full_address,
+                    'city': city,
+                    'site_name': eq.site_name or '',
+                    'color': color,
+                    'icon': icon,
+                    'department': dept_name,
+                    'responsible_person': eq.responsible_person or '',
+                    'contact_person': eq.responsible_person or '',
+                    'contact_phone': ''
+                }
+                result.append(item)
+            except Exception:
+                continue
         
-        # 解析地址获取城市信息
-        full_address = eq.map_address or eq.location or ''
-        city = ''
-        if '市' in full_address:
-            idx = full_address.find('市')
-            if idx > 0:
-                city = full_address[max(0, idx-3):idx+1]
-        
-        item = {
-            'id': eq.id,
-            'equipment_code': eq.equipment_code,
-            'name': eq.name,
-            'model': eq.model,
-            'series': eq.series,
-            'category': eq.category,
-            'status': eq.status,
-            'status_label': status_label,
-            'latitude': float(eq.latitude),
-            'longitude': float(eq.longitude),
-            'map_address': full_address,
-            'city': city,
-            'site_name': eq.site_name,
-            'color': color,
-            'icon': icon,
-            'department': eq.department.name if eq.department else None,
-            'responsible_person': eq.responsible_person,
-            'contact_person': eq.responsible_person,
-            'contact_phone': getattr(eq, 'contact_phone', None)
+        response_data = {
+            'total_count': total_count,
+            'running_count': running_count,
+            'stopped_count': stopped_count,
+            'maintenance_count': maintenance_count,
+            'scrapped_count': scrapped_count,
+            'locations': result,
+            'site_names': [s[0] for s in all_site_names if s[0]],
+            'series_options': [s[0] for s in all_series if s[0]],
+            'category_options': [c[0] for c in all_categories if c[0]],
+            'province_options': sorted(list(provinces)),
+            'city_options': sorted(list(cities))
         }
-        result.append(item)
-    
-    return jsonify({
-        'total_count': total_count,
-        'running_count': running_count,
-        'stopped_count': stopped_count,
-        'maintenance_count': maintenance_count,
-        'scrapped_count': scrapped_count,
-        'locations': result,
-        'site_names': [s[0] for s in all_site_names if s[0]],
-        'series_options': [s[0] for s in all_series if s[0]],
-        'category_options': [c[0] for c in all_categories if c[0]],
-        'province_options': sorted(list(provinces)),
-        'city_options': sorted(list(cities))
-    })
+        
+        return jsonify(response_data)
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"ERROR in api_locations: {str(e)}")
+        print(error_detail)
+        # 返回空数据而不是500错误，确保前端不会崩溃
+        return jsonify({
+            'total_count': 0,
+            'running_count': 0,
+            'stopped_count': 0,
+            'maintenance_count': 0,
+            'scrapped_count': 0,
+            'locations': [],
+            'site_names': [],
+            'series_options': [],
+            'category_options': [],
+            'province_options': [],
+            'city_options': [],
+            'error': str(e)
+        }), 200
 
 
 @equipment_bp.route('/dashboard/advanced')

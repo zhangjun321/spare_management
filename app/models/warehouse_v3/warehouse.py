@@ -60,7 +60,7 @@ class WarehouseV3(db.Model):
     inventories = db.relationship('InventoryV3', back_populates='warehouse', lazy='dynamic')
     inbound_orders = db.relationship('InboundOrderV3', back_populates='warehouse', lazy='dynamic')
     outbound_orders = db.relationship('OutboundOrderV3', back_populates='warehouse', lazy='dynamic')
-    inventory_checks = db.relationship('InventoryCheck', lazy='dynamic')
+    inventory_checks = db.relationship('InventoryCheck', lazy='dynamic', overlaps="warehouse")
     
     # 索引
     __table_args__ = (

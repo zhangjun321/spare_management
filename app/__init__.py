@@ -471,6 +471,18 @@ def register_blueprints(app):
     from app.routes.spare_parts_api import spare_parts_api
     app.register_blueprint(spare_parts_api)
     
+    # ===========================================
+    # 备件管理模块高级功能（新增）
+    # ===========================================
+    # 备件管理高级 API（智能预测、质量管理、故障诊断、生命周期、综合分析）
+    from app.routes.spare_part_new_routes import spare_part_new_bp
+    app.register_blueprint(spare_part_new_bp)
+    
+    # 备件管理高级前端页面
+    from app.routes.spare_part_new_pages import spare_part_new_pages_bp
+    app.register_blueprint(spare_part_new_pages_bp)
+    # ===========================================
+    
     # 通用列表 API
     from app.routes.list_api import list_api
     app.register_blueprint(list_api)
@@ -595,6 +607,12 @@ def register_template_filters(app):
             'overstock': ('超储', 'info')
         }
         return status_map.get(status, ('未知', 'secondary'))
+    
+    @app.template_filter('now')
+    def now_filter(dummy=None):
+        """返回当前时间戳用于缓存清除"""
+        from datetime import datetime
+        return datetime.now().strftime('%Y%m%d%H%M%S')
 
 
 def create_system_roles():

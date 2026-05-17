@@ -23,10 +23,10 @@ class MaintenanceOrder(db.Model):
     
     requester = db.relationship('User', foreign_keys=[requester_id], backref='user_requested_orders')
     assignee = db.relationship('User', foreign_keys=[assigned_to], backref='user_assigned_orders')
-    equipment = db.relationship('Equipment', foreign_keys=[equipment_id])
+    equipment = db.relationship('Equipment', foreign_keys=[equipment_id], overlaps="maintenance_equipment,maintenance_orders")
     tasks = db.relationship('MaintenanceTask', foreign_keys='MaintenanceTask.order_id', backref='task_order', lazy='dynamic')
     records = db.relationship('MaintenanceRecord', foreign_keys='MaintenanceRecord.order_id', backref='record_order', lazy='dynamic')
-    costs = db.relationship('MaintenanceCost', foreign_keys='MaintenanceCost.order_id', backref='cost_order', lazy='dynamic')
+    costs = db.relationship('MaintenanceCost', foreign_keys='MaintenanceCost.order_id', backref='cost_order', lazy='dynamic', overlaps="cost_order,costs")
     
     def __repr__(self):
         return f'<MaintenanceOrder {self.order_number}>'
@@ -84,7 +84,7 @@ class MaintenanceCost(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), comment='创建人 ID')
     
-    order = db.relationship('MaintenanceOrder', foreign_keys=[order_id])
+    order = db.relationship('MaintenanceOrder', foreign_keys=[order_id], overlaps="cost_order,costs")
     
     def __repr__(self):
         return f'<MaintenanceCost {self.id}>'

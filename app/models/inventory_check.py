@@ -65,13 +65,18 @@ class InventoryCheckLegacy(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')
     
     # 关系
-    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id])
+    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id], overlaps="inventory_checks")
     location = db.relationship('WarehouseLocation', foreign_keys=[location_id])
     category = db.relationship('Category', foreign_keys=[category_id])
     creator = db.relationship('User', foreign_keys=[created_by])
     checker = db.relationship('User', foreign_keys=[checked_by])
     approver = db.relationship('User', foreign_keys=[approved_by])
-    items = db.relationship('InventoryCheckItem', back_populates='inventory_check', lazy='dynamic', cascade='all, delete-orphan')
+    items = db.relationship('InventoryCheckItemLegacy', 
+                           back_populates='inventory_check', 
+                           lazy='dynamic', 
+                           cascade='all, delete-orphan',
+                           primaryjoin='InventoryCheckLegacy.id==InventoryCheckItemLegacy.inventory_check_id',
+                           overlaps='items,inventory_check')
     
     def __repr__(self):
         return f'&lt;InventoryCheck {self.check_code}&gt;'
@@ -117,7 +122,7 @@ class InventoryCheckItemLegacy(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')
     
     # 关系
-    inventory_check = db.relationship('InventoryCheck', foreign_keys=[inventory_check_id])
+    inventory_check = db.relationship('InventoryCheckLegacy', foreign_keys=[inventory_check_id], back_populates='items')
     spare_part = db.relationship('SparePart', foreign_keys=[spare_part_id])
     batch = db.relationship('Batch', foreign_keys=[batch_id])
     warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id])

@@ -178,6 +178,12 @@
     #mapContainer {
         width: 100%;
         height: 500px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    #mapContainer .amap-container {
+        z-index: 1 !important;
     }
 
     .status-bar {
@@ -485,14 +491,40 @@
         padding: 24px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         height: 100%;
+        min-height: 320px;
+        max-height: 380px;
         border: none;
+        display: flex;
+        flex-direction: column;
     }
 
     .activity-card .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
+        flex-shrink: 0;
+    }
+
+    .activity-card .content-scrollable {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 280px;
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db transparent;
+    }
+
+    .activity-card .content-scrollable::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .activity-card .content-scrollable::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .activity-card .content-scrollable::-webkit-scrollbar-thumb {
+        background-color: #d1d5db;
+        border-radius: 3px;
     }
 
     .activity-card .header h6 {
@@ -565,14 +597,40 @@
         padding: 24px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         height: 100%;
+        min-height: 320px;
+        max-height: 380px;
         border: none;
+        display: flex;
+        flex-direction: column;
     }
 
     .progress-card .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
+        flex-shrink: 0;
+    }
+
+    .progress-card .content-scrollable {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 280px;
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db transparent;
+    }
+
+    .progress-card .content-scrollable::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .progress-card .content-scrollable::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .progress-card .content-scrollable::-webkit-scrollbar-thumb {
+        background-color: #d1d5db;
+        border-radius: 3px;
     }
 
     .progress-card .header h6 {
@@ -644,14 +702,40 @@
         padding: 24px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         height: 100%;
+        min-height: 320px;
+        max-height: 380px;
         border: none;
+        display: flex;
+        flex-direction: column;
     }
 
     .notification-card .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
+        flex-shrink: 0;
+    }
+
+    .notification-card .content-scrollable {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 280px;
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db transparent;
+    }
+
+    .notification-card .content-scrollable::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .notification-card .content-scrollable::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .notification-card .content-scrollable::-webkit-scrollbar-thumb {
+        background-color: #d1d5db;
+        border-radius: 3px;
     }
 
     .notification-card .header h6 {
@@ -1926,40 +2010,10 @@
                 <h6><i class="fas fa-clock-rotate-left me-2 text-primary"></i>最近活动</h6>
                 <a href="#" class="text-primary text-decoration-none small">查看全部</a>
             </div>
-            <div class="activity-item">
-                <div class="activity-icon success">
-                    <i class="fas fa-check"></i>
-                </div>
-                <div class="activity-content">
-                    <p>工单 WD-2024-001 已完成</p>
-                    <small>2分钟前</small>
-                </div>
-            </div>
-            <div class="activity-item">
-                <div class="activity-icon info">
-                    <i class="fas fa-box"></i>
-                </div>
-                <div class="activity-content">
-                    <p>备件入库：轴承 x50</p>
-                    <small>15分钟前</small>
-                </div>
-            </div>
-            <div class="activity-item">
-                <div class="activity-icon warning">
-                    <i class="fas fa-wrench"></i>
-                </div>
-                <div class="activity-content">
-                    <p>设备维护提醒：设备 #003</p>
-                    <small>1小时前</small>
-                </div>
-            </div>
-            <div class="activity-item">
-                <div class="activity-icon danger">
-                    <i class="fas fa-exclamation"></i>
-                </div>
-                <div class="activity-content">
-                    <p>库存预警：滤芯不足</p>
-                    <small>2小时前</small>
+            <div class="content-scrollable" id="recentActivitiesList">
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                    <p>加载中...</p>
                 </div>
             </div>
         </div>
@@ -1970,33 +2024,12 @@
         <div class="notification-card">
             <div class="header">
                 <h6><i class="fas fa-bell me-2 text-warning"></i>通知中心</h6>
-                <span class="badge bg-danger">3</span>
+                <span class="badge bg-danger" id="notificationBadge">0</span>
             </div>
-            <div class="notification-item unread">
-                <div class="notification-icon info">
-                    <i class="fas fa-info"></i>
-                </div>
-                <div class="notification-content">
-                    <p>系统更新完成</p>
-                    <small>今天 10:30</small>
-                </div>
-            </div>
-            <div class="notification-item unread">
-                <div class="notification-icon warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="notification-content">
-                    <p>库存预警：3种备件低于安全库存</p>
-                    <small>今天 09:15</small>
-                </div>
-            </div>
-            <div class="notification-item">
-                <div class="notification-icon success">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="notification-content">
-                    <p>月度报表已生成</p>
-                    <small>昨天 18:00</small>
+            <div class="content-scrollable" id="notificationsList">
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                    <p>加载中...</p>
                 </div>
             </div>
         </div>
@@ -2009,40 +2042,10 @@
                 <h6><i class="fas fa-tasks me-2 text-primary"></i>进度跟踪</h6>
                 <a href="#" class="text-primary text-decoration-none small">详情</a>
             </div>
-            <div class="progress-item">
-                <div class="label-row">
-                    <span class="label">月度维护计划</span>
-                    <span class="percent">75%</span>
-                </div>
-                <div class="progress-bar-wrapper">
-                    <div class="progress-bar success" style="width: 75%;"></div>
-                </div>
-            </div>
-            <div class="progress-item">
-                <div class="label-row">
-                    <span class="label">库存盘点</span>
-                    <span class="percent">60%</span>
-                </div>
-                <div class="progress-bar-wrapper">
-                    <div class="progress-bar warning" style="width: 60%;"></div>
-                </div>
-            </div>
-            <div class="progress-item">
-                <div class="label-row">
-                    <span class="label">设备检查</span>
-                    <span class="percent">90%</span>
-                </div>
-                <div class="progress-bar-wrapper">
-                    <div class="progress-bar info" style="width: 90%;"></div>
-                </div>
-            </div>
-            <div class="progress-item">
-                <div class="label-row">
-                    <span class="label">年度培训</span>
-                    <span class="percent">35%</span>
-                </div>
-                <div class="progress-bar-wrapper">
-                    <div class="progress-bar danger" style="width: 35%;"></div>
+            <div class="content-scrollable" id="progressTrackingList">
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                    <p>加载中...</p>
                 </div>
             </div>
         </div>
@@ -2847,8 +2850,114 @@
 
     console.log('📄 页面开始加载');
 
+    // ==================== 仪表盘组件 - 动态数据加载 ====================
+    
+    // 加载最近活动
+    async function loadRecentActivities() {
+        try {
+            const response = await fetch('/api/dashboard/recent-activities');
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.length > 0) {
+                const container = document.getElementById('recentActivitiesList');
+                container.innerHTML = result.data.map(function(item) {
+                    return '<div class="activity-item">' +
+                        '<div class="activity-icon ' + item.type + '">' +
+                            '<i class="fas ' + item.icon + '"></i>' +
+                        '</div>' +
+                        '<div class="activity-content">' +
+                            '<p>' + item.title + '</p>' +
+                            '<small>' + item.time + '</small>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+            } else {
+                document.getElementById('recentActivitiesList').innerHTML = 
+                    '<div class="text-center text-muted py-4"><p>暂无活动记录</p></div>';
+            }
+        } catch (error) {
+            console.error('加载最近活动失败:', error);
+            document.getElementById('recentActivitiesList').innerHTML = 
+                '<div class="text-center text-muted py-4"><p>加载失败</p></div>';
+        }
+    }
+    
+    // 加载通知中心
+    async function loadNotifications() {
+        try {
+            const response = await fetch('/api/dashboard/notifications');
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+                const badge = document.getElementById('notificationBadge');
+                if (badge) {
+                    badge.textContent = result.data.unread_count || 0;
+                    badge.style.display = result.data.unread_count > 0 ? 'inline' : 'none';
+                }
+                
+                const container = document.getElementById('notificationsList');
+                const notifications = result.data.notifications || [];
+                
+                if (notifications.length > 0) {
+                    container.innerHTML = notifications.map(function(item) {
+                        return '<div class="notification-item' + (item.unread ? ' unread' : '') + '">' +
+                            '<div class="notification-icon ' + item.type + '">' +
+                                '<i class="fas ' + item.icon + '"></i>' +
+                            '</div>' +
+                            '<div class="notification-content">' +
+                                '<p>' + item.title + '</p>' +
+                                '<small>' + item.time + '</small>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('');
+                } else {
+                    container.innerHTML = 
+                        '<div class="text-center text-muted py-4"><p>暂无通知</p></div>';
+                }
+            }
+        } catch (error) {
+            console.error('加载通知中心失败:', error);
+            document.getElementById('notificationsList').innerHTML = 
+                '<div class="text-center text-muted py-4"><p>加载失败</p></div>';
+        }
+    }
+    
+    // 加载进度跟踪
+    async function loadProgressTracking() {
+        try {
+            const response = await fetch('/api/dashboard/progress-tracking');
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.length > 0) {
+                const container = document.getElementById('progressTrackingList');
+                container.innerHTML = result.data.map(function(item) {
+                    var progress = Math.min(100, Math.max(0, item.progress));
+                    return '<div class="progress-item">' +
+                        '<div class="label-row">' +
+                            '<span class="label">' + item.label + '</span>' +
+                            '<span class="percent">' + progress + '%</span>' +
+                        '</div>' +
+                        '<div class="progress-bar-wrapper">' +
+                            '<div class="progress-bar ' + item.color + '" style="width: ' + progress + '%;"></div>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+            } else {
+                document.getElementById('progressTrackingList').innerHTML = 
+                    '<div class="text-center text-muted py-4"><p>暂无进度数据</p></div>';
+            }
+        } catch (error) {
+            console.error('加载进度跟踪失败:', error);
+            document.getElementById('progressTrackingList').innerHTML = 
+                '<div class="text-center text-muted py-4"><p>加载失败</p></div>';
+        }
+    }
+
     // DOM 准备好就开始加载核心内容
     document.addEventListener('DOMContentLoaded', function() {
+        loadRecentActivities();
+        loadNotifications();
+        loadProgressTracking();
         console.log('✅ DOM 加载完成，开始加载核心内容');
 
         // 优先加载重要图表
@@ -2876,12 +2985,22 @@
     // 页面完全加载后初始化地图
     window.addEventListener('load', function() {
         console.log('✅ 页面完全加载，初始化地图');
-        initMap();
+        // 延迟一点确保DOM完全就绪
+        setTimeout(() => initMap(), 300);
     });
 
     function initMap() {
         const statusBar = document.getElementById('statusBar');
         const statusText = document.getElementById('statusText');
+        const mapContainer = document.getElementById('mapContainer');
+        
+        // 验证地图容器
+        if (!mapContainer) {
+            console.error('❌ 地图容器不存在');
+            return;
+        }
+        
+        console.log('🗺️ 地图容器尺寸:', mapContainer.offsetWidth, 'x', mapContainer.offsetHeight);
 
         if (typeof AMap === 'undefined') {
             statusBar.className = 'status-bar error';
@@ -2960,8 +3079,33 @@
             }
 
             console.log('✅ Map created');
+            
+            // 关键修复：强制设置地图容器样式
+            mapContainer.style.position = 'relative';
+            mapContainer.style.overflow = 'visible';
+            
+            // 确保高德地图容器正确显示
+            const amapContainer = mapContainer.querySelector('.amap-container');
+            if (amapContainer) {
+                amapContainer.style.width = '100%';
+                amapContainer.style.height = '100%';
+                console.log('🔧 高德地图容器样式已调整');
+            }
+            
             statusBar.className = 'status-bar success';
             statusText.textContent = '地图创建成功！正在加载设备...';
+
+            // 关键：调用resize确保地图正确渲染
+            setTimeout(() => {
+                map.resize();
+                console.log('🔄 Map resized');
+                
+                // 再次检查并调整
+                const amapDiv = mapContainer.querySelector('.amap-container');
+                if (amapDiv) {
+                    console.log('📐 高德地图实际尺寸:', amapDiv.offsetWidth, 'x', amapDiv.offsetHeight);
+                }
+            }, 200);
 
             // 监听缩放事件，动态调整标记大小
             map.on('zoomchange', function() {
@@ -3046,16 +3190,29 @@
         if (currentFilters.city) params.set('city', currentFilters.city);
         
         const queryString = params.toString() ? '?' + params.toString() : '';
+        const url = '/equipment/api/locations' + queryString;
+        console.log('🔗 Fetching from:', url);
         
-        fetch('/equipment/api/locations' + queryString)
+        fetch(url)
             .then(res => {
+                console.log('📥 Response status:', res.status, res.url);
+                // 检查是否被重定向到登录页
+                if (res.redirected) {
+                    console.error('❌ Redirected to:', res.url);
+                    throw new Error('需要重新登录');
+                }
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return res.json();
             })
             .then(data => {
+                console.log('✅ API Response:', data);
                 // API返回格式: {total_count: ..., running_count: ..., locations: [...]}
                 allDevices = data.locations || [];
                 console.log('✅ Devices loaded:', allDevices.length);
+                
+                if (data.error) {
+                    console.error('❌ API Error:', data.error);
+                }
                 
                 // 保存筛选选项
                 allFilterOptions = {
@@ -3198,9 +3355,14 @@
                 document.getElementById('statusText').textContent = '加载完成！显示 ' + allDevices.length + ' 台设备';
             })
             .catch(error => {
-                console.error('❌ Load failed:', error);
-                document.getElementById('statusBar').className = 'status-bar error';
-                document.getElementById('statusText').textContent = '加载设备数据失败：' + error.message;
+                console.error('❌ Load devices failed:', error);
+                const statusBar = document.getElementById('statusBar');
+                const statusText = document.getElementById('statusText');
+                if (statusBar) statusBar.className = 'status-bar error';
+                if (statusText) statusText.textContent = '加载设备数据失败：' + error.message;
+                
+                // 显示友好提示
+                document.getElementById('mapDeviceCount').textContent = '加载失败';
             });
     }
     

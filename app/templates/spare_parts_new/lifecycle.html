@@ -1,0 +1,864 @@
+{% extends "base.html" %}
+
+{% block title %}生命周期管理 - 备件管理{% endblock %}
+{% block page_title %}生命周期管理{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer"></div>
+<div class="lifecycle-full-page">
+    <!-- 顶部统计卡片 -->
+    <div class="row mb-2" style="margin:0;">
+        <div class="col">
+            <div class="stat-card-wrapper">
+                <div class="stat-card" style="border-left:4px solid #0d6efd;">
+                    <div class="stat-icon"><i class="fas fa-warehouse"></i></div>
+                    <div class="stat-info"><div class="stat-value text-primary" id="statInWarehouse">156</div><div class="stat-label">在库备件</div></div>
+                    <div class="stat-trend"><span class="text-success"><i class="fas fa-arrow-up"></i> 12%</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="stat-card-wrapper">
+                <div class="stat-card" style="border-left:4px solid #198754;">
+                    <div class="stat-icon"><i class="fas fa-cog fa-spin"></i></div>
+                    <div class="stat-info"><div class="stat-value text-success" id="statRunning">89</div><div class="stat-label">运行中</div></div>
+                    <div class="stat-trend"><span class="text-success"><i class="fas fa-arrow-up"></i> 5%</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="stat-card-wrapper">
+                <div class="stat-card" style="border-left:4px solid #ffc107;">
+                    <div class="stat-icon"><i class="fas fa-pause-circle"></i></div>
+                    <div class="stat-info"><div class="stat-value text-warning" id="statPaused">5</div><div class="stat-label">暂停</div></div>
+                    <div class="stat-trend"><span class="text-danger"><i class="fas fa-arrow-down"></i> 3%</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="stat-card-wrapper">
+                <div class="stat-card" style="border-left:4px solid #dc3545;">
+                    <div class="stat-icon"><i class="fas fa-stop-circle"></i></div>
+                    <div class="stat-info"><div class="stat-value text-danger" id="statTerminated">12</div><div class="stat-label">已终止</div></div>
+                    <div class="stat-trend"><span class="text-muted"><i class="fas fa-minus"></i> 持平</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="stat-card-wrapper">
+                <div class="stat-card" style="border-left:4px solid #6f42c1;">
+                    <div class="stat-icon"><i class="fas fa-exchange-alt"></i></div>
+                    <div class="stat-info"><div class="stat-value" style="color:#6f42c1;" id="statTransitions">245</div><div class="stat-label">总流转次数</div></div>
+                    <div class="stat-trend"><span class="text-success"><i class="fas fa-arrow-up"></i> 8%</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="stat-card-wrapper">
+                <div class="stat-card" style="border-left:4px solid #fd7e14;">
+                    <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-info"><div class="stat-value" style="color:#fd7e14;" id="statAlerts">3</div><div class="stat-label">预警数量</div></div>
+                    <div class="stat-trend"><span class="text-danger"><i class="fas fa-arrow-up"></i> 2</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段管道 + 备件跟踪 -->
+    <div class="row mb-2" style="margin:0;">
+        <div class="col-md-8" style="padding-right:6px;">
+            <div class="card h-100" style="position:relative;z-index:10;">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center" style="position:relative;z-index:11;">
+                    <h5 class="card-title mb-0" style="font-size:14px;"><i class="fas fa-layer-group"></i> 生命周期阶段管理</h5>
+                    <div style="position:relative;z-index:12;">
+                        <button class="btn btn-sm btn-outline-primary me-1" id="btnBatchTransition" type="button" onclick="openBatchModal()"><i class="fas fa-random"></i> 批量流转</button>
+                        <button class="btn btn-sm btn-primary" id="btnNewTransition" type="button" onclick="openTransitionModal()"><i class="fas fa-play"></i> 新增流转</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="stagePipeline" class="stage-pipeline"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4" style="padding-left:6px;">
+            <div class="card h-100">
+                <div class="card-header py-2">
+                    <h5 class="card-title mb-0" style="font-size:14px;"><i class="fas fa-chart-pie"></i> 阶段分布</h5>
+                </div>
+                <div class="card-body py-2"><div style="height:200px;position:relative;"><canvas id="lifecycleChart"></canvas></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选工具栏 -->
+    <div class="row mb-2" style="margin:0;">
+        <div class="col-12" style="padding:0;">
+            <div class="filter-bar">
+                <div class="filter-item"><label>备件筛选</label><select class="form-control form-control-sm" id="filterSparePart" onchange="applyFilters()"><option value="">全部备件</option></select></div>
+                <div class="filter-item"><label>起始阶段</label><select class="form-control form-control-sm" id="filterFromStage" onchange="applyFilters()"><option value="">全部</option></select></div>
+                <div class="filter-item"><label>目标阶段</label><select class="form-control form-control-sm" id="filterToStage" onchange="applyFilters()"><option value="">全部</option></select></div>
+                <div class="filter-item"><label>触发方式</label><select class="form-control form-control-sm" id="filterTrigger" onchange="applyFilters()"><option value="">全部</option><option value="manual">手动</option><option value="auto">自动</option><option value="ai">AI</option><option value="rule">规则</option></select></div>
+                <div class="filter-item"><label>日期范围</label><input type="date" class="form-control form-control-sm" id="filterDateFrom" onchange="applyFilters()"></div>
+                <div class="filter-item"><label>至</label><input type="date" class="form-control form-control-sm" id="filterDateTo" onchange="applyFilters()"></div>
+                <div class="filter-item" style="align-self:flex-end;"><input type="text" class="form-control form-control-sm" id="filterSearch" placeholder="搜索..." oninput="applyFilters()"></div>
+                <div class="filter-item" style="align-self:flex-end;"><button class="btn btn-sm btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-undo"></i> 重置</button></div>
+                <div class="filter-item" style="align-self:flex-end;"><button class="btn btn-sm btn-outline-info" onclick="exportData()"><i class="fas fa-download"></i> 导出</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 流转记录表格 -->
+    <div class="row mb-2" style="margin:0;">
+        <div class="col-12" style="padding:0;">
+            <div class="data-table-card">
+                <div class="table-header">
+                    <h5 class="mb-0" style="font-size:14px;"><i class="fas fa-exchange-alt"></i> 阶段流转记录</h5>
+                    <div class="table-actions">
+                        <span class="table-info" id="tableInfo">共 0 条记录</span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary" onclick="changePageSize(10)" id="ps10">10</button>
+                            <button class="btn btn-outline-secondary active" onclick="changePageSize(20)" id="ps20">20</button>
+                            <button class="btn btn-outline-secondary" onclick="changePageSize(50)" id="ps50">50</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+                        <thead class="table-light"><tr>
+                            <th style="width:40px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                            <th style="cursor:pointer;" onclick="sortTable('spare_part_id')">备件编号 <i class="fas fa-sort"></i></th>
+                            <th>备件名称</th>
+                            <th style="cursor:pointer;" onclick="sortTable('from_stage')">起始阶段 <i class="fas fa-sort"></i></th>
+                            <th style="cursor:pointer;" onclick="sortTable('to_stage')">目标阶段 <i class="fas fa-sort"></i></th>
+                            <th style="cursor:pointer;" onclick="sortTable('transition_date')">流转时间 <i class="fas fa-sort"></i></th>
+                            <th>触发方式</th>
+                            <th>持续天数</th>
+                            <th>操作人</th>
+                            <th>说明</th>
+                            <th style="width:120px;">操作</th>
+                        </tr></thead>
+                        <tbody id="transitionTable"></tbody>
+                    </table>
+                </div>
+                <div class="table-footer d-flex justify-content-between align-items-center">
+                    <div class="pagination-info" id="paginationInfo"></div>
+                    <div class="pagination" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日志 + 规则 -->
+    <div class="row mb-2" style="margin:0;">
+        <div class="col-md-8" style="padding-right:6px;">
+            <div class="card h-100">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0" style="font-size:14px;"><i class="fas fa-history"></i> 生命周期日志</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active" onclick="switchLogView('timeline',this)"><i class="fas fa-stream"></i> 时间线</button>
+                        <button class="btn btn-outline-secondary" onclick="switchLogView('table',this)"><i class="fas fa-table"></i> 表格</button>
+                    </div>
+                </div>
+                <div class="card-body py-2">
+                    <div class="log-filters mb-2">
+                        <select class="form-control form-control-sm" id="logTypeFilter" onchange="loadLogs()"><option value="">全部类型</option><option value="stage_change">阶段变更</option><option value="status_change">状态变更</option><option value="maintenance">维护</option><option value="inspection">检验</option><option value="alert">预警</option></select>
+                        <input type="text" class="form-control form-control-sm" id="logSearch" placeholder="搜索日志..." oninput="loadLogs()">
+                    </div>
+                    <div id="logTimeline" class="log-timeline"></div>
+                    <div id="logTable" style="display:none;" class="table-responsive"><table class="table table-sm mb-0" style="font-size:12px;"><thead><tr><th>时间</th><th>类型</th><th>动作</th><th>备件</th><th>旧值</th><th>新值</th><th>操作人</th></tr></thead><tbody id="logTableBody"></tbody></table></div>
+                    <div class="pagination-container mt-2" id="logPagination"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4" style="padding-left:6px;">
+            <div class="card h-100">
+                <div class="card-header py-2">
+                    <h5 class="card-title mb-0" style="font-size:14px;"><i class="fas fa-cogs"></i> 生命周期规则</h5>
+                </div>
+                <div class="card-body py-2">
+                    <button class="btn btn-sm btn-primary w-100 mb-2" onclick="openRuleModal()"><i class="fas fa-plus"></i> 新增规则</button>
+                    <div id="ruleList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成本分析 + 效率趋势 -->
+    <div class="row mb-2" style="margin:0;">
+        <div class="col-md-6" style="padding-right:6px;">
+            <div class="card">
+                <div class="card-header py-2"><h5 class="card-title mb-0" style="font-size:14px;"><i class="fas fa-dollar-sign"></i> LCC生命周期成本分析</h5></div>
+                <div class="card-body py-2"><div style="height:240px;position:relative;"><canvas id="lccCostChart"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-md-6" style="padding-left:6px;">
+            <div class="card">
+                <div class="card-header py-2"><h5 class="card-title mb-0" style="font-size:14px;"><i class="fas fa-chart-line"></i> 阶段效率趋势</h5></div>
+                <div class="card-body py-2"><div style="height:240px;position:relative;"><canvas id="efficiencyChart"></canvas></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 更换计划 -->
+    <div class="row mb-2" style="margin:0;">
+        <div class="col-12" style="padding:0;">
+            <div class="card">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0" style="font-size:14px;"><i class="fas fa-calendar-alt"></i> 更换计划</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary" onclick="openScheduleModal()"><i class="fas fa-plus"></i> 新建</button>
+                        <select class="form-control form-control-sm" id="filterUrgency" onchange="loadSchedules()"><option value="">全部紧急度</option><option value="urgent">紧急</option><option value="high">高</option><option value="normal">普通</option><option value="low">低</option></select>
+                    </div>
+                </div>
+                <div class="card-body py-2">
+                    <div class="table-responsive"><table class="table table-sm table-hover mb-0" style="font-size:13px;"><thead class="table-light"><tr><th>备件</th><th>设备</th><th>计划更换日期</th><th>预测失效日期</th><th>剩余天数</th><th>紧急度</th><th>建议来源</th><th>状态</th><th>操作</th></tr></thead><tbody id="scheduleTable"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 流转模态框 -->
+<div class="modal-backdrop" id="transitionModal" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-header"><h5 class="modal-title mb-0" style="font-size:15px;" id="transitionModalTitle">阶段流转</h5><button class="btn-close" onclick="closeModal('transitionModal')"></button></div>
+        <div class="modal-body">
+            <div class="mb-3"><label class="form-label" style="font-size:13px;">选择备件 <span class="text-danger">*</span></label><select class="form-control form-control-sm" id="modalSparePartId"><option value="">请选择备件...</option></select></div>
+            <div class="row mb-3">
+                <div class="col-5"><label class="form-label" style="font-size:13px;">起始阶段</label><select class="form-control form-control-sm" id="modalFromStage"></select></div>
+                <div class="col-2 d-flex align-items-end justify-content-center" style="padding-bottom:8px;"><i class="fas fa-arrow-right text-primary"></i></div>
+                <div class="col-5"><label class="form-label" style="font-size:13px;">目标阶段</label><select class="form-control form-control-sm" id="modalToStage"></select></div>
+            </div>
+            <div class="mb-3"><label class="form-label" style="font-size:13px;">触发方式</label><select class="form-control form-control-sm" id="modalTriggerBy"><option value="manual">手动</option><option value="auto">自动</option><option value="ai">AI</option><option value="rule">规则</option></select></div>
+            <div class="mb-0"><label class="form-label" style="font-size:13px;">流转说明</label><textarea class="form-control form-control-sm" id="modalRemark" rows="3" placeholder="请输入流转说明..."></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-sm btn-secondary" onclick="closeModal('transitionModal')">取消</button><button class="btn btn-sm btn-primary" onclick="confirmTransition(this)"><i class="fas fa-check"></i> 确认流转</button></div>
+    </div>
+</div>
+
+<!-- 批量流转模态框 -->
+<div class="modal-backdrop" id="batchModal" style="display:none;">
+    <div class="modal-dialog" style="max-width:600px;">
+        <div class="modal-header"><h5 class="modal-title mb-0" style="font-size:15px;">批量阶段流转</h5><button class="btn-close" onclick="closeModal('batchModal')"></button></div>
+        <div class="modal-body">
+            <div class="row mb-3"><div class="col-5"><label class="form-label" style="font-size:13px;">起始阶段</label><select class="form-control form-control-sm" id="batchFromStage"><option value="created">创建</option><option value="running">运行中</option><option value="paused">暂停</option></select></div><div class="col-5"><label class="form-label" style="font-size:13px;">目标阶段</label><select class="form-control form-control-sm" id="batchToStage"><option value="running">运行中</option><option value="paused">暂停</option><option value="terminated">终止</option></select></div></div>
+            <div class="mb-3"><label class="form-label" style="font-size:13px;">选择备件（多选）</label><div class="form-check"><input class="form-check-input" type="checkbox" id="batchSelectAll" onchange="toggleBatchSelectAll(this)"><label class="form-check-label" for="batchSelectAll">全选</label></div><div id="batchSparePartCheckboxes" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:4px;padding:8px;"></div></div>
+            <div class="mb-0"><label class="form-label" style="font-size:13px;">流转说明</label><textarea class="form-control form-control-sm" id="batchRemark" rows="2" placeholder="批量流转说明..."></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-sm btn-secondary" onclick="closeModal('batchModal')">取消</button><button class="btn btn-sm btn-primary" onclick="confirmBatchTransition(this)"><i class="fas fa-check"></i> 确认批量流转 (<span id="batchCount">0</span>)</button></div>
+    </div>
+</div>
+
+<!-- 规则模态框 -->
+<div class="modal-backdrop" id="ruleModal" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-header"><h5 class="modal-title mb-0" style="font-size:15px;">新增生命周期规则</h5><button class="btn-close" onclick="closeModal('ruleModal')"></button></div>
+        <div class="modal-body">
+            <div class="mb-3"><label class="form-label" style="font-size:13px;">规则代码 <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm" id="ruleCode" placeholder="如：RULE_AUTO_TRANSITION"></div>
+            <div class="mb-3"><label class="form-label" style="font-size:13px;">规则名称 <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm" id="ruleName" placeholder="如：自动阶段流转"></div>
+            <div class="mb-3"><label class="form-label" style="font-size:13px;">规则类型</label><select class="form-control form-control-sm" id="ruleType"><option value="stage_transition">阶段流转</option><option value="alert">预警</option><option value="maintenance">维护</option></select></div>
+            <div class="mb-3"><label class="form-label" style="font-size:13px;">优先级</label><input type="number" class="form-control form-control-sm" id="rulePriority" value="5" min="1" max="10"></div>
+            <div class="mb-3"><div class="form-check"><input class="form-check-input" type="checkbox" id="ruleAutoExecute"><label class="form-check-label" for="ruleAutoExecute">自动执行</label></div></div>
+            <div class="mb-0"><label class="form-label" style="font-size:13px;">规则描述</label><textarea class="form-control form-control-sm" id="ruleDesc" rows="3" placeholder="描述规则触发条件和执行动作..."></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-sm btn-secondary" onclick="closeModal('ruleModal')">取消</button><button class="btn btn-sm btn-primary" onclick="saveRule()"><i class="fas fa-save"></i> 保存</button></div>
+    </div>
+</div>
+
+<style>
+.lifecycle-full-page{margin:0!important;max-width:100%!important;width:100%!important;padding:0!important;}
+.lifecycle-full-page .row{margin:0!important;}
+.lifecycle-full-page .col{padding-left:6px!important;padding-right:6px!important;}
+.lifecycle-full-page .card{margin-bottom:0!important;border-radius:8px!important;border:1px solid #e8ecf1!important;}
+.lifecycle-full-page .card-header{border-radius:8px 8px 0 0!important;padding:10px 14px!important;background:#f8f9fa!important;border-bottom:1px solid #e8ecf1!important;}
+
+/* 统计卡片 */
+.stat-card-wrapper{position:relative;}
+.stat-card{background:#fff;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.12);}
+.stat-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(13,110,253,0.1);}
+.stat-info{flex:1;}
+.stat-value{font-size:1.5rem;font-weight:700;line-height:1.2;}
+.stat-label{font-size:0.7rem;color:#6c757d;}
+.stat-trend{font-size:0.7rem;}
+
+/* 阶段管道 */
+.stage-pipeline{display:flex;align-items:stretch;padding:12px;overflow-x:auto;gap:0;}
+.stage-node{flex:1;min-width:150px;border-radius:8px;overflow:hidden;transition:all 0.3s;cursor:pointer;position:relative;}
+.stage-node:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.15);}
+.stage-node.active{box-shadow:0 0 0 2px #0d6efd,0 4px 12px rgba(13,110,253,0.3);}
+.stage-node.completed{opacity:0.7;}
+.stage-header{padding:12px;color:#fff;font-weight:600;display:flex;align-items:center;gap:8px;font-size:13px;}
+.stage-header i{font-size:14px;}
+.stage-count{margin-left:auto;background:rgba(255,255,255,0.3);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;}
+.stage-body{padding:10px;background:#f8f9fa;min-height:55px;}
+.stage-arrow{display:flex;align-items:center;justify-content:center;color:#adb5bd;padding:0 6px;font-size:16px;}
+.stage-arrow i{animation:pulseArrow 2s infinite;}
+@keyframes pulseArrow{0%,100%{opacity:0.5;}50%{opacity:1;}}
+
+/* 筛选栏 */
+.filter-bar{background:#fff;border:1px solid #e8ecf1;border-radius:8px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+.filter-item{display:flex;flex-direction:column;gap:4px;}
+.filter-item label{font-size:11px;color:#6c757d;font-weight:500;}
+.filter-item .form-control{min-width:130px;}
+
+/* 数据表格 */
+.data-table-card{background:#fff;border:1px solid #e8ecf1;border-radius:8px;overflow:hidden;position:relative;}
+.table-header{padding:10px 14px;background:#f8f9fa;border-bottom:1px solid #e8ecf1;display:flex;justify-content:space-between;align-items:center;}
+.table-info{font-size:12px;color:#6c757d;}
+.table-footer{padding:8px 14px;background:#f8f9fa;border-top:1px solid #e8ecf1;}
+.table-footer .btn-group-sm .btn{padding:2px 8px;font-size:11px;}
+.table-footer .btn-group-sm .btn.active{background:#0d6efd;color:#fff;border-color:#0d6efd;}
+
+/* 阶段管道卡片 */
+.stage-pipeline-card{position:relative;z-index:2;}
+.stage-pipeline-card .card-header{position:relative;z-index:3;}
+.stage-pipeline-card .card-header button{position:relative;z-index:4;cursor:pointer;}
+
+/* 日志 */
+.log-filters{display:flex;gap:8px;}
+.log-filters .form-control{flex:1;}
+.log-timeline{position:relative;padding-left:24px;max-height:380px;overflow-y:auto;}
+.log-timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:#e8ecf1;}
+.log-item{position:relative;margin-bottom:10px;animation:fadeIn 0.3s ease;}
+.log-item::before{content:'';position:absolute;left:-18px;top:6px;width:10px;height:10px;border-radius:50%;border:2px solid #fff;}
+.log-item.log-stage_change::before{background:#0d6efd;box-shadow:0 0 0 2px #0d6efd;}
+.log-item.log-status_change::before{background:#ffc107;box-shadow:0 0 0 2px #ffc107;}
+.log-item.log-maintenance::before{background:#198754;box-shadow:0 0 0 2px #198754;}
+.log-item.log-inspection::before{background:#17a2b8;box-shadow:0 0 0 2px #17a2b8;}
+.log-item.log-alert::before{background:#dc3545;box-shadow:0 0 0 2px #dc3545;}
+.log-content{background:#f8f9fa;padding:8px 12px;border-radius:6px;font-size:12px;border-left:3px solid transparent;}
+.log-item.log-stage_change .log-content{border-left-color:#0d6efd;}
+.log-item.log-alert .log-content{border-left-color:#dc3545;}
+.log-content .log-action{font-weight:600;color:#1a1c2e;}
+.log-content .log-time{color:#6c757d;font-size:11px;margin-left:8px;}
+.log-content .log-detail{color:#6c757d;font-size:11px;margin-top:3px;}
+
+/* 规则 */
+.rule-item{padding:10px;border:1px solid #e8ecf1;border-radius:6px;margin-bottom:8px;font-size:12px;transition:all 0.2s;}
+.rule-item:hover{border-color:#0d6efd;background:#f8f9ff;}
+.rule-item .rule-name{font-weight:600;font-size:13px;}
+.rule-item .rule-desc{color:#6c757d;margin:3px 0;font-size:11px;}
+.rule-item .rule-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+
+/* 分页 */
+.pagination-container{display:flex;justify-content:center;gap:3px;}
+.pagination-container .page-btn{padding:3px 8px;border:1px solid #dee2e6;border-radius:4px;cursor:pointer;font-size:11px;background:#fff;}
+.pagination-container .page-btn.active{background:#0d6efd;color:#fff;border-color:#0d6efd;}
+.pagination-container .page-btn:hover:not(.active){background:#e9ecef;}
+.pagination{display:flex;gap:2px;}
+.pagination .page-btn{padding:3px 8px;border:1px solid #dee2e6;border-radius:4px;cursor:pointer;font-size:11px;background:#fff;}
+.pagination .page-btn.active{background:#0d6efd;color:#fff;border-color:#0d6efd;}
+
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;}
+.toast-message{background:#fff;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15);padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;gap:8px;animation:slideIn 0.3s ease;font-size:13px;}
+.toast-message.success{border-left:4px solid #28a745;}
+.toast-message.error{border-left:4px solid #dc3545;}
+.toast-message.info{border-left:4px solid #0d6efd;}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideOut{from{transform:translateX(0);opacity:1;}to{transform:translateX(100%);opacity:0;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* 模态框 */
+.modal-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;}
+.modal-dialog{background:#fff;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.2);animation:modalIn 0.3s ease;position:relative;z-index:1;}
+@keyframes modalIn{from{transform:scale(0.95);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal-header{padding:14px 18px;border-bottom:1px solid #e8ecf1;display:flex;justify-content:space-between;align-items:center;}
+.modal-body{padding:18px;}
+.modal-footer{padding:12px 18px;border-top:1px solid #e8ecf1;display:flex;justify-content:flex-end;gap:8px;}
+.btn-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6c757d;line-height:1;padding:0 4px;}
+
+.stage-transition-anim{animation:pulseStage 0.5s ease;}
+@keyframes pulseStage{0%{transform:scale(1);}50%{transform:scale(1.03);}100%{transform:scale(1);}}
+
+.badge{font-size:11px;padding:3px 8px;}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let lifecycleChart=null,lccCostChart=null,efficiencyChart=null;
+let currentPage=1,pageSize=20,totalPages=1,sortField='transition_date',sortDir='desc';
+var allTransitions=[],filteredTransitions=[],sparePartsCache=[],stagesCache=[],currentModalData={};
+var pageReady=false;
+var initRetryCount=0;
+var MAX_INIT_RETRIES=10;
+
+function checkElementExists(selector,maxRetries,delay){
+    return new Promise(function(resolve,reject){
+        var attempts=0;
+        var timer=setInterval(function(){
+            attempts++;
+            var el=document.querySelector(selector);
+            if(el){clearInterval(timer);resolve(el);return;}
+            if(attempts>=maxRetries){clearInterval(timer);reject(new Error('Element '+selector+' not found after '+maxRetries+' attempts'));}
+        },delay);
+    });
+}
+
+window.addEventListener('DOMContentLoaded',function(){
+    setTimeout(initPage,500);
+});
+
+function initPage(){
+    if(pageReady){return;}
+    if(initRetryCount>=MAX_INIT_RETRIES){
+        console.warn('页面初始化完成（部分元素未找到，功能将按需加载）');
+        pageReady=true;
+        initCharts();loadStages();loadSpareParts();loadTransitions();loadLogs();loadRules();loadSchedules();
+        return;
+    }
+    initRetryCount++;
+    var requiredElements=['#stagePipeline','#filterSparePart','#filterFromStage','#filterToStage'];
+    var optionalElements=['#modalFromStage','#modalToStage','#modalSparePartId','#batchModal','#transitionModal','#toastContainer'];
+    var criticalExist=true;
+    for(var i=0;i<requiredElements.length;i++){
+        if(!document.querySelector(requiredElements[i])){
+            console.error('Critical element not found: '+requiredElements[i]+' (retry '+initRetryCount+'/'+MAX_INIT_RETRIES+')');
+            criticalExist=false;
+        }
+    }
+    var missingOptional=[];
+    for(var i=0;i<optionalElements.length;i++){
+        if(!document.querySelector(optionalElements[i])){
+            missingOptional.push(optionalElements[i]);
+        }
+    }
+    if(!criticalExist){
+        console.error('Critical elements missing. Retrying in 500ms...');
+        setTimeout(initPage,500);
+    }else{
+        pageReady=true;
+        if(missingOptional.length>0){
+            console.warn('Optional elements not found (will be lazy-loaded): '+missingOptional.join(', '));
+        }
+        console.log('页面初始化成功，共重试'+initRetryCount+'次');
+        initCharts();loadStages();loadSpareParts();loadTransitions();loadLogs();loadRules();loadSchedules();
+    }
+}
+
+function initCharts(){
+    var lc=document.getElementById('lifecycleChart'),lcc=document.getElementById('lccCostChart'),eff=document.getElementById('efficiencyChart');
+    if(!lc||!lcc||!eff||typeof Chart==='undefined')return;
+    lifecycleChart=new Chart(lc.getContext('2d'),{type:'doughnut',data:{labels:['创建','运行中','暂停','终止'],datasets:[{data:[24,89,5,12],backgroundColor:['#6c757d','#0d6efd','#ffc107','#dc3545'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:8,font:{size:10}}}}}});
+    lccCostChart=new Chart(lcc.getContext('2d'),{type:'bar',data:{labels:['采购','安装','维护','更换','报废'],datasets:[{label:'成本(元)',data:[125000,32000,89000,67000,15000],backgroundColor:['#0d6efd','#6f42c1','#198754','#ffc107','#dc3545'],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return '¥'+c.parsed.y.toLocaleString();}}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:function(v){return '¥'+(v/1000)+'K';},font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+    efficiencyChart=new Chart(eff.getContext('2d'),{type:'line',data:{labels:['1月','2月','3月','4月','5月','6月'],datasets:[{label:'平均时长(天)',data:[45,42,38,35,32,30],borderColor:'#0d6efd',tension:0.4,fill:true,backgroundColor:'rgba(13,110,253,0.1)',pointRadius:3},{label:'成功率(%)',data:[92,94,95,96,97,98],borderColor:'#198754',tension:0.4,fill:false,pointRadius:3,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:10,font:{size:10}}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10}}},y1:{position:'right',beginAtZero:true,max:100,grid:{drawOnChartArea:false},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+
+function toggleSelectAll(cb){document.querySelectorAll('.row-check').forEach(function(c){c.checked=cb.checked;});}
+
+function showToast(msg,type){
+    var c=document.getElementById('toastContainer');
+    if(!c){
+        console.warn('toastContainer元素未找到，无法显示提示:',msg);
+        return;
+    }
+    var t=document.createElement('div');
+    t.className='toast-message '+type;
+    var icons={success:'fa-check-circle text-success',error:'fa-times-circle text-danger',info:'fa-info-circle text-info'};
+    t.innerHTML='<i class="fas '+(icons[type]||icons.info)+'"></i><span>'+msg+'</span>';
+    c.appendChild(t);
+    setTimeout(function(){t.style.animation='slideOut 0.3s ease forwards';setTimeout(function(){t.remove();},300);},3000);
+}
+
+function closeModal(id){var el=document.getElementById(id);if(el)el.style.display='none';else console.error('模态框元素不存在: '+id);}
+
+async function loadStages(){
+    try{
+        var r=await fetch('/api/spare_parts/lifecycle/stages');var d=await r.json();
+        if(d.success){
+            stagesCache=d.data.items||[];
+            var counts={created:24,running:89,paused:5,terminated:12};
+            var html='';
+            var stageData=[
+                {code:'created',name:'创建',icon:'fa-plus-circle',color:'linear-gradient(135deg,#6c757d,#495057)',actions:[{to:'running',label:'启动',icon:'fa-play',cls:'success'}]},
+                {code:'running',name:'运行中',icon:'fa-play-circle',color:'linear-gradient(135deg,#0d6efd,#0b5ed7)',actions:[{to:'paused',label:'暂停',icon:'fa-pause',cls:'warning'},{to:'terminated',label:'终止',icon:'fa-stop',cls:'danger'}]},
+                {code:'paused',name:'暂停',icon:'fa-pause-circle',color:'linear-gradient(135deg,#ffc107,#e0a800)',actions:[{to:'running',label:'恢复',icon:'fa-redo',cls:'success'},{to:'terminated',label:'终止',icon:'fa-stop',cls:'danger'}]},
+                {code:'terminated',name:'终止',icon:'fa-stop-circle',color:'linear-gradient(135deg,#dc3545,#c82333)',actions:[]}
+            ];
+            stageData.forEach(function(s,i){
+                html+='<div class="stage-node '+(s.code==='running'?'active':'')+'" data-stage="'+s.code+'"><div class="stage-header" style="background:'+s.color+';"><i class="fas '+s.icon+'"></i><span>'+s.name+'</span><span class="stage-count" id="count'+s.code.charAt(0).toUpperCase()+s.code.slice(1)+'">'+counts[s.code]+'</span></div><div class="stage-body">';
+                s.actions.forEach(function(a){html+='<button class="btn btn-sm btn-outline-'+a.cls+' w-100 mb-1" onclick="openTransitionModal(\''+s.code+'\',\''+a.to+'\')" style="font-size:11px;"><i class="fas '+a.icon+'"></i> '+a.label+'</button>';});
+                if(s.actions.length===0)html+='<span class="badge bg-secondary" style="font-size:10px;">已结束</span>';
+                html+='</div></div>';
+                if(i<stageData.length-1)html+='<div class="stage-arrow"><i class="fas fa-arrow-right"></i></div>';
+            });
+            var stagePipeline=document.getElementById('stagePipeline');
+            if(stagePipeline)stagePipeline.innerHTML=html;
+            else console.error('stagePipeline元素不存在');
+            // 填充筛选下拉
+            var fromOpts='<option value="">全部</option>',toOpts='<option value="">全部</option>';
+            stageData.forEach(function(s){fromOpts+='<option value="'+s.code+'">'+s.name+'</option>';if(s.code!=='created')toOpts+='<option value="'+s.code+'">'+s.name+'</option>';});
+            var filterFrom=document.getElementById('filterFromStage');
+            var filterTo=document.getElementById('filterToStage');
+            if(filterFrom)filterFrom.innerHTML=fromOpts;
+            if(filterTo)filterTo.innerHTML=toOpts;
+            // 模态框阶段下拉
+            var mFrom='<option value="created">创建</option><option value="running" selected>运行中</option><option value="paused">暂停</option>';
+            var mTo='<option value="running" selected>运行中</option><option value="paused">暂停</option><option value="terminated">终止</option>';
+            var modalFrom=document.getElementById('modalFromStage');
+            var modalTo=document.getElementById('modalToStage');
+            if(modalFrom)modalFrom.innerHTML=mFrom;
+            if(modalTo)modalTo.innerHTML=mTo;
+        }
+    }catch(e){console.error('加载阶段失败:',e);}
+}
+
+async function loadSpareParts(){
+    try{
+        var r=await fetch('/api/spare_parts/quality/spare-parts');var d=await r.json();
+        if(d.success){
+            sparePartsCache=d.data.items||[];
+            var opts='<option value="">全部备件</option>',mOpts='<option value="">请选择备件...</option>';
+            sparePartsCache.forEach(function(sp){
+                var txt=(sp.part_code||'SP'+sp.id)+' - '+(sp.name||'');
+                opts+='<option value="'+sp.id+'">'+txt+'</option>';
+                mOpts+='<option value="'+sp.id+'">'+txt+'</option>';
+            });
+            var filterSpareEl=document.getElementById('filterSparePart');
+            var modalSpareEl=document.getElementById('modalSparePartId');
+            if(filterSpareEl)filterSpareEl.innerHTML=opts;
+            if(modalSpareEl)modalSpareEl.innerHTML=mOpts;
+        }
+    }catch(e){console.error('加载备件失败:',e);}
+}
+
+function applyFilters(){currentPage=1;filterAndLoad();}
+function resetFilters(){
+    document.getElementById('filterSparePart').value='';
+    document.getElementById('filterFromStage').value='';
+    document.getElementById('filterToStage').value='';
+    document.getElementById('filterTrigger').value='';
+    document.getElementById('filterDateFrom').value='';
+    document.getElementById('filterDateTo').value='';
+    document.getElementById('filterSearch').value='';
+    currentPage=1;filterAndLoad();
+}
+
+async function filterAndLoad(){
+    var sp=document.getElementById('filterSparePart').value;
+    var fs=document.getElementById('filterFromStage').value;
+    var ts=document.getElementById('filterToStage').value;
+    var tr=document.getElementById('filterTrigger').value;
+    var df=document.getElementById('filterDateFrom').value;
+    var dt=document.getElementById('filterDateTo').value;
+    var sw=document.getElementById('filterSearch').value;
+    var url='/api/spare_parts/lifecycle/transitions?page='+currentPage+'&per_page='+pageSize;
+    if(sp)url+='&spare_part_id='+sp;
+    if(fs)url+='&from_stage='+fs;
+    if(ts)url+='&to_stage='+ts;
+    if(tr)url+='&triggered_by='+tr;
+    try{
+        var r=await fetch(url);var d=await r.json();
+        if(d.success){
+            allTransitions=d.data.items||[];
+            filteredTransitions=allTransitions;
+            if(sw)filteredTransitions=filteredTransitions.filter(function(i){return('SP'+(i.spare_part_id||'')+(i.remark||'')).toLowerCase().indexOf(sw.toLowerCase())>=0;});
+            if(df)filteredTransitions=filteredTransitions.filter(function(i){return i.transition_date&&i.transition_date>=df;});
+            if(dt)filteredTransitions=filteredTransitions.filter(function(i){return i.transition_date&&i.transition_date<=dt+'T23:59:59';});
+            sortData();
+            var start=(currentPage-1)*pageSize,end=Math.min(start+pageSize,filteredTransitions.length);
+            renderTable(filteredTransitions.slice(start,end));
+            totalPages=Math.ceil(filteredTransitions.length/pageSize)||1;
+            document.getElementById('tableInfo').textContent='共 '+filteredTransitions.length+' 条记录';
+            renderPagination();
+        }
+    }catch(e){console.error('加载流转记录失败:',e);}
+}
+
+async function loadTransitions(){currentPage=1;filterAndLoad();}
+
+function sortTable(field){
+    if(sortField===field)sortDir=sortDir==='asc'?'desc':'asc';
+    else{sortField=field;sortDir='asc';}
+    sortData();
+    var start=(currentPage-1)*pageSize,end=Math.min(start+pageSize,filteredTransitions.length);
+    renderTable(filteredTransitions.slice(start,end));
+}
+
+function sortData(){
+    filteredTransitions.sort(function(a,b){
+        var va=a[sortField]||'',vb=b[sortField]||'';
+        if(sortDir==='asc')return va>vb?1:-1;
+        return va<vb?1:-1;
+    });
+}
+
+function renderTable(items){
+    var stageMap={created:['创建','secondary'],running:['运行中','primary'],paused:['暂停','warning'],terminated:['终止','danger']};
+    var triggerMap={manual:'手动',auto:'自动',ai:'AI',rule:'规则'};
+    var html=items.map(function(item){
+        var from=stageMap[item.from_stage]||[item.from_stage||'-','secondary'];
+        var to=stageMap[item.to_stage]||[item.to_stage,'primary'];
+        var sp=sparePartsCache.find(function(s){return s.id==item.spare_part_id;});
+        var spName=sp?(sp.name||''):'-';
+        return '<tr><td><input type="checkbox" class="row-check" value="'+item.id+'"></td><td>SP'+(item.spare_part_id||'-')+'</td><td>'+spName+'</td><td><span class="badge bg-'+from[1]+'">'+from[0]+'</span></td><td><span class="badge bg-'+to[1]+'">'+to[0]+'</span></td><td>'+(item.transition_date||'-')+'</td><td><span class="badge bg-info">'+(triggerMap[item.triggered_by]||item.triggered_by)+'</span></td><td>'+(item.duration_days||'-')+'天</td><td>'+(item.operator_id||'-')+'</td><td>'+(item.remark||'-')+'</td><td><div class="btn-group btn-group-sm"><button class="btn btn-outline-info" onclick="viewDetail('+item.id+')" title="详情"><i class="fas fa-eye"></i></button><button class="btn btn-outline-danger" onclick="deleteTransition('+item.id+')" title="删除"><i class="fas fa-trash"></i></button></div></td></tr>';
+    }).join('');
+    document.getElementById('transitionTable').innerHTML=html||'<tr><td colspan="11" class="text-center text-muted py-4">暂无流转记录</td></tr>';
+}
+
+function renderPagination(){
+    var info=document.getElementById('paginationInfo'),pg=document.getElementById('pagination');
+    if(totalPages<=1){info.textContent='';pg.innerHTML='';return;}
+    info.textContent='第 '+currentPage+' / '+totalPages+' 页';
+    var html='';
+    html+='<button class="page-btn" onclick="goPage('+(currentPage-1)+')" '+(currentPage<=1?'disabled':'')+'>«</button>';
+    var start=Math.max(1,currentPage-2),end=Math.min(totalPages,currentPage+2);
+    for(var i=start;i<=end;i++){html+='<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="goPage('+i+')">'+i+'</button>';}
+    html+='<button class="page-btn" onclick="goPage('+(currentPage+1)+')" '+(currentPage>=totalPages?'disabled':'')+'>»</button>';
+    pg.innerHTML=html;
+}
+
+function goPage(p){if(p>=1&&p<=totalPages){currentPage=p;filterAndLoad();}}
+function changePageSize(s){pageSize=s;currentPage=1;document.querySelectorAll('.btn-group-sm .btn').forEach(function(b){b.classList.remove('active');});document.getElementById('ps'+s).classList.add('active');filterAndLoad();}
+
+async function loadLogs(){
+    try{
+        var lt=document.getElementById('logTypeFilter').value;
+        var sw=document.getElementById('logSearch').value;
+        var url='/api/spare_parts/lifecycle/logs?page=1&per_page=15'+(lt?'&log_type='+lt:'');
+        var r=await fetch(url);var d=await r.json();
+        if(d.success){
+            var items=d.data.items||[];
+            if(sw)items=items.filter(function(i){return((i.action||'')+(i.new_value||'')).toLowerCase().indexOf(sw.toLowerCase())>=0;});
+            var typeNames={stage_change:'阶段变更',status_change:'状态变更',maintenance:'维护',inspection:'检验',alert:'预警'};
+            var typeColors={stage_change:'primary',status_change:'warning',maintenance:'success',inspection:'info',alert:'danger'};
+            // 时间线视图
+            var tlHtml=items.map(function(item){
+                return '<div class="log-item log-'+item.log_type+'"><div class="log-content"><div><span class="log-action">'+(item.action||'')+'</span><span class="log-time">'+(item.created_at||'')+'</span></div><div class="log-detail">'+(item.new_value?'变更为: '+item.new_value:'')+(item.old_value?' (原: '+item.old_value+')':'')+'</div></div></div>';
+            }).join('');
+            document.getElementById('logTimeline').innerHTML=tlHtml||'<div class="text-center text-muted py-4">暂无日志</div>';
+            // 表格视图
+            var tbHtml=items.map(function(item){
+                return '<tr><td>'+(item.created_at||'-')+'</td><td><span class="badge bg-'+(typeColors[item.log_type]||'secondary')+'">'+(typeNames[item.log_type]||item.log_type)+'</span></td><td>'+(item.action||'-')+'</td><td>SP'+(item.spare_part_id||'-')+'</td><td>'+(item.old_value||'-')+'</td><td>'+(item.new_value||'-')+'</td><td>'+(item.operator_id||'-')+'</td></tr>';
+            }).join('');
+            document.getElementById('logTableBody').innerHTML=tbHtml||'<tr><td colspan="7" class="text-center text-muted">暂无日志</td></tr>';
+        }
+    }catch(e){console.error('加载日志失败:',e);}
+}
+
+function switchLogView(view,btn){
+    document.getElementById('logTimeline').style.display=view==='timeline'?'block':'none';
+    document.getElementById('logTable').style.display=view==='table'?'block':'none';
+    btn.closest('.btn-group').querySelectorAll('.btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+}
+
+async function loadRules(){
+    try{
+        var r=await fetch('/api/spare_parts/lifecycle/rules');var d=await r.json();
+        if(d.success){
+            var typeMap={stage_transition:'阶段流转',alert:'预警',maintenance:'维护'};
+            var html=d.data.items.map(function(item){
+                return '<div class="rule-item"><div class="rule-name">'+(item.rule_name||'-')+'</div><div class="rule-desc">'+(item.description||'')+'</div><div class="rule-meta"><span class="badge bg-info">'+(typeMap[item.rule_type]||'')+'</span><span class="badge bg-secondary">P'+(item.priority||5)+'</span><span class="badge bg-'+(item.is_active?'success':'secondary')+'">'+(item.is_active?'启用':'禁用')+'</span><span>'+(item.trigger_count||0)+'次</span>'+(item.is_auto_execute?'<span class="badge bg-primary">自动</span>':'')+'<button class="btn btn-sm btn-outline-'+(item.is_active?'warning':'success')+' ms-auto" onclick="toggleRule('+item.id+')" style="font-size:10px;padding:1px 6px;">'+(item.is_active?'禁用':'启用')+'</button></div></div>';
+            }).join('');
+            document.getElementById('ruleList').innerHTML=html||'<div class="text-center text-muted py-3" style="font-size:12px;">暂无规则</div>';
+        }
+    }catch(e){console.error('加载规则失败:',e);}
+}
+
+async function loadSchedules(){
+    try{
+        var urgency=document.getElementById('filterUrgency').value;
+        var url='/api/spare_parts/replacement/schedules/list'+(urgency?'?urgency='+urgency:'');
+        var r=await fetch(url);var d=await r.json();
+        if(d.success){
+            var statusMap={planned:['待执行','primary'],in_progress:['执行中','info'],completed:['已完成','success'],cancelled:['已取消','secondary']};
+            var urgencyMap={urgent:['紧急','danger'],high:['高','warning'],normal:['普通','primary'],low:['低','secondary']};
+            var html=d.data.items.map(function(item){
+                var st=statusMap[item.status]||[item.status,'secondary'];
+                var ur=urgencyMap[item.urgency]||['普通','primary'];
+                var remaining='-';
+                if(item.predicted_failure_date){
+                    var diff=Math.ceil((new Date(item.predicted_failure_date)-new Date())/(1000*60*60*24));
+                    remaining=diff>0?diff+'天':'<span class="text-danger">已逾期</span>';
+                }
+                return '<tr><td>SP'+(item.spare_part_id||'-')+'</td><td>'+(item.equipment_id||'-')+'</td><td>'+(item.planned_replacement_date||'-')+'</td><td>'+(item.predicted_failure_date||'-')+'</td><td>'+remaining+'</td><td><span class="badge bg-'+ur[1]+'">'+ur[0]+'</span></td><td>'+(item.recommendation_source==='ai'?'<span class="badge bg-info">AI</span>':'<span class="badge bg-secondary">手动</span>')+'</td><td><span class="badge bg-'+st[1]+'">'+st[0]+'</span></td><td><button class="btn btn-sm btn-info" style="font-size:11px;padding:2px 8px;">执行</button></td></tr>';
+            }).join('');
+            document.getElementById('scheduleTable').innerHTML=html||'<tr><td colspan="9" class="text-center text-muted py-3">暂无更换计划</td></tr>';
+        }
+    }catch(e){console.error('加载更换计划失败:',e);}
+}
+
+function openTransitionModal(from,to){
+    var fromEl=document.getElementById('modalFromStage');
+    var toEl=document.getElementById('modalToStage');
+    var remarkEl=document.getElementById('modalRemark');
+    var spIdEl=document.getElementById('modalSparePartId');
+    var titleEl=document.getElementById('transitionModalTitle');
+    var modalEl=document.getElementById('transitionModal');
+    if(!fromEl||!toEl||!remarkEl||!spIdEl||!titleEl||!modalEl){
+        console.error('新增流转模态框元素未找到，请刷新页面重试');
+        showToast('页面加载未完成，请稍后重试','error');
+        return;
+    }
+    if(from)fromEl.value=from;
+    else fromEl.value='created';
+    if(to)toEl.value=to;
+    else toEl.value='running';
+    var stageNames={created:'创建',running:'运行中',paused:'暂停',terminated:'终止'};
+    titleEl.textContent='阶段流转: '+(stageNames[fromEl.value]||fromEl.value)+' → '+(stageNames[toEl.value]||toEl.value);
+    remarkEl.value='';
+    spIdEl.value='';
+    modalEl.style.display='flex';
+}
+
+function closeModal(id){var el=document.getElementById(id);if(el)el.style.display='none';}
+
+async function confirmTransition(btn){
+    var spId=document.getElementById('modalSparePartId').value;
+    var fromStage=document.getElementById('modalFromStage').value;
+    var toStage=document.getElementById('modalToStage').value;
+    var triggerBy=document.getElementById('modalTriggerBy').value;
+    var remark=document.getElementById('modalRemark').value;
+    if(!spId){showToast('请选择备件','error');return;}
+    if(!fromStage||!toStage){showToast('请选择起始和目标阶段','error');return;}
+    if(fromStage===toStage){showToast('起始阶段和目标阶段不能相同','error');return;}
+    try{
+        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 提交中...';}
+        var r=await fetch('/api/spare_parts/lifecycle/transition',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({spare_part_id:parseInt(spId),from_stage:fromStage,to_stage:toStage,triggered_by:triggerBy,remark:remark})});
+        var d=await r.json();
+        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-check"></i> 确认流转';}
+        if(d.success){
+            var sp=sparePartsCache.find(function(s){return s.id==spId;});
+            var spName=sp?(sp.part_code||'SP'+sp.id)+' '+(sp.name||''):'SP'+spId;
+            showToast('阶段流转成功: '+spName+' 已流转','success');
+            closeModal('transitionModal');
+            loadTransitions();loadLogs();loadStages();
+        }
+        else showToast('流转失败: '+(d.error||''),'error');
+    }catch(e){
+        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-check"></i> 确认流转';}
+        showToast('流转失败: '+e.message,'error');
+    }
+}
+
+function openBatchModal(){
+    // 尝试获取模态框元素
+    var checkboxesEl=document.getElementById('batchSparePartCheckboxes');
+    var countEl=document.getElementById('batchCount');
+    var remarkEl=document.getElementById('batchRemark');
+    var modalEl=document.getElementById('batchModal');
+    var fromStageEl=document.getElementById('batchFromStage');
+    var toStageEl=document.getElementById('batchToStage');
+    
+    // 如果模态框元素不存在，动态创建
+    if(!modalEl){
+        createBatchModalHTML();
+        modalEl=document.getElementById('batchModal');
+        checkboxesEl=document.getElementById('batchSparePartCheckboxes');
+        countEl=document.getElementById('batchCount');
+        remarkEl=document.getElementById('batchRemark');
+        fromStageEl=document.getElementById('batchFromStage');
+        toStageEl=document.getElementById('batchToStage');
+    }
+    
+    if(!checkboxesEl||!countEl||!remarkEl||!modalEl){
+        console.error('批量流转模态框元素未找到');
+        showToast('页面加载未完成，请稍后重试','error');
+        return;
+    }
+    
+    // 填充阶段下拉选项
+    var fromOpts='<option value="created">创建</option><option value="running">运行中</option><option value="paused">暂停</option>';
+    var toOpts='<option value="running">运行中</option><option value="paused">暂停</option><option value="terminated">终止</option>';
+    if(fromStageEl)fromStageEl.innerHTML=fromOpts;
+    if(toStageEl)toStageEl.innerHTML=toOpts;
+    
+    // 填充备件复选框
+    var opts='<div class="form-check"><input class="form-check-input" type="checkbox" id="batchSelectAll" onchange="toggleBatchSelectAll(this)"><label class="form-check-label" for="batchSelectAll"><strong>全选/全不选</strong></label></div><hr style="margin:6px 0;">';
+    if(sparePartsCache.length===0){
+        opts+='<div class="text-center text-muted py-3">暂无可选备件</div>';
+    }else{
+        sparePartsCache.forEach(function(sp){
+            opts+='<div class="form-check"><input class="form-check-input batch-spare-part" type="checkbox" value="'+sp.id+'" onchange="updateBatchCount()"><label class="form-check-label">'+(sp.part_code||'SP'+sp.id)+' - '+(sp.name||'')+'</label></div>';
+        });
+    }
+    checkboxesEl.innerHTML=opts;
+    countEl.textContent='0';
+    if(remarkEl)remarkEl.value='';
+    
+    // 显示模态框
+    modalEl.style.display='flex';
+}
+
+function createBatchModalHTML(){
+    // 动态创建批量流转模态框HTML
+    var html='<div class="modal-backdrop" id="batchModal" style="display:flex;">'+
+        '<div class="modal-dialog" style="max-width:600px;">'+
+            '<div class="modal-header"><h5 class="modal-title mb-0" style="font-size:15px;">批量阶段流转</h5><button class="btn-close" onclick="closeModal(\'batchModal\')"></button></div>'+
+            '<div class="modal-body">'+
+                '<div class="row mb-3">'+
+                    '<div class="col-5"><label class="form-label" style="font-size:13px;">起始阶段</label><select class="form-control form-control-sm" id="batchFromStage"><option value="created">创建</option><option value="running">运行中</option><option value="paused">暂停</option></select></div>'+
+                    '<div class="col-5"><label class="form-label" style="font-size:13px;">目标阶段</label><select class="form-control form-control-sm" id="batchToStage"><option value="running">运行中</option><option value="paused">暂停</option><option value="terminated">终止</option></select></div>'+
+                '</div>'+
+                '<div class="mb-3"><label class="form-label" style="font-size:13px;">选择备件（多选）</label><div id="batchSparePartCheckboxes" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:4px;padding:8px;"></div></div>'+
+                '<div class="mb-0"><label class="form-label" style="font-size:13px;">流转说明</label><textarea class="form-control form-control-sm" id="batchRemark" rows="2" placeholder="批量流转说明..."></textarea></div>'+
+            '</div>'+
+            '<div class="modal-footer"><button class="btn btn-sm btn-secondary" onclick="closeModal(\'batchModal\')">取消</button><button class="btn btn-sm btn-primary" onclick="confirmBatchTransition(this)"><i class="fas fa-check"></i> 确认批量流转 (<span id="batchCount">0</span>)</button></div>'+
+        '</div>'+
+    '</div>';
+    document.body.insertAdjacentHTML('beforeend',html);
+}
+
+function toggleBatchSelectAll(cb){
+    var cbs=document.querySelectorAll('.batch-spare-part');
+    cbs.forEach(function(c){c.checked=cb.checked;});
+    updateBatchCount();
+}
+function updateBatchCount(){
+    var el=document.getElementById('batchCount');
+    var cbs=document.querySelectorAll('.batch-spare-part:checked');
+    if(el)el.textContent=cbs.length;
+}
+
+async function confirmBatchTransition(btn){
+    var selected=[];document.querySelectorAll('.batch-spare-part:checked').forEach(function(cb){selected.push(parseInt(cb.value));});
+    if(selected.length===0){showToast('请至少选择一个备件','error');return;}
+    var from=document.getElementById('batchFromStage').value;
+    var to=document.getElementById('batchToStage').value;
+    if(from===to){showToast('起始阶段和目标阶段不能相同','error');return;}
+    var remark=document.getElementById('batchRemark').value||'批量流转';
+    if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 处理中...';}
+    var ok=0,err=0;
+    for(var i=0;i<selected.length;i++){
+        try{
+            var r=await fetch('/api/spare_parts/lifecycle/transition',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({spare_part_id:selected[i],from_stage:from,to_stage:to,triggered_by:'manual',remark:remark})});
+            var d=await r.json();
+            if(d.success)ok++;else err++;
+        }catch(e){err++;}
+    }
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-check"></i> 确认批量流转 (<span id="batchCount">'+selected.length+'</span>)';}
+    if(ok>0)showToast('批量流转完成: 成功 '+ok+' 个, 失败 '+err+' 个',ok===selected.length?'success':'info');
+    else showToast('批量流转全部失败','error');
+    closeModal('batchModal');
+    loadTransitions();
+    loadLogs();
+    loadStages();
+}
+
+function openRuleModal(){document.getElementById('ruleCode').value='';document.getElementById('ruleName').value='';document.getElementById('ruleDesc').value='';document.getElementById('rulePriority').value='5';document.getElementById('ruleAutoExecute').checked=false;document.getElementById('ruleModal').style.display='flex';}
+
+async function saveRule(){
+    var code=document.getElementById('ruleCode').value,name=document.getElementById('ruleName').value;
+    if(!code||!name){showToast('请填写规则代码和名称','error');return;}
+    try{
+        var r=await fetch('/api/spare_parts/lifecycle/rules/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule_code:code,rule_name:name,rule_type:document.getElementById('ruleType').value,description:document.getElementById('ruleDesc').value,priority:parseInt(document.getElementById('rulePriority').value),is_auto_execute:document.getElementById('ruleAutoExecute').checked})});
+        var d=await r.json();
+        if(d.success){showToast('规则创建成功','success');closeModal('ruleModal');loadRules();}
+        else showToast('创建失败: '+(d.error||''),'error');
+    }catch(e){showToast('创建失败','error');}
+}
+
+async function toggleRule(id){
+    try{var r=await fetch('/api/spare_parts/lifecycle/rules/'+id+'/toggle',{method:'PUT'});var d=await r.json();if(d.success){showToast('规则状态已更新','success');loadRules();}else showToast('更新失败','error');}catch(e){showToast('更新失败','error');}
+}
+
+function viewDetail(id){showToast('查看详情功能开发中','info');}
+function deleteTransition(id){if(confirm('确定删除此流转记录?')){showToast('删除功能开发中','info');}}
+function openScheduleModal(){showToast('新建更换计划功能开发中','info');}
+function exportData(){showToast('数据导出功能开发中','info');}
+</script>
+{% endblock %}

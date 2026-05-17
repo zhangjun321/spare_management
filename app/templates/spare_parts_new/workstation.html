@@ -1,0 +1,617 @@
+{% extends "base.html" %}
+
+{% block title %}工作台 - 备件管理系统{% endblock %}
+{% block page_title %}工作台{% endblock %}
+
+{% block content %}
+<div class="workstation-page">
+    <!-- 欢迎语 -->
+    <div class="ws-welcome">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-1">上午好，{{ current_user.real_name or current_user.username }}！</h3>
+                <p class="text-muted mb-0">今天是 {{ now.strftime('%Y年%m月%d日') }}，备件管理一切正常</p>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" onclick="refreshWorkstation()">
+                <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+        </div>
+    </div>
+
+    <!-- 核心指标卡片 -->
+    <div class="ws-metrics">
+        <div class="ws-metric-card ws-metric-danger">
+            <div class="ws-metric-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="ws-metric-content">
+                <div class="ws-metric-value" id="metricAlerts">0</div>
+                <div class="ws-metric-label">待处理预警</div>
+            </div>
+            <a href="{{ url_for('spare_parts.index') }}" class="ws-metric-action">处理 <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="ws-metric-card ws-metric-warning">
+            <div class="ws-metric-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div class="ws-metric-content">
+                <div class="ws-metric-value" id="metricInspections">0</div>
+                <div class="ws-metric-label">待检验备件</div>
+            </div>
+            <a href="{{ url_for('spare_parts.quality') }}" class="ws-metric-action">检验 <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="ws-metric-card ws-metric-info">
+            <div class="ws-metric-icon"><i class="fas fa-tools"></i></div>
+            <div class="ws-metric-content">
+                <div class="ws-metric-value" id="metricFaults">0</div>
+                <div class="ws-metric-label">待处理故障</div>
+            </div>
+            <a href="{{ url_for('spare_parts.diagnosis') }}" class="ws-metric-action">诊断 <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="ws-metric-card ws-metric-success">
+            <div class="ws-metric-icon"><i class="fas fa-exchange-alt"></i></div>
+            <div class="ws-metric-content">
+                <div class="ws-metric-value" id="metricTransitions">0</div>
+                <div class="ws-metric-label">待执行流转</div>
+            </div>
+            <a href="{{ url_for('spare_parts.lifecycle') }}" class="ws-metric-action">流转 <i class="fas fa-arrow-right"></i></a>
+        </div>
+    </div>
+
+    <div class="ws-main-content">
+        <!-- 左侧：待办事项 -->
+        <div class="ws-col-left">
+            <div class="ws-section">
+                <div class="ws-section-header">
+                    <h5><i class="fas fa-tasks"></i> 今日待办</h5>
+                    <span class="badge bg-primary" id="todoTotalCount">0</span>
+                </div>
+                <div class="ws-section-body">
+                    <div id="todoList" class="ws-todo-list">
+                        <div class="ws-loading"><i class="fas fa-spinner fa-spin"></i> 加载待办事项...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 业务流程进度 -->
+            <div class="ws-section">
+                <div class="ws-section-header">
+                    <h5><i class="fas fa-project-diagram"></i> 备件业务流程</h5>
+                </div>
+                <div class="ws-section-body">
+                    <div class="ws-process-flow">
+                        <div class="ws-process-step">
+                            <div class="ws-step-dot ws-step-active"></div>
+                            <div class="ws-step-line"></div>
+                            <div class="ws-step-content">
+                                <div class="ws-step-title">采购入库</div>
+                                <div class="ws-step-desc">本月入库 <span id="processInbound">0</span> 批</div>
+                            </div>
+                        </div>
+                        <div class="ws-process-step">
+                            <div class="ws-step-dot ws-step-active"></div>
+                            <div class="ws-step-line"></div>
+                            <div class="ws-step-content">
+                                <div class="ws-step-title">质量检验</div>
+                                <div class="ws-step-desc">合格率 <span id="processQualityRate">0%</span></div>
+                            </div>
+                        </div>
+                        <div class="ws-process-step">
+                            <div class="ws-step-dot"></div>
+                            <div class="ws-step-line"></div>
+                            <div class="ws-step-content">
+                                <div class="ws-step-title">库存管理</div>
+                                <div class="ws-step-desc">在库 <span id="processInStock">0</span> 件</div>
+                            </div>
+                        </div>
+                        <div class="ws-process-step">
+                            <div class="ws-step-dot"></div>
+                            <div class="ws-step-line"></div>
+                            <div class="ws-step-content">
+                                <div class="ws-step-title">使用领用</div>
+                                <div class="ws-step-desc">本月领用 <span id="processOutbound">0</span> 次</div>
+                            </div>
+                        </div>
+                        <div class="ws-process-step">
+                            <div class="ws-step-dot"></div>
+                            <div class="ws-step-content">
+                                <div class="ws-step-title">维护报废</div>
+                                <div class="ws-step-desc">报废 <span id="processScrap">0</span> 件</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：预警和快捷操作 -->
+        <div class="ws-col-right">
+            <!-- 预警列表 -->
+            <div class="ws-section">
+                <div class="ws-section-header">
+                    <h5><i class="fas fa-bell"></i> 预警提醒</h5>
+                </div>
+                <div class="ws-section-body">
+                    <div id="alertList" class="ws-alert-list">
+                        <div class="ws-loading"><i class="fas fa-spinner fa-spin"></i> 加载预警信息...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷操作 -->
+            <div class="ws-section">
+                <div class="ws-section-header">
+                    <h5><i class="fas fa-bolt"></i> 快捷操作</h5>
+                </div>
+                <div class="ws-section-body">
+                    <div class="ws-quick-actions">
+                        <a href="{{ url_for('spare_parts.index') }}?action=new" class="ws-action-btn">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>新建备件</span>
+                        </a>
+                        <a href="{{ url_for('spare_parts.quality') }}?action=new" class="ws-action-btn">
+                            <i class="fas fa-clipboard-check"></i>
+                            <span>发起检验</span>
+                        </a>
+                        <a href="{{ url_for('spare_parts.diagnosis') }}?action=new" class="ws-action-btn">
+                            <i class="fas fa-file-medical"></i>
+                            <span>记录故障</span>
+                        </a>
+                        <a href="{{ url_for('spare_parts.lifecycle') }}" class="ws-action-btn">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span>阶段流转</span>
+                        </a>
+                        <a href="{{ url_for('spare_parts.dashboard') }}" class="ws-action-btn">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>数据分析</span>
+                        </a>
+                        <a href="{{ url_for('spare_parts.prediction') }}" class="ws-action-btn">
+                            <i class="fas fa-brain"></i>
+                            <span>智能预测</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.workstation-page {
+    padding: 20px;
+    background: #f5f7fa;
+    min-height: calc(100vh - 60px);
+}
+
+.ws-welcome {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.ws-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.ws-metric-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+.ws-metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.ws-metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+}
+.ws-metric-danger::before { background: #e74c3c; }
+.ws-metric-warning::before { background: #f39c12; }
+.ws-metric-info::before { background: #3498db; }
+.ws-metric-success::before { background: #27ae60; }
+
+.ws-metric-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.ws-metric-danger .ws-metric-icon { background: #fde8e8; color: #e74c3c; }
+.ws-metric-warning .ws-metric-icon { background: #fef3e2; color: #f39c12; }
+.ws-metric-info .ws-metric-icon { background: #e8f4fd; color: #3498db; }
+.ws-metric-success .ws-metric-icon { background: #e8f8f0; color: #27ae60; }
+
+.ws-metric-content { flex: 1; }
+.ws-metric-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #2d3748;
+}
+.ws-metric-label {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 2px;
+}
+
+.ws-metric-action {
+    font-size: 0.85rem;
+    color: #4e73df;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+.ws-metric-action:hover {
+    background: #f0f4ff;
+    text-decoration: none;
+}
+
+.ws-main-content {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+}
+
+.ws-section {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    overflow: hidden;
+}
+.ws-section-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ws-section-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2d3748;
+}
+.ws-section-header h5 i {
+    margin-right: 8px;
+    color: #4e73df;
+}
+.ws-section-body {
+    padding: 16px 20px;
+}
+
+/* 待办事项样式 */
+.ws-todo-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #f8f9fc;
+    transition: background 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+.ws-todo-item:hover {
+    background: #e9ecef;
+    text-decoration: none;
+    color: inherit;
+}
+.ws-todo-item:last-child { margin-bottom: 0; }
+
+.ws-todo-priority {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 6px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.ws-priority-high { background: #e74c3c; }
+.ws-priority-medium { background: #f39c12; }
+.ws-priority-low { background: #3498db; }
+
+.ws-todo-content { flex: 1; min-width: 0; }
+.ws-todo-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #2d3748;
+    margin-bottom: 4px;
+}
+.ws-todo-desc {
+    font-size: 0.8rem;
+    color: #718096;
+}
+.ws-todo-time {
+    font-size: 0.75rem;
+    color: #a0aec0;
+    margin-top: 4px;
+}
+
+/* 业务流程样式 */
+.ws-process-flow {
+    padding: 10px 0;
+}
+.ws-process-step {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 24px;
+}
+.ws-process-step:last-child { padding-bottom: 0; }
+
+.ws-step-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    border: 3px solid #e2e8f0;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+.ws-step-active {
+    background: #4e73df;
+    border-color: #4e73df;
+}
+.ws-step-line {
+    position: absolute;
+    left: 10px;
+    top: 20px;
+    bottom: -4px;
+    width: 2px;
+    background: #e2e8f0;
+}
+.ws-process-step:last-child .ws-step-line { display: none; }
+
+.ws-step-content {
+    margin-left: 16px;
+    flex: 1;
+}
+.ws-step-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2d3748;
+}
+.ws-step-desc {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-top: 2px;
+}
+
+/* 预警列表样式 */
+.ws-alert-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 3px solid;
+}
+.ws-alert-item:last-child { margin-bottom: 0; }
+.ws-alert-danger { background: #fde8e8; border-color: #e74c3c; }
+.ws-alert-warning { background: #fef3e2; border-color: #f39c12; }
+.ws-alert-info { background: #e8f4fd; border-color: #3498db; }
+
+.ws-alert-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.ws-alert-danger .ws-alert-icon { background: #e74c3c; color: white; }
+.ws-alert-warning .ws-alert-icon { background: #f39c12; color: white; }
+.ws-alert-info .ws-alert-icon { background: #3498db; color: white; }
+
+.ws-alert-content { flex: 1; }
+.ws-alert-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #2d3748;
+    margin-bottom: 2px;
+}
+.ws-alert-desc {
+    font-size: 0.8rem;
+    color: #718096;
+}
+
+/* 快捷操作样式 */
+.ws-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+.ws-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 8px;
+    border-radius: 10px;
+    background: #f8f9fc;
+    color: #5a5c69;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.ws-action-btn:hover {
+    background: #4e73df;
+    color: white;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+.ws-action-btn i {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+}
+.ws-action-btn span {
+    font-size: 0.8rem;
+}
+
+.ws-loading {
+    text-align: center;
+    padding: 30px;
+    color: #718096;
+}
+.ws-empty {
+    text-align: center;
+    padding: 30px;
+    color: #a0aec0;
+}
+.ws-empty i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+}
+
+@media (max-width: 1200px) {
+    .ws-main-content {
+        grid-template-columns: 1fr;
+    }
+    .ws-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 768px) {
+    .ws-metrics {
+        grid-template-columns: 1fr;
+    }
+    .ws-quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 工作台数据刷新
+function refreshWorkstation() {
+    loadMetrics();
+    loadTodos();
+    loadProcessFlow();
+    loadAlerts();
+}
+
+// 加载核心指标
+async function loadMetrics() {
+    try {
+        const r = await fetch('/api/spare_parts/workstation/metrics');
+        const d = await r.json();
+        if (d.success && d.data) {
+            document.getElementById('metricAlerts').textContent = d.data.alerts || 0;
+            document.getElementById('metricInspections').textContent = d.data.inspections || 0;
+            document.getElementById('metricFaults').textContent = d.data.faults || 0;
+            document.getElementById('metricTransitions').textContent = d.data.transitions || 0;
+        }
+    } catch (e) {
+        console.error('加载指标失败:', e);
+    }
+}
+
+// 加载待办事项
+async function loadTodos() {
+    try {
+        const r = await fetch('/api/spare_parts/workstation/todos');
+        const d = await r.json();
+        const listEl = document.getElementById('todoList');
+        const countEl = document.getElementById('todoTotalCount');
+        
+        if (d.success && d.data && d.data.length > 0) {
+            countEl.textContent = d.data.length;
+            let html = '';
+            d.data.forEach(function(todo) {
+                const priorityClass = todo.priority === 'high' ? 'ws-priority-high' : todo.priority === 'medium' ? 'ws-priority-medium' : 'ws-priority-low';
+                html += '<a href="' + (todo.link || '#') + '" class="ws-todo-item">' +
+                    '<div class="ws-todo-priority ' + priorityClass + '"></div>' +
+                    '<div class="ws-todo-content">' +
+                        '<div class="ws-todo-title">' + todo.title + '</div>' +
+                        '<div class="ws-todo-desc">' + todo.description + '</div>' +
+                        '<div class="ws-todo-time">' + todo.time + '</div>' +
+                    '</div>' +
+                '</a>';
+            });
+            listEl.innerHTML = html;
+        } else {
+            countEl.textContent = '0';
+            listEl.innerHTML = '<div class="ws-empty"><i class="fas fa-check-circle"></i><p>暂无待办事项</p></div>';
+        }
+    } catch (e) {
+        console.error('加载待办失败:', e);
+    }
+}
+
+// 加载业务流程进度
+async function loadProcessFlow() {
+    try {
+        const r = await fetch('/api/spare_parts/workstation/process');
+        const d = await r.json();
+        if (d.success && d.data) {
+            document.getElementById('processInbound').textContent = d.data.inbound || 0;
+            document.getElementById('processQualityRate').textContent = (d.data.quality_rate || 0) + '%';
+            document.getElementById('processInStock').textContent = d.data.in_stock || 0;
+            document.getElementById('processOutbound').textContent = d.data.outbound || 0;
+            document.getElementById('processScrap').textContent = d.data.scrap || 0;
+        }
+    } catch (e) {
+        console.error('加载流程进度失败:', e);
+    }
+}
+
+// 加载预警信息
+async function loadAlerts() {
+    try {
+        const r = await fetch('/api/spare_parts/workstation/alerts');
+        const d = await r.json();
+        const listEl = document.getElementById('alertList');
+        
+        if (d.success && d.data && d.data.length > 0) {
+            let html = '';
+            d.data.forEach(function(alert) {
+                const typeClass = alert.type === 'danger' ? 'ws-alert-danger' : alert.type === 'warning' ? 'ws-alert-warning' : 'ws-alert-info';
+                const iconClass = alert.type === 'danger' ? 'fa-exclamation-circle' : alert.type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+                html += '<div class="ws-alert-item ' + typeClass + '">' +
+                    '<div class="ws-alert-icon"><i class="fas ' + iconClass + '"></i></div>' +
+                    '<div class="ws-alert-content">' +
+                        '<div class="ws-alert-title">' + alert.title + '</div>' +
+                        '<div class="ws-alert-desc">' + alert.description + '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+            listEl.innerHTML = html;
+        } else {
+            listEl.innerHTML = '<div class="ws-empty"><i class="fas fa-check-circle"></i><p>暂无预警</p></div>';
+        }
+    } catch (e) {
+        console.error('加载预警失败:', e);
+    }
+}
+
+// 页面加载时初始化
+window.addEventListener('DOMContentLoaded', function() {
+    refreshWorkstation();
+});
+</script>
+{% endblock %}
