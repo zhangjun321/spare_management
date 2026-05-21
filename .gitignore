@@ -69,25 +69,12 @@ htmlcov/
 app/backups/
 backups/
 
-# 测试脚本和调试脚本
-scripts/test_*.py
-scripts/*.pyc
+# 测试脚本和调试脚本（已移至 scripts/）
+scripts/
+migrations/
+docs/
 
-# 临时文件
-tmp/
-temp/
-*.tmp
-
-# 文档构建
-docs/_build/
-
-# 其他
-*.log
-*.pid
-*.seed
-*.pid.lock
-
-# 测试脚本和临时文件
+# 根目录零散测试/调试文件（已清理）
 test_*.py
 test_*.html
 ultimate_test.html
@@ -106,10 +93,7 @@ auto_login.py
 launch.bat
 start_server.bat
 
-# 上传的图片（可选，如果不想上传）
-# uploads/
-
-# 临时文件
+# 输出文件
 *.txt
 server_*.txt
 debug_*.txt
