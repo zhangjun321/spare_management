@@ -8,6 +8,7 @@ from flask_login import login_required
 from app.extensions import db
 from app.models.dictionary import DictType, DictItem, init_system_dicts
 from app.utils.decorators import permission_required
+from app.utils.transaction import transactional
 from datetime import datetime
 
 dictionary_bp = Blueprint('dictionary', __name__, template_folder='../templates/dictionary')
@@ -119,7 +120,8 @@ def create_dict_type():
         )
         
         db.session.add(dict_type)
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'status': 'success',
@@ -127,7 +129,6 @@ def create_dict_type():
             'data': {'id': dict_type.id}
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'status': 'error',
             'message': f'创建字典类型失败：{str(e)}'
@@ -159,14 +160,14 @@ def update_dict_type(type_id):
         if 'sort_order' in data:
             dict_type.sort_order = data['sort_order']
         
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'status': 'success',
             'message': '字典类型更新成功'
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'status': 'error',
             'message': f'更新字典类型失败：{str(e)}'
@@ -188,14 +189,14 @@ def delete_dict_type(type_id):
             }), 400
         
         db.session.delete(dict_type)
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'status': 'success',
             'message': '字典类型删除成功'
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'status': 'error',
             'message': f'删除字典类型失败：{str(e)}'
@@ -305,7 +306,8 @@ def create_dict_item():
             dict_type.items.filter_by(is_default=True).update({'is_default': False})
         
         db.session.add(item)
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'status': 'success',
@@ -313,7 +315,6 @@ def create_dict_item():
             'data': {'id': item.id}
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'status': 'error',
             'message': f'创建字典项失败：{str(e)}'
@@ -362,14 +363,14 @@ def update_dict_item(item_id):
                     DictItem.id != item.id
                 ).update({'is_default': False})
         
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'status': 'success',
             'message': '字典项更新成功'
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'status': 'error',
             'message': f'更新字典项失败：{str(e)}'
@@ -392,14 +393,14 @@ def delete_dict_item(item_id):
             }), 400
         
         db.session.delete(item)
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'status': 'success',
             'message': '字典项删除成功'
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'status': 'error',
             'message': f'删除字典项失败：{str(e)}'

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required
 from app import db
+from app.utils.transaction import transactional
 from app.models.warehouse_v3 import WarningRule, WarningLog
 from app.models.warehouse_v3.inventory import InventoryV3
 from datetime import datetime
@@ -64,7 +65,8 @@ def create_warning_rule():
         )
         
         db.session.add(rule)
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'success': True,
@@ -72,7 +74,6 @@ def create_warning_rule():
             'data': rule.to_dict()
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)
@@ -124,7 +125,8 @@ def update_warning_rule(rule_id):
             rule.remark = data['remark']
         
         rule.updated_at = datetime.now()
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'success': True,
@@ -132,7 +134,6 @@ def update_warning_rule(rule_id):
             'data': rule.to_dict()
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)
@@ -152,14 +153,14 @@ def delete_warning_rule(rule_id):
             }), 404
         
         db.session.delete(rule)
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'success': True,
             'message': '预警规则删除成功'
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)
@@ -180,7 +181,8 @@ def toggle_warning_rule(rule_id):
         
         rule.enabled = not rule.enabled
         rule.updated_at = datetime.now()
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'success': True,
@@ -188,7 +190,6 @@ def toggle_warning_rule(rule_id):
             'data': rule.to_dict()
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)
@@ -282,7 +283,8 @@ def check_warnings():
                             'log': warning_log.to_dict()
                         })
         
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'success': True,
@@ -290,7 +292,6 @@ def check_warnings():
             'data': triggered_warnings
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)
@@ -350,14 +351,14 @@ def mark_warning_as_read(log_id):
         
         log.is_read = True
         log.read_time = datetime.now()
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'success': True,
             'message': '已标记为已读'
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)
@@ -382,14 +383,14 @@ def batch_mark_warnings_as_read():
             {'is_read': True, 'read_time': datetime.now()},
             synchronize_session=False
         )
-        db.session.commit()
+        with transactional():
+            pass  # transactional auto-commits
         
         return jsonify({
             'success': True,
             'message': f'成功标记 {len(log_ids)} 条预警为已读'
         })
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)

@@ -7,10 +7,6 @@ from flask import Blueprint
 
 warehouse_v3_bp = Blueprint('warehouse_v3', __name__, url_prefix='/api/v1/warehouse')
 
-# 导入路由
+# 导入路由（已废弃的路由文件移至 app/_deprecated/）
 from . import warehouse_routes
-from . import location_routes
 from . import inventory_routes
-from . import inbound_routes
-from . import outbound_routes
-from . import ai_routes

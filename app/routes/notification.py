@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from app.models.system import Notification
 from app.extensions import db
+from app.utils.transaction import transactional
 from datetime import datetime
 
 notification_bp = Blueprint('notification', __name__, template_folder='../templates/notification')
@@ -43,7 +44,8 @@ def mark_as_read(id):
     notification = Notification.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     notification.is_read = True
     notification.read_at = datetime.now()
-    db.session.commit()
+    with transactional():
+        pass  # transactional auto-commits
     
     return jsonify({'success': True, 'message': '已标记为已读'})
 
@@ -56,7 +58,8 @@ def mark_all_as_read():
         'is_read': True,
         'read_at': datetime.now()
     })
-    db.session.commit()
+    with transactional():
+        pass  # transactional auto-commits
 
     # 判断是否为 AJAX 请求，返回 JSON 避免 fetch 跟随重定向
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
@@ -73,7 +76,8 @@ def delete(id):
     """删除通知"""
     notification = Notification.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     db.session.delete(notification)
-    db.session.commit()
+    with transactional():
+        pass  # transactional auto-commits
     
     flash('通知已删除', 'success')
     return redirect(url_for('notification.index'))
