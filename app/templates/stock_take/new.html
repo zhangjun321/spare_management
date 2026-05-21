@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}新建盘点任务{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.form-card h6 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 16px; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h4 class="mb-3">
+        <a href="{{ url_for('stock_take_pages.list_page') }}" class="text-decoration-none me-2">&larr;</a>
+        新建盘点任务
+    </h4>
+
+    <div class="form-card">
+        <h6>基本信息</h6>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">任务标题 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="title" placeholder="如：2024年Q1季度盘点" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">范围类型 <span class="text-danger">*</span></label>
+                <select class="form-select" id="scopeType">
+                    <option value="warehouse">按仓库</option>
+                    <option value="category">按分类</option>
+                    <option value="all">全部盘点</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">仓库</label>
+                <select class="form-select" id="warehouseId"></select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">截止日期</label>
+                <input type="datetime-local" class="form-control" id="deadline">
+            </div>
+        </div>
+        <div class="row g-3 mt-3">
+            <div class="col-md-4">
+                <label class="form-label">盘点人</label>
+                <input type="text" class="form-control" id="assigneeNames" placeholder="指定盘点人姓名">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">范围值（可选）</label>
+                <input type="text" class="form-control" id="scopeValue" placeholder="分类ID等...">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">需要审批</label>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="approvalRequired" checked>
+                    <label class="form-check-label">差异调整需要审批</label>
+                </div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" id="remark" rows="2" placeholder="盘点说明..."></textarea>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+        <a href="{{ url_for('stock_take_pages.list_page') }}" class="btn btn-secondary">取消</a>
+        <button class="btn btn-primary" onclick="createTask()"><i class="fas fa-save me-1"></i>创建盘点任务</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadWarehouses() {
+    try {
+        const res = await fetch('/warehouses/api/list');
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('warehouseId').innerHTML = '<option value="">不限</option>' +
+                (data.data || []).map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+        }
+    } catch(e) { console.error('加载仓库失败:', e); }
+
+    // 默认截止日期 = 7天后
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    document.getElementById('deadline').value = d.toISOString().substring(0, 16);
+}
+
+async function createTask() {
+    const title = document.getElementById('title').value.trim();
+    if (!title) { alert('请输入任务标题'); return; }
+
+    const warehouseId = document.getElementById('warehouseId').value;
+    const assigneeNames = document.getElementById('assigneeNames').value.trim();
+
+    const payload = {
+        title: title,
+        scope_type: document.getElementById('scopeType').value,
+        scope_value: document.getElementById('scopeValue').value || null,
+        warehouse_id: warehouseId ? parseInt(warehouseId) : null,
+        assignee_names: assigneeNames || null,
+        deadline: document.getElementById('deadline').value ? document.getElementById('deadline').value.replace('T', ' ') + ':00' : null,
+        approval_required: document.getElementById('approvalRequired').checked,
+        remark: document.getElementById('remark').value
+    };
+
+    try {
+        const res = await fetch('/api/stock-take/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('盘点任务创建成功！');
+            window.location.href = '/stock-takes/';
+        } else {
+            alert('创建失败: ' + (data.message || '未知错误'));
+        }
+    } catch(e) { alert('网络错误: ' + e.message); }
+}
+
+document.addEventListener('DOMContentLoaded', loadWarehouses);
+</script>
+{% endblock %}

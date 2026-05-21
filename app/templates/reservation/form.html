@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}新建库存预留{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.form-card h6 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 16px; font-weight: 600; }
+.available-badge { font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h4 class="mb-3">
+        <a href="{{ url_for('reservation_pages.list_page') }}" class="text-decoration-none me-2">&larr;</a>
+        新建库存预留
+    </h4>
+
+    <div class="form-card">
+        <h6>基本信息</h6>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">备件 <span class="text-danger">*</span></label>
+                <select class="form-select" id="sparePartId" onchange="onPartChange()">
+                    <option value="">请选择备件</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">预留数量 <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="quantity" min="1" value="1">
+                <small class="available-badge text-muted" id="availableQty"></small>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">优先级</label>
+                <select class="form-select" id="priority">
+                    <option value="3">低</option>
+                    <option value="5" selected>中</option>
+                    <option value="8">高</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">过期日期</label>
+                <input type="date" class="form-control" id="expiryDate">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">仓库</label>
+                <select class="form-select" id="warehouseId"></select>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label class="form-label">预留原因</label>
+            <textarea class="form-control" id="reason" rows="2" placeholder="工单号、项目名称等预留原因..."></textarea>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+        <a href="{{ url_for('reservation_pages.list_page') }}" class="btn btn-secondary">取消</a>
+        <button class="btn btn-primary" onclick="saveReservation()"><i class="fas fa-save me-1"></i>创建预留</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let sparePartsCache = [];
+
+async function loadInitData() {
+    try {
+        const [spRes, whRes] = await Promise.all([
+            fetch('/api/spare-parts/all?simple=1'),
+            fetch('/warehouses/api/list')
+        ]);
+        const spData = await spRes.json();
+        const whData = await whRes.json();
+
+        sparePartsCache = spData.success ? (spData.data || spData.spare_parts || []) : [];
+        const whList = whData.success ? (whData.data || []) : [];
+
+        document.getElementById('sparePartId').innerHTML = '<option value="">请选择备件</option>' +
+            sparePartsCache.map(p => `<option value="${p.id}">${esc(p.name || p.part_code || '')} [${esc(p.part_code || '')}]</option>`).join('');
+
+        document.getElementById('warehouseId').innerHTML = '<option value="">不限</option>' +
+            whList.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+
+        // 设置默认过期日期（30天后）
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        document.getElementById('expiryDate').value = d.toISOString().substring(0, 10);
+
+    } catch(e) { console.error('加载初始数据失败:', e); }
+}
+
+function onPartChange() {
+    const id = document.getElementById('sparePartId').value;
+    const part = sparePartsCache.find(p => p.id == id);
+    document.getElementById('availableQty').textContent = part
+        ? `可用库存: ${part.current_stock ?? part.stock ?? part.quantity ?? '-'}`
+        : '';
+}
+
+async function saveReservation() {
+    const sparePartId = document.getElementById('sparePartId').value;
+    const quantity = parseInt(document.getElementById('quantity').value);
+    if (!sparePartId) { alert('请选择备件'); return; }
+    if (!quantity || quantity < 1) { alert('请输入有效的预留数量'); return; }
+
+    // 计算过期天数
+    const expiryDate = document.getElementById('expiryDate').value;
+    let expireDays = 30; // 默认30天
+    if (expiryDate) {
+        const diff = Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+        expireDays = diff > 0 ? diff : 30;
+    }
+
+    const payload = {
+        spare_part_id: parseInt(sparePartId),
+        quantity: quantity,
+        priority: parseInt(document.getElementById('priority').value) || 5,
+        expire_days: expireDays,
+        warehouse_id: document.getElementById('warehouseId').value ? parseInt(document.getElementById('warehouseId').value) : null,
+        reason: document.getElementById('reason').value,
+        project: null
+    };
+
+    try {
+        const res = await fetch('/api/reservations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('预留创建成功！');
+            window.location.href = '/reservations/';
+        } else {
+            alert('创建失败: ' + (data.message || '未知错误'));
+        }
+    } catch(e) { alert('网络错误: ' + e.message); }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', loadInitData);
+</script>
+{% endblock %}

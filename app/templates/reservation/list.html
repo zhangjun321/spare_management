@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}库存预留管理{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card { border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.stat-number { font-size: 28px; font-weight: 700; }
+.priority-high { color: #dc3545; font-weight: 600; }
+.priority-medium { color: #fd7e14; font-weight: 600; }
+.priority-low { color: #198754; font-weight: 600; }
+.status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+.status-active { background: #d1e7dd; color: #0f5132; }
+.status-released { background: #e2e3e5; color: #41464b; }
+.status-expired { background: #f8d7da; color: #842029; }
+.status-consumed { background: #cfe2ff; color: #084298; }
+.filter-bar { background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #f0f4ff !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="fas fa-tag me-2"></i>库存预留管理</h4>
+        <a href="{{ url_for('reservation_pages.new_page') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>新建预留
+        </a>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-3" id="statsRow">
+        <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-info" id="statTotal">-</div><small class="text-muted">总计</small></div></div></div>
+        <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-success" id="statActive">-</div><small class="text-muted">生效中</small></div></div></div>
+        <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-danger" id="statExpiring">-</div><small class="text-muted">即将过期</small></div></div></div>
+        <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-secondary" id="statReleased">-</div><small class="text-muted">已释放</small></div></div></div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="filter-bar">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small mb-1">状态</label>
+                <select class="form-select form-select-sm" id="filterStatus">
+                    <option value="">全部</option>
+                    <option value="active">生效中</option>
+                    <option value="released">已释放</option>
+                    <option value="expired">已过期</option>
+                    <option value="consumed">已消耗</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">优先级</label>
+                <select class="form-select form-select-sm" id="filterPriority">
+                    <option value="">全部</option>
+                    <option value="high">高</option>
+                    <option value="medium">中</option>
+                    <option value="low">低</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">关键词</label>
+                <input type="text" class="form-control form-control-sm" id="filterKeyword" placeholder="预留单号/备件名称...">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-sm me-1" onclick="loadReservations(1)"><i class="fas fa-search me-1"></i>查询</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()"><i class="fas fa-redo me-1"></i>重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>预留单号</th>
+                        <th>备件名称</th>
+                        <th>预留数量</th>
+                        <th>优先级</th>
+                        <th>状态</th>
+                        <th>过期时间</th>
+                        <th>创建人</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"><tr><td colspan="8" class="text-center py-4 text-muted">加载中...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center" id="paginationBar"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PRIORITY_LABELS = { 8: '高', 5: '中', 3: '低' };
+const STATUS_LABELS = { active: '生效中', released: '已释放', expired: '已过期', consumed: '已消耗' };
+
+async function loadReservations(page = 1) {
+    const params = new URLSearchParams({ page, per_page: 15 });
+    const status = document.getElementById('filterStatus').value;
+    const priority = document.getElementById('filterPriority').value;
+    const keyword = document.getElementById('filterKeyword').value;
+    if (status) params.set('status', status);
+    if (priority) params.set('priority', priority);
+    if (keyword) params.set('keyword', keyword);
+
+    try {
+        const res = await fetch(`/api/reservations?${params}`);
+        const data = await res.json();
+        if (data.success && data.data) {
+            renderTable(data.data.items || []);
+            renderPagination(data.data, page);
+            loadStats();
+        }
+    } catch(e) { console.error('加载预留列表失败:', e); }
+}
+
+function renderTable(items) {
+    const tbody = document.getElementById('tableBody');
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">暂无预留数据</td></tr>';
+        return;
+    }
+    tbody.innerHTML = items.map(r => `
+        <tr class="clickable-row" onclick="location.href='/reservations/${r.id}'">
+            <td><strong class="text-primary">${esc(r.reservation_code || r.id)}</strong></td>
+            <td>${esc(r.spare_part_name || '-')}</td>
+            <td><strong>${r.quantity || 0}</strong></td>
+            <td><span class="${r.priority >= 8 ? 'priority-high' : r.priority >= 5 ? 'priority-medium' : 'priority-low'}">${PRIORITY_LABELS[r.priority] || r.priority}</span></td>
+            <td><span class="status-badge status-${r.status}">${STATUS_LABELS[r.status] || r.status}</span></td>
+            <td><small>${r.expire_at ? r.expire_at.substring(0,10) : '-'}</small></td>
+            <td>${esc(r.created_by_name || '-')}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <a href="/reservations/${r.id}" class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation()"><i class="fas fa-eye"></i></a>
+                    ${r.status === 'active' ? `<button class="btn btn-outline-warning btn-sm" onclick="event.stopPropagation();releaseReservation(${r.id})"><i class="fas fa-unlock"></i></button>` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderPagination(pagination, currentPage) {
+    const bar = document.getElementById('paginationBar');
+    const pages = pagination.pages || 1;
+    const total = pagination.total || 0;
+    if (pages <= 1) { bar.innerHTML = ''; return; }
+    let html = `<small class="text-muted">共 ${total} 条</small><ul class="pagination pagination-sm mb-0">`;
+    html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="loadReservations(${currentPage-1})">&laquo;</a></li>`;
+    for (let p = 1; p <= pages; p++) {
+        if (pages > 7 && p > 2 && p < currentPage - 1 && p > 3) continue;
+        if (pages > 7 && p < pages - 1 && p > currentPage + 1 && p < pages - 2) continue;
+        html += `<li class="page-item ${p === currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="loadReservations(${p})">${p}</a></li>`;
+    }
+    html += `<li class="page-item ${currentPage >= pages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="loadReservations(${currentPage+1})">&raquo;</a></li></ul>`;
+    bar.innerHTML = html;
+}
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/reservations/stats');
+        const data = await res.json();
+        if (data.success && data.data) {
+            const s = data.data;
+            document.getElementById('statTotal').textContent = s.total || 0;
+            document.getElementById('statActive').textContent = s.active || 0;
+            document.getElementById('statExpiring').textContent = s.expiring || 0;
+            document.getElementById('statReleased').textContent = s.released || 0;
+        }
+    } catch(e) { console.error('加载统计失败:', e); }
+}
+
+async function releaseReservation(id) {
+    if (!confirm('确认释放此预留？释放后库存将恢复可分配。')) return;
+    try {
+        const res = await fetch(`/api/reservations/${id}/release`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) { alert('释放成功'); loadReservations(); }
+        else { alert('释放失败: ' + (data.message || '操作失败')); }
+    } catch(e) { alert('网络错误'); }
+}
+
+function resetFilters() {
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterPriority').value = '';
+    document.getElementById('filterKeyword').value = '';
+    loadReservations(1);
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', () => loadReservations(1));
+</script>
+{% endblock %}

@@ -494,6 +494,16 @@ def register_blueprints(app):
 
     from app.routes.stock_take_routes import stock_take_bp
     app.register_blueprint(stock_take_bp)
+
+    # Phase 2: 调拨单 / 预留 / 盘点 前端页面
+    from app.routes.transfer_order_pages import transfer_order_pages_bp
+    app.register_blueprint(transfer_order_pages_bp)
+
+    from app.routes.reservation_pages import reservation_pages_bp
+    app.register_blueprint(reservation_pages_bp)
+
+    from app.routes.stock_take_pages import stock_take_pages_bp
+    app.register_blueprint(stock_take_pages_bp)
     # ===========================================
     
     # 通用列表 API

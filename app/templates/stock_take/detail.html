@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}盘点详情{% endblock %}
+
+{% block extra_css %}
+<style>
+.detail-card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.detail-card h6 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 14px; font-weight: 600; }
+.detail-table th { width: 130px; color: #666; font-size: 13px; }
+.status-badge { display: inline-block; padding: 4px 14px; border-radius: 14px; font-size: 13px; font-weight: 500; }
+.status-draft { background: #e9ecef; color: #495057; }
+.status-pending { background: #e9ecef; color: #495057; }
+.status-in_progress { background: #cff4fc; color: #055160; }
+.status-pending_review { background: #fff3cd; color: #664d03; }
+.status-completed { background: #d1e7dd; color: #0f5132; }
+.status-cancelled { background: #f8d7da; color: #842029; }
+.diff-positive { color: #198754; font-weight: 600; }
+.diff-negative { color: #dc3545; font-weight: 600; }
+.diff-zero { color: #6c757d; }
+.progress { height: 10px; border-radius: 5px; }
+.summary-item { text-align: center; padding: 12px; border-radius: 8px; background: #f8f9fa; }
+.summary-item .value { font-size: 24px; font-weight: 700; }
+.summary-item .label { font-size: 12px; color: #666; margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>
+            <a href="{{ url_for('stock_take_pages.list_page') }}" class="text-decoration-none me-2">&larr;</a>
+            盘点详情
+        </h4>
+        <div id="actionButtons" class="d-flex gap-2"></div>
+    </div>
+
+    <div id="loadingBlock" class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">加载中...</p></div>
+
+    <div id="detailContent" style="display:none;">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="detail-card">
+                    <h6><i class="fas fa-info-circle me-2"></i>基本信息</h6>
+                    <table class="table table-sm detail-table mb-0">
+                        <tr><th>任务编号</th><td><strong id="dCode">-</strong></td></tr>
+                        <tr><th>任务标题</th><td id="dTitle">-</td></tr>
+                        <tr><th>状态</th><td><span class="status-badge" id="dStatus">-</span></td></tr>
+                        <tr><th>范围类型</th><td id="dScope">-</td></tr>
+                        <tr><th>仓库</th><td id="dWarehouse">-</td></tr>
+                        <tr><th>盘点人</th><td id="dCounter">-</td></tr>
+                        <tr><th>截止日期</th><td id="dDeadline">-</td></tr>
+                        <tr><th>开始时间</th><td id="dStartTime">-</td></tr>
+                        <tr><th>完成时间</th><td id="dEndTime">-</td></tr>
+                        <tr><th>备注</th><td id="dRemark" class="text-muted">-</td></tr>
+                    </table>
+                </div>
+
+                <!-- 盘点明细 -->
+                <div class="detail-card">
+                    <h6><i class="fas fa-list-check me-2"></i>盘点明细</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr><th>备件代码</th><th>备件名称</th><th>系统库存</th><th>实盘数量</th><th>差异</th><th>状态</th></tr>
+                            </thead>
+                            <tbody id="itemsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- 汇总 -->
+                <div class="detail-card">
+                    <h6><i class="fas fa-chart-pie me-2"></i>盘点汇总</h6>
+                    <div class="row g-2">
+                        <div class="col-6"><div class="summary-item"><div class="value text-info" id="sumTotal">-</div><div class="label">盘点项数</div></div></div>
+                        <div class="col-6"><div class="summary-item"><div class="value text-success" id="sumCounted">-</div><div class="label">已盘点</div></div></div>
+                        <div class="col-6"><div class="summary-item"><div class="value text-danger" id="sumDiff">-</div><div class="label">差异项</div></div></div>
+                        <div class="col-6"><div class="summary-item"><div class="value text-primary" id="sumAccuracy">-</div><div class="label">准确率</div></div></div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">盘点进度</small>
+                        <div class="progress mt-1">
+                            <div class="progress-bar bg-success" id="progressBar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 调整单 -->
+                <div class="detail-card" id="adjustmentCard" style="display:none;">
+                    <h6><i class="fas fa-file-alt me-2"></i>调整单</h6>
+                    <div id="adjustmentList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STATUS = { draft: '草稿', pending: '待开始', in_progress: '进行中', pending_review: '待审核', completed: '已完成', cancelled: '已取消' };
+const SCOPE = { warehouse: '按仓库', category: '按分类', all: '全部盘点' };
+
+async function loadDetail() {
+    try {
+        const res = await fetch('/api/stock-take/tasks/{{ task_id }}');
+        const data = await res.json();
+        if (!data.success || !data.data) {
+            document.getElementById('loadingBlock').innerHTML = '<p class="text-danger py-5">未找到盘点任务</p>';
+            return;
+        }
+
+        const t = data.data;
+        const items = t.items || [];
+
+        document.getElementById('dCode').textContent = t.task_code || t.id;
+        document.getElementById('dTitle').textContent = t.title || '-';
+        document.getElementById('dStatus').textContent = STATUS[t.status] || t.status;
+        document.getElementById('dStatus').className = 'status-badge status-' + t.status;
+        document.getElementById('dScope').textContent = SCOPE[t.scope_type] || t.scope_type || '-';
+        document.getElementById('dWarehouse').textContent = t.warehouse_name || t.warehouse_id || '-';
+        document.getElementById('dCounter').textContent = t.assignee_names || '-';
+        document.getElementById('dDeadline').textContent = t.deadline ? t.deadline.substring(0, 10) : '-';
+        document.getElementById('dStartTime').textContent = t.started_at || '-';
+        document.getElementById('dEndTime').textContent = t.completed_at || '-';
+        document.getElementById('dRemark').textContent = t.remark || '无';
+
+        // 进度
+        const total = t.total_items || items.length;
+        const counted = t.counted_items || items.filter(i => i.item_status === 'counted').length;
+        const diffCount = t.diff_items || items.filter(i => i.diff_qty && i.diff_qty !== 0).length;
+        const pct = total ? Math.round(counted / total * 100) : 0;
+        document.getElementById('progressBar').style.width = pct + '%';
+        document.getElementById('sumTotal').textContent = total;
+        document.getElementById('sumCounted').textContent = counted;
+        document.getElementById('sumDiff').textContent = diffCount;
+        document.getElementById('sumAccuracy').textContent = total ? Math.round((total - diffCount) / total * 100) + '%' : '-';
+
+        // 明细表
+        const itemsBody = document.getElementById('itemsBody');
+        if (items.length) {
+            itemsBody.innerHTML = items.map(i => {
+                const diff = i.diff_qty != null ? i.diff_qty : '';
+                const diffClass = diff === '' || diff === 0 ? 'diff-zero' : (diff > 0 ? 'diff-positive' : 'diff-negative');
+                return `<tr>
+                    <td><code>${esc(i.spare_part_code || '-')}</code></td>
+                    <td>${esc(i.spare_part_name || '-')}</td>
+                    <td>${i.system_qty || 0}</td>
+                    <td>${i.counted_qty != null ? i.counted_qty : '-'}</td>
+                    <td><span class="${diffClass}">${diff !== '' ? (diff > 0 ? '+' + diff : diff) : '-'}</span></td>
+                    <td><span class="badge bg-${i.item_status === 'counted' ? 'success' : 'secondary'}">${i.item_status === 'counted' ? '已盘点' : '未盘点'}</span></td>
+                </tr>`;
+            }).join('');
+        } else {
+            itemsBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">暂无明细</td></tr>';
+        }
+
+        // 调整单
+        const adjustments = t.adjustment_orders || [];
+        if (adjustments.length) {
+            document.getElementById('adjustmentCard').style.display = 'block';
+            document.getElementById('adjustmentList').innerHTML = adjustments.map(a =>
+                `<div class="mb-2 p-2 bg-light rounded">
+                    <small><strong>${esc(a.adjustment_code || a.id)}</strong></small>
+                    <span class="badge bg-${a.status === 'pending' ? 'warning' : a.status === 'approved' ? 'success' : 'secondary'} ms-1">${a.status}</span>
+                    <br><small class="text-muted">${esc(a.remark || '')}</small>
+                </div>`
+            ).join('');
+        }
+
+        // 操作按钮
+        const btns = document.getElementById('actionButtons');
+        let html = '';
+        if (t.status === 'draft' || t.status === 'pending') {
+            html += `<a href="/stock-takes/{{ task_id }}/execute" class="btn btn-success btn-sm"><i class="fas fa-play me-1"></i>开始盘点</a>`;
+        }
+        if (t.status === 'in_progress') {
+            html += `<a href="/stock-takes/{{ task_id }}/execute" class="btn btn-success btn-sm"><i class="fas fa-play me-1"></i>继续盘点</a>`;
+        }
+        if (t.status === 'completed' && diffCount > 0) {
+            html += `<button class="btn btn-info btn-sm" onclick="window.location.href='/stock-takes/adjustments'"><i class="fas fa-list-alt me-1"></i>查看调整单</button>`;
+        }
+        btns.innerHTML = html;
+
+        document.getElementById('loadingBlock').style.display = 'none';
+        document.getElementById('detailContent').style.display = 'block';
+    } catch(e) {
+        document.getElementById('loadingBlock').innerHTML = '<p class="text-danger py-5">加载失败: ' + e.message + '</p>';
+    }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', loadDetail);
+</script>
+{% endblock %}

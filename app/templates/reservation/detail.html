@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}预留详情{% endblock %}
+
+{% block extra_css %}
+<style>
+.detail-card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.detail-card h6 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 14px; font-weight: 600; }
+.detail-table th { width: 130px; color: #666; font-size: 13px; }
+.detail-table td { font-size: 14px; }
+.priority-high { background: #f8d7da; color: #842029; padding: 3px 12px; border-radius: 12px; font-weight: 600; font-size: 13px; }
+.priority-medium { background: #fff3cd; color: #664d03; padding: 3px 12px; border-radius: 12px; font-weight: 600; font-size: 13px; }
+.priority-low { background: #d1e7dd; color: #0f5132; padding: 3px 12px; border-radius: 12px; font-weight: 600; font-size: 13px; }
+.status-active { background: #d1e7dd; color: #0f5132; }
+.status-released { background: #e2e3e5; color: #41464b; }
+.status-expired { background: #f8d7da; color: #842029; }
+.status-consumed { background: #cfe2ff; color: #084298; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>
+            <a href="{{ url_for('reservation_pages.list_page') }}" class="text-decoration-none me-2">&larr;</a>
+            预留详情
+        </h4>
+        <div id="actionButtons" class="d-flex gap-2"></div>
+    </div>
+
+    <div id="loadingBlock" class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">加载中...</p></div>
+
+    <div id="detailContent" style="display:none;">
+        <div class="row">
+            <div class="col-md-7">
+                <div class="detail-card">
+                    <h6><i class="fas fa-info-circle me-2"></i>预留信息</h6>
+                    <table class="table table-sm detail-table mb-0">
+                        <tr><th>预留单号</th><td><strong id="dCode">-</strong></td></tr>
+                        <tr><th>状态</th><td><span class="status-badge status-active" id="dStatus" style="padding:3px 12px;border-radius:12px;font-size:13px;">-</span></td></tr>
+                        <tr><th>备件名称</th><td id="dPartName">-</td></tr>
+                        <tr><th>备件代码</th><td><code id="dPartCode">-</code></td></tr>
+                        <tr><th>预留数量</th><td><strong class="text-primary" id="dQuantity">-</strong></td></tr>
+                        <tr><th>优先级</th><td id="dPriority">-</td></tr>
+                        <tr><th>仓库</th><td id="dWarehouse">-</td></tr>
+                        <tr><th>过期日期</th><td id="dExpiry">-</td></tr>
+                        <tr><th>预留原因</th><td id="dReason" class="text-muted">-</td></tr>
+                        <tr><th>创建人</th><td id="dCreatedBy">-</td></tr>
+                        <tr><th>创建时间</th><td id="dCreatedAt">-</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="detail-card">
+                    <h6><i class="fas fa-clipboard-list me-2"></i>操作</h6>
+                    <div id="operationInfo" class="text-muted small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentData = null;
+
+async function loadDetail() {
+    try {
+        const res = await fetch('/api/reservations/{{ reservation_id }}');
+        const data = await res.json();
+        if (!data.success || !data.data) { document.getElementById('loadingBlock').innerHTML = '<p class="text-danger py-5">未找到预留记录</p>'; return; }
+        currentData = data.data;
+        renderDetail(currentData);
+        document.getElementById('loadingBlock').style.display = 'none';
+        document.getElementById('detailContent').style.display = 'block';
+    } catch(e) {
+        document.getElementById('loadingBlock').innerHTML = '<p class="text-danger py-5">加载失败: ' + e.message + '</p>';
+    }
+}
+
+function renderDetail(r) {
+    const STATUS = { active: '生效中', released: '已释放', expired: '已过期', consumed: '已消耗' };
+    const PRIORITY = { 8: '高', 5: '中', 3: '低' };
+
+    document.getElementById('dCode').textContent = r.reservation_code || r.id;
+    document.getElementById('dStatus').textContent = STATUS[r.status] || r.status;
+    document.getElementById('dStatus').className = 'status-badge status-' + r.status;
+    document.getElementById('dPartName').textContent = r.spare_part_name || '-';
+    document.getElementById('dPartCode').textContent = r.spare_part_code || '-';
+    document.getElementById('dQuantity').textContent = r.quantity || '-';
+    document.getElementById('dPriority').innerHTML = `<span class="priority-${r.priority >= 8 ? 'high' : r.priority >= 5 ? 'medium' : 'low'}">${PRIORITY[r.priority] || r.priority}</span>`;
+    document.getElementById('dWarehouse').textContent = r.warehouse_name || '不限';
+    document.getElementById('dExpiry').textContent = r.expire_at ? r.expire_at.substring(0, 10) : '永久';
+    document.getElementById('dReason').textContent = r.reason || '无';
+    document.getElementById('dCreatedBy').textContent = r.created_by_name || '-';
+    document.getElementById('dCreatedAt').textContent = r.created_at || '-';
+
+    // 操作按钮
+    const btns = document.getElementById('actionButtons');
+    let html = '';
+    if (r.status === 'active') {
+        html += `<button class="btn btn-warning btn-sm" onclick="doAction('release')"><i class="fas fa-unlock me-1"></i>释放预留</button>`;
+        html += `<button class="btn btn-outline-secondary btn-sm" onclick="doAction('extend')"><i class="fas fa-clock me-1"></i>延长有效期</button>`;
+    }
+    btns.innerHTML = html;
+
+    // 操作信息
+    const opInfo = document.getElementById('operationInfo');
+    if (r.released_at) opInfo.innerHTML += `<p><strong>释放时间:</strong> ${r.released_at}</p>`;
+    if (r.released_by_name) opInfo.innerHTML += `<p><strong>释放人:</strong> ${r.released_by_name}</p>`;
+    if (!r.released_at && !r.released_by_name) opInfo.innerHTML = '<p>暂无操作记录</p>';
+}
+
+async function doAction(action) {
+    if (action === 'release') {
+        if (!confirm('确认释放此预留？释放后库存将恢复可分配。')) return;
+    } else if (action === 'extend') {
+        const days = prompt('请输入延长的天数:', '30');
+        if (!days || isNaN(days)) return;
+    }
+
+    try {
+        const url = action === 'extend'
+            ? `/api/reservations/{{ reservation_id }}/extend`
+            : `/api/reservations/{{ reservation_id }}/release`;
+
+        let body = null;
+        if (action === 'extend') {
+            const days = prompt('请输入延长的天数:', '30');
+            if (!days || isNaN(days)) return;
+            body = JSON.stringify({ days: parseInt(days) });
+        }
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: body || '{}'
+        });
+        const data = await res.json();
+        if (data.success) { alert('操作成功'); loadDetail(); }
+        else { alert('操作失败: ' + (data.message || '未知错误')); }
+    } catch(e) { alert('网络错误'); }
+}
+
+document.addEventListener('DOMContentLoaded', loadDetail);
+</script>
+{% endblock %}

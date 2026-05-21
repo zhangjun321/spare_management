@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}执行盘点{% endblock %}
+
+{% block extra_css %}
+<style>
+.execute-card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.execute-card h6 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 14px; font-weight: 600; }
+.diff-highlight { background: #fff3cd !important; }
+.diff-positive { color: #198754; font-weight: 600; }
+.diff-negative { color: #dc3545; font-weight: 600; }
+.diff-zero { color: #6c757d; }
+.count-input { width: 100px !important; display: inline-block !important; }
+.progress-section { margin-bottom: 16px; }
+.barcode-scan-area { background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>
+            <a href="{{ url_for('stock_take_pages.list_page') }}" class="text-decoration-none me-2">&larr;</a>
+            执行盘点 - <span id="taskTitle">...</span>
+        </h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-success btn-sm" onclick="completeTask()" id="btnComplete" disabled>
+                <i class="fas fa-check me-1"></i>提交盘点结果
+            </button>
+        </div>
+    </div>
+
+    <div class="execute-card progress-section">
+        <div class="d-flex justify-content-between mb-1">
+            <span>盘点进度</span>
+            <span><strong id="progressText">0/0</strong></span>
+        </div>
+        <div class="progress" style="height:10px;">
+            <div class="progress-bar bg-success" id="progressBar" style="width:0%"></div>
+        </div>
+    </div>
+
+    <div class="barcode-scan-area">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto"><i class="fas fa-barcode fa-lg text-primary"></i></div>
+            <div class="col"><input type="text" class="form-control form-control-sm" id="barcodeInput" placeholder="扫描条码快速定位备件..." onkeypress="handleBarcodeEnter(event)"></div>
+            <div class="col-auto"><button class="btn btn-outline-primary btn-sm" onclick="searchByBarcode()">定位</button></div>
+        </div>
+    </div>
+
+    <div id="loadingBlock" class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">加载盘点明细...</p></div>
+
+    <div id="itemsContent" style="display:none;">
+        <div class="execute-card">
+            <h6>盘点明细</h6>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>备件代码</th>
+                            <th>备件名称</th>
+                            <th>系统库存</th>
+                            <th>实盘数量</th>
+                            <th>差异</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let taskData = null;
+let itemsData = [];
+
+async function loadTaskData() {
+    try {
+        const res = await fetch('/api/stock-take/tasks/{{ task_id }}');
+        const data = await res.json();
+        if (!data.success || !data.data) {
+            document.getElementById('loadingBlock').innerHTML = '<p class="text-danger py-5">未找到盘点任务</p>';
+            return;
+        }
+
+        taskData = data.data;
+        itemsData = taskData.items || [];
+        document.getElementById('taskTitle').textContent = taskData.task_code || taskData.title || taskData.id;
+
+        // 自动开始盘点
+        if (taskData.status === 'draft' || taskData.status === 'pending') {
+            await fetch('/api/stock-take/tasks/{{ task_id }}/start', { method: 'POST' });
+            taskData.status = 'in_progress';
+        }
+
+        renderItems();
+        updateProgress();
+        document.getElementById('loadingBlock').style.display = 'none';
+        document.getElementById('itemsContent').style.display = 'block';
+    } catch(e) {
+        document.getElementById('loadingBlock').innerHTML = '<p class="text-danger py-5">加载失败: ' + e.message + '</p>';
+    }
+}
+
+function renderItems() {
+    const tbody = document.getElementById('itemsBody');
+    if (!itemsData.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">该仓库没有需要盘点的备件</td></tr>';
+        document.getElementById('btnComplete').disabled = false;
+        return;
+    }
+
+    tbody.innerHTML = itemsData.map((item, idx) => {
+        const sysQty = item.system_qty || 0;
+        const countedQty = item.counted_qty != null ? item.counted_qty : '';
+        const diff = item.diff_qty != null ? item.diff_qty : '';
+        const diffClass = diff === '' || diff === 0 ? 'diff-zero' : (diff > 0 ? 'diff-positive' : 'diff-negative');
+        const rowClass = diff !== '' && diff !== 0 ? 'diff-highlight' : '';
+        const isCounted = item.item_status === 'counted';
+
+        return `<tr class="${rowClass}" id="itemRow${idx}">
+            <td>${idx + 1}</td>
+            <td><code>${esc(item.spare_part_code || '-')}</code></td>
+            <td>${esc(item.spare_part_name || '-')}</td>
+            <td><strong>${sysQty}</strong></td>
+            <td>
+                <input type="number" class="form-control form-control-sm count-input"
+                    value="${countedQty}" min="0" data-idx="${idx}"
+                    onchange="onCountChange(${idx}, this.value)"
+                    onfocus="this.select()"
+                    ${taskData.status !== 'in_progress' ? 'disabled' : ''}>
+            </td>
+            <td><span class="${diffClass}" id="diff${idx}">${diff !== '' ? (diff > 0 ? '+' + diff : diff) : '-'}</span></td>
+            <td><span class="badge bg-${isCounted ? 'success' : 'secondary'}">${isCounted ? '已盘点' : '未盘点'}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+async function onCountChange(idx, value) {
+    const item = itemsData[idx];
+    const qty = parseInt(value) || 0;
+
+    try {
+        const res = await fetch(`/api/stock-take/tasks/{{ task_id }}/items/${item.id}/count`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ counted_qty: qty, scan_code: null, remark: null })
+        });
+        const data = await res.json();
+        if (data.success) {
+            // Update local data from response
+            if (data.data.item) {
+                itemsData[idx].counted_qty = data.data.item.counted_qty;
+                itemsData[idx].diff_qty = data.data.item.diff_qty;
+                itemsData[idx].item_status = data.data.item.item_status;
+            }
+            // Update display
+            const sysQty = item.system_qty || 0;
+            const diff = qty - sysQty;
+            const diffEl = document.getElementById('diff' + idx);
+            if (diff > 0) {
+                diffEl.textContent = '+' + diff;
+                diffEl.className = 'diff-positive';
+            } else if (diff < 0) {
+                diffEl.textContent = diff;
+                diffEl.className = 'diff-negative';
+            } else {
+                diffEl.textContent = '0';
+                diffEl.className = 'diff-zero';
+            }
+            const row = document.getElementById('itemRow' + idx);
+            if (diff !== 0) row.classList.add('diff-highlight');
+            else row.classList.remove('diff-highlight');
+
+            if (data.data.task_stats) {
+                document.getElementById('progressText').textContent =
+                    `${data.data.task_stats.counted_items}/${data.data.task_stats.total_items}`;
+                const pct = data.data.task_stats.total_items
+                    ? Math.round(data.data.task_stats.counted_items / data.data.task_stats.total_items * 100) : 0;
+                document.getElementById('progressBar').style.width = pct + '%';
+                document.getElementById('btnComplete').disabled = (data.data.task_stats.counted_items < data.data.task_stats.total_items);
+            }
+        }
+    } catch(e) { console.error('盘点提交失败:', e); }
+}
+
+function updateProgress() {
+    const total = itemsData.length;
+    const counted = itemsData.filter(i => i.item_status === 'counted').length;
+    const pct = total ? Math.round(counted / total * 100) : 0;
+    document.getElementById('progressText').textContent = `${counted}/${total}`;
+    document.getElementById('progressBar').style.width = pct + '%';
+    if (taskData.status === 'in_progress') {
+        document.getElementById('btnComplete').disabled = (counted < total);
+    }
+}
+
+function handleBarcodeEnter(e) { if (e.key === 'Enter') searchByBarcode(); }
+
+function searchByBarcode() {
+    const code = document.getElementById('barcodeInput').value.trim();
+    if (!code) return;
+    const idx = itemsData.findIndex(i => (i.spare_part_code || '').toLowerCase() === code.toLowerCase());
+    if (idx >= 0) {
+        const row = document.getElementById('itemRow' + idx);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('table-primary');
+            setTimeout(() => row.classList.remove('table-primary'), 2000);
+            const input = row.querySelector('.count-input');
+            if (input) { input.focus(); input.select(); }
+        }
+    } else {
+        alert('未找到该代码对应的备件: ' + code);
+    }
+    document.getElementById('barcodeInput').value = '';
+}
+
+async function completeTask() {
+    if (!confirm('确认提交盘点结果？提交后将无法修改。')) return;
+    try {
+        const res = await fetch('/api/stock-take/tasks/{{ task_id }}/complete', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('盘点完成！');
+            window.location.href = '/stock-takes/{{ task_id }}';
+        } else {
+            alert('提交失败: ' + (data.message || '未知错误'));
+        }
+    } catch(e) { alert('网络错误: ' + e.message); }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', loadTaskData);
+</script>
+{% endblock %}

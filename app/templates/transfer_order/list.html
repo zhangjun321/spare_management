@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}调拨单管理{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card {
+    border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: transform 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); }
+.stat-number { font-size: 28px; font-weight: 700; }
+.status-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 500;
+}
+.status-draft { background: #e9ecef; color: #495057; }
+.status-submitted { background: #cff4fc; color: #055160; }
+.status-approved { background: #d1e7dd; color: #0f5132; }
+.status-in_transit { background: #fff3cd; color: #664d03; }
+.status-received { background: #cfe2ff; color: #084298; }
+.status-completed { background: #d1e7dd; color: #0f5132; }
+.status-rejected { background: #f8d7da; color: #842029; }
+.status-cancelled { background: #e2e3e5; color: #41464b; }
+.filter-bar { background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #f0f4ff !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="fas fa-exchange-alt me-2"></i>调拨单管理</h4>
+        <a href="{{ url_for('transfer_order_pages.new_page') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>新建调拨单
+        </a>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-3" id="statsRow">
+        <div class="col-md-2"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-info" id="statTotal">-</div><small class="text-muted">总计</small></div></div></div>
+        <div class="col-md-2"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-warning" id="statDraft">-</div><small class="text-muted">草稿</small></div></div></div>
+        <div class="col-md-2"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-primary" id="statSubmitted">-</div><small class="text-muted">待审批</small></div></div></div>
+        <div class="col-md-2"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-warning" id="statInTransit">-</div><small class="text-muted">在途</small></div></div></div>
+        <div class="col-md-2"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-info" id="statReceived">-</div><small class="text-muted">待接收</small></div></div></div>
+        <div class="col-md-2"><div class="card stat-card"><div class="card-body text-center py-2"><div class="stat-number text-success" id="statCompleted">-</div><small class="text-muted">已完成</small></div></div></div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="filter-bar">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small mb-1">状态</label>
+                <select class="form-select form-select-sm" id="filterStatus">
+                    <option value="">全部</option>
+                    <option value="draft">草稿</option>
+                    <option value="submitted">待审批</option>
+                    <option value="approved">已审批</option>
+                    <option value="in_transit">运输中</option>
+                    <option value="received">待接收</option>
+                    <option value="completed">已完成</option>
+                    <option value="rejected">已拒绝</option>
+                    <option value="cancelled">已取消</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">调出仓库</label>
+                <select class="form-select form-select-sm" id="filterFromWh"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">目标仓库</label>
+                <select class="form-select form-select-sm" id="filterToWh"></select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">关键词</label>
+                <input type="text" class="form-control form-control-sm" id="filterKeyword" placeholder="调拨单号...">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-sm me-1" onclick="loadOrders(1)"><i class="fas fa-search me-1"></i>查询</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()"><i class="fas fa-redo me-1"></i>重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="ordersTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>调拨单号</th>
+                        <th>调出仓库</th>
+                        <th>目标仓库</th>
+                        <th>状态</th>
+                        <th>商品数</th>
+                        <th>创建人</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    <tr><td colspan="8" class="text-center py-4 text-muted">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center" id="paginationBar"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STATUS_LABELS = {
+    draft: '草稿', submitted: '待审批', approved: '已审批',
+    in_transit: '运输中', received: '待接收', completed: '已完成',
+    rejected: '已拒绝', cancelled: '已取消'
+};
+
+async function loadWarehouses() {
+    try {
+        const res = await fetch('/warehouses/api/list');
+        const data = await res.json();
+        if (data.success) {
+            const selects = ['filterFromWh', 'filterToWh'];
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '<option value="">全部</option>';
+                (data.data || []).forEach(w => {
+                    sel.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+                });
+            });
+        }
+    } catch(e) { console.error('加载仓库失败:', e); }
+}
+
+async function loadOrders(page = 1) {
+    const params = new URLSearchParams({ page, per_page: 15 });
+    const status = document.getElementById('filterStatus').value;
+    const fromWh = document.getElementById('filterFromWh').value;
+    const toWh = document.getElementById('filterToWh').value;
+    const keyword = document.getElementById('filterKeyword').value;
+    if (status) params.set('status', status);
+    if (fromWh) params.set('from_warehouse_id', fromWh);
+    if (toWh) params.set('to_warehouse_id', toWh);
+    if (keyword) params.set('keyword', keyword);
+
+    try {
+        const res = await fetch(`/api/transfer-orders?${params}`);
+        const data = await res.json();
+        if (data.success && data.data) {
+            renderTable(data.data.items || []);
+            renderPagination(data.data, page);
+            loadStats();
+        }
+    } catch(e) { console.error('加载调拨单失败:', e); }
+}
+
+function renderTable(orders) {
+    const tbody = document.getElementById('ordersTableBody');
+    if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">暂无调拨单数据</td></tr>';
+        return;
+    }
+    tbody.innerHTML = orders.map(o => `
+        <tr class="clickable-row" onclick="location.href='/transfer-orders/${o.id}'">
+            <td><strong class="text-primary">${esc(o.order_code)}</strong></td>
+            <td>${esc(o.from_warehouse_name || '-')}</td>
+            <td>${esc(o.to_warehouse_name || '-')}</td>
+            <td><span class="status-badge status-${o.status}">${STATUS_LABELS[o.status] || o.status}</span></td>
+            <td>${o.item_count || 0}</td>
+            <td>${esc(o.created_by_name || '-')}</td>
+            <td><small>${o.created_at ? o.created_at.substring(0,10) : '-'}</small></td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <a href="/transfer-orders/${o.id}" class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation()"><i class="fas fa-eye"></i></a>
+                    ${o.status === 'draft' ? `<a href="/transfer-orders/${o.id}/edit" class="btn btn-outline-secondary btn-sm" onclick="event.stopPropagation()"><i class="fas fa-edit"></i></a>` : ''}
+                    ${o.status === 'draft' ? `<button class="btn btn-outline-success btn-sm" onclick="event.stopPropagation();submitOrder(${o.id})" title="提交"><i class="fas fa-paper-plane"></i></button>` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderPagination(pagination, currentPage) {
+    const bar = document.getElementById('paginationBar');
+    const pages = pagination.pages || 1;
+    const total = pagination.total || 0;
+    if (pages <= 1) { bar.innerHTML = ''; return; }
+    let html = `<small class="text-muted">共 ${total} 条</small><ul class="pagination pagination-sm mb-0">`;
+    html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="loadOrders(${currentPage-1})">&laquo;</a></li>`;
+    for (let p = 1; p <= pages; p++) {
+        if (pages > 7 && p > 2 && p < currentPage - 1 && p > 3) continue;
+        if (pages > 7 && p < pages - 1 && p > currentPage + 1 && p < pages - 2) continue;
+        html += `<li class="page-item ${p === currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="loadOrders(${p})">${p}</a></li>`;
+    }
+    html += `<li class="page-item ${currentPage >= pages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="loadOrders(${currentPage+1})">&raquo;</a></li>`;
+    html += '</ul>';
+    bar.innerHTML = html;
+}
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/transfer-orders/stats');
+        const data = await res.json();
+        if (data.success && data.data) {
+            const s = data.data;
+            document.getElementById('statTotal').textContent = s.total || 0;
+            document.getElementById('statDraft').textContent = s.draft || 0;
+            document.getElementById('statSubmitted').textContent = s.submitted || 0;
+            document.getElementById('statInTransit').textContent = s.in_transit || 0;
+            document.getElementById('statReceived').textContent = s.received || 0;
+            document.getElementById('statCompleted').textContent = s.completed || 0;
+        }
+    } catch(e) { console.error('加载统计失败:', e); }
+}
+
+async function submitOrder(id) {
+    if (!confirm('确认提交该调拨单？提交后不可修改。')) return;
+    try {
+        const res = await fetch(`/api/transfer-orders/${id}/transit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: 'submitted' })
+        });
+        const data = await res.json();
+        if (data.success) { alert('提交成功'); loadOrders(); }
+        else { alert('提交失败: ' + (data.message || '操作失败')); }
+    } catch(e) { alert('网络错误'); }
+}
+
+function resetFilters() {
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterFromWh').value = '';
+    document.getElementById('filterToWh').value = '';
+    document.getElementById('filterKeyword').value = '';
+    loadOrders(1);
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadWarehouses();
+    loadOrders(1);
+});
+</script>
+{% endblock %}

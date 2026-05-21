@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block page_title %}{% endblock %}
+
+{% block title %}{% if is_edit %}编辑调拨单{% else %}新建调拨单{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-section { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.form-section h6 { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 16px; color: #333; font-weight: 600; }
+.item-row { background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 10px; position: relative; }
+.item-row .btn-remove { position: absolute; top: 8px; right: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h4 class="mb-3">
+        <a href="{{ url_for('transfer_order_pages.list_page') }}" class="text-decoration-none me-2">&larr;</a>
+        {% if is_edit %}编辑调拨单 #<span id="orderCodeDisplay">-</span>{% else %}新建调拨单{% endif %}
+    </h4>
+
+    <div class="form-section">
+        <h6>基本信息</h6>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">调拨类型 <span class="text-danger">*</span></label>
+                <select class="form-select" id="transferType">
+                    <option value="inter_warehouse">跨仓库调拨</option>
+                    <option value="return_to_supplier">退货供应商</option>
+                    <option value="internal_adjustment">内部调整</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">调出仓库 <span class="text-danger">*</span></label>
+                <select class="form-select" id="fromWarehouse"></select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">目标仓库 <span class="text-danger">*</span></label>
+                <select class="form-select" id="toWarehouse"></select>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" id="remark" rows="2" placeholder="调拨原因等备注信息..."></textarea>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0">调拨明细</h6>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addItemRow()">
+                <i class="fas fa-plus me-1"></i>添加商品
+            </button>
+        </div>
+        <div id="itemsContainer">
+            <div class="text-center text-muted py-3">请添加调拨商品</div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+        <a href="{{ url_for('transfer_order_pages.list_page') }}" class="btn btn-secondary">取消</a>
+        <button class="btn btn-outline-primary" id="btnSaveDraft" onclick="saveOrder('draft')">保存草稿</button>
+        <button class="btn btn-primary" id="btnSubmit" onclick="saveOrder('submit')">提交审批</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let items = [];
+let sparePartsCache = [];
+
+async function loadInitData() {
+    try {
+        const [whRes, spRes] = await Promise.all([
+            fetch('/warehouses/api/list'),
+            fetch('/api/spare-parts/all?simple=1')
+        ]);
+        const whData = await whRes.json();
+        const spData = await spRes.json();
+
+        const whList = whData.success ? (whData.data || []) : [];
+        sparePartsCache = spData.success ? (spData.data || spData.spare_parts || []) : [];
+
+        const options = whList.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+        document.getElementById('fromWarehouse').innerHTML = '<option value="">请选择</option>' + options;
+        document.getElementById('toWarehouse').innerHTML = '<option value="">请选择</option>' + options;
+    } catch(e) { console.error('加载初始数据失败:', e); }
+
+    {% if is_edit %}
+    loadOrderDetail();
+    {% endif %}
+}
+
+async function loadOrderDetail() {
+    try {
+        const res = await fetch(`/api/transfer-orders/{{ order_id }}`);
+        const data = await res.json();
+        if (data.success && data.data) {
+            const o = data.data;
+            document.getElementById('orderCodeDisplay').textContent = o.order_code;
+            document.getElementById('transferType').value = o.transfer_type || 'inter_warehouse';
+            document.getElementById('remark').value = o.remark || '';
+            setTimeout(() => {
+                document.getElementById('fromWarehouse').value = o.from_warehouse_id || '';
+                document.getElementById('toWarehouse').value = o.to_warehouse_id || '';
+            }, 300);
+            items = (o.items || []).map(i => ({
+                spare_part_id: i.spare_part_id, quantity: i.quantity,
+                unit: i.unit || '', remark: i.remark || '', id: i.id
+            }));
+            renderItems();
+        }
+    } catch(e) { console.error('加载调拨单详情失败:', e); }
+}
+
+function addItemRow(init = {}) {
+    items.push({
+        spare_part_id: init.spare_part_id || '',
+        quantity: init.quantity || 1,
+        unit: init.unit || '',
+        remark: init.remark || ''
+    });
+    renderItems();
+}
+
+function removeItem(idx) {
+    if (confirm('确认移除此商品？')) { items.splice(idx, 1); renderItems(); }
+}
+
+function renderItems() {
+    const container = document.getElementById('itemsContainer');
+    if (!items.length) { container.innerHTML = '<div class="text-center text-muted py-3">请添加调拨商品</div>'; return; }
+    const partOptions = sparePartsCache.map(p => `<option value="${p.id}">${esc(p.name || p.part_code || '')} [${esc(p.part_code || '')}]</option>`).join('');
+    container.innerHTML = items.map((item, idx) => `
+        <div class="item-row">
+            <button class="btn btn-sm btn-outline-danger btn-remove" onclick="removeItem(${idx})" title="移除"><i class="fas fa-times"></i></button>
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <label class="form-label small">备件 <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm spare-part-select" data-idx="${idx}">
+                        <option value="">请选择备件</option>${partOptions}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">数量 <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control form-control-sm quantity-input" data-idx="${idx}" value="${item.quantity}" min="1">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">单位</label>
+                    <input type="text" class="form-control form-control-sm unit-input" data-idx="${idx}" value="${item.unit}" placeholder="个/箱/套...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">备注</label>
+                    <input type="text" class="form-control form-control-sm remark-input" data-idx="${idx}" value="${item.remark}" placeholder="批次号等...">
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // 绑定事件
+    container.querySelectorAll('.spare-part-select').forEach(sel => {
+        sel.value = items[sel.dataset.idx].spare_part_id;
+        sel.addEventListener('change', function() { items[this.dataset.idx].spare_part_id = parseInt(this.value) || ''; });
+    });
+    container.querySelectorAll('.quantity-input').forEach(inp => {
+        inp.addEventListener('change', function() { items[this.dataset.idx].quantity = parseInt(this.value) || 1; });
+    });
+    container.querySelectorAll('.unit-input').forEach(inp => {
+        inp.value = items[inp.dataset.idx].unit;
+        inp.addEventListener('change', function() { items[this.dataset.idx].unit = this.value; });
+    });
+    container.querySelectorAll('.remark-input').forEach(inp => {
+        inp.addEventListener('change', function() { items[this.dataset.idx].remark = this.value; });
+    });
+}
+
+async function saveOrder(action) {
+    const fromWh = document.getElementById('fromWarehouse').value;
+    const toWh = document.getElementById('toWarehouse').value;
+    if (!fromWh || !toWh) { alert('请选择调出仓库和目标仓库'); return; }
+    if (fromWh === toWh) { alert('调出仓库和目标仓库不能相同'); return; }
+
+    const validItems = items.filter(i => i.spare_part_id && i.quantity > 0);
+    if (!validItems.length) { alert('请至少添加一个有效的调拨商品'); return; }
+
+    const payload = {
+        from_warehouse_id: parseInt(fromWh),
+        to_warehouse_id: parseInt(toWh),
+        transfer_type: document.getElementById('transferType').value,
+        remark: document.getElementById('remark').value,
+        items: validItems.map(i => ({ spare_part_id: i.spare_part_id, quantity: i.quantity, unit: i.unit }))
+    };
+
+    {% if is_edit %}
+    const url = `/api/transfer-orders/{{ order_id }}`;
+    const method = 'PUT';
+    {% else %}
+    const url = '/api/transfer-orders';
+    const method = 'POST';
+    {% endif %}
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            // 如果需要提交，执行状态流转
+            if (action === 'submit' && data.data && data.data.id) {
+                const transitRes = await fetch(`/api/transfer-orders/${data.data.id}/transit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target: 'submitted' })
+                });
+                const transitData = await transitRes.json();
+                if (transitData.success) {
+                    alert('保存并提交成功！');
+                } else {
+                    alert('创建成功但提交失败: ' + (transitData.message || '请手动提交'));
+                }
+            } else {
+                alert('保存成功！');
+            }
+            window.location.href = '/transfer-orders/';
+        } else {
+            alert('保存失败: ' + (data.message || '未知错误'));
+        }
+    } catch(e) { alert('网络错误: ' + e.message); }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', loadInitData);
+</script>
+{% endblock %}
