@@ -144,62 +144,18 @@
             line-height: 1.6;
         }
 
-        /* ========== 网格：6 列基础，第一行 2×3 列，第二行 3×2 列 ========== */
+        /* ========== 网格：3 列等大卡片，第二行居中 ========== */
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 28px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1020px;
         }
 
-        /* 第一行：2 张大卡片，各占 3 列 */
-        .cards-grid .card-wrapper:nth-child(1) { grid-column: span 3; }
-        .cards-grid .card-wrapper:nth-child(2) { grid-column: span 3; }
-
-        /* 第二行：3 张小卡片，各占 2 列 */
-        .cards-grid .card-wrapper:nth-child(3) { grid-column: span 2; }
-        .cards-grid .card-wrapper:nth-child(4) { grid-column: span 2; }
-        .cards-grid .card-wrapper:nth-child(5) { grid-column: span 2; }
-
-        /* --- 大卡片（第一行）--- */
-        .card-wrapper.large .module-card {
-            min-height: 320px;
-            padding: 40px 36px;
-        }
-        .card-wrapper.large .card-icon {
-            width: 60px; height: 60px;
-            border-radius: 16px;
-            font-size: 26px;
-            margin-bottom: 24px;
-        }
-        .card-wrapper.large .card-title {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        .card-wrapper.large .card-desc {
-            font-size: 14.5px;
-            line-height: 1.75;
-        }
-
-        /* --- 小卡片（第二行）--- */
-        .card-wrapper.small .module-card {
-            min-height: 260px;
-            padding: 28px 24px;
-        }
-        .card-wrapper.small .card-icon {
-            width: 46px; height: 46px;
-            border-radius: 12px;
-            font-size: 20px;
-            margin-bottom: 16px;
-        }
-        .card-wrapper.small .card-title {
-            font-size: 18px;
-        }
-        .card-wrapper.small .card-desc {
-            font-size: 13px;
-            line-height: 1.65;
-        }
+        /* 第二行 2 张卡片居中 */
+        .cards-grid .card-wrapper:nth-child(4) { grid-column: 2; }
+        .cards-grid .card-wrapper:nth-child(5) { grid-column: 3; }
 
         .card-wrapper {
             perspective: 1000px;
@@ -210,7 +166,9 @@
             flex-direction: column;
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 20px;
+            border-radius: 18px;
+            padding: 30px 26px;
+            min-height: 270px;
             backdrop-filter: blur(20px);
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
@@ -225,7 +183,7 @@
             content: '';
             position: absolute;
             inset: -1px;
-            border-radius: 20px;
+            border-radius: 18px;
             background: transparent;
             transition: all 0.35s;
             z-index: -1;
@@ -244,12 +202,10 @@
             position: absolute;
             top: 0; left: 0; right: 0;
             height: 4px;
-            border-radius: 20px 20px 0 0;
+            border-radius: 18px 18px 0 0;
             transition: height 0.3s;
         }
-        .module-card:hover .card-accent {
-            height: 6px;
-        }
+        .module-card:hover .card-accent { height: 6px; }
 
         .accent-blue { background: linear-gradient(90deg, #3b82f6, #6366f1); }
         .accent-cyan { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
@@ -258,6 +214,10 @@
         .accent-purple { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
 
         .card-icon {
+            width: 48px; height: 48px;
+            border-radius: 13px;
+            font-size: 21px;
+            margin-bottom: 18px;
             display: flex; align-items: center; justify-content: center;
             position: relative;
             z-index: 1;
@@ -269,11 +229,15 @@
         .icon-bg-purple { background: rgba(139,92,246,0.15); color: #a78bfa; }
 
         .card-title {
+            font-size: 19px;
             font-weight: 700;
+            margin-bottom: 8px;
             letter-spacing: -0.2px;
         }
         .card-desc {
+            font-size: 13.5px;
             color: var(--text-secondary);
+            line-height: 1.7;
             margin-bottom: 20px;
             flex: 1;
         }
@@ -319,48 +283,36 @@
         }
 
         /* ========== 响应式 ========== */
-
-        /* 平板：第一行保持 2 列，第二行变 2+1 或全宽 */
         @media (max-width: 1024px) {
             .cards-grid {
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(3, 1fr);
                 gap: 20px;
+                max-width: 900px;
             }
-            .cards-grid .card-wrapper:nth-child(1),
-            .cards-grid .card-wrapper:nth-child(2) { grid-column: span 2; }
-            .cards-grid .card-wrapper:nth-child(3),
-            .cards-grid .card-wrapper:nth-child(4) { grid-column: span 2; }
-            .cards-grid .card-wrapper:nth-child(5) { grid-column: 1 / -1; max-width: 420px; justify-self: center; }
+            .cards-grid .card-wrapper:nth-child(4) { grid-column: 2; }
+            .cards-grid .card-wrapper:nth-child(5) { grid-column: 3; }
+
+            .module-card { padding: 24px 20px; min-height: 240px; }
+            .card-icon { width: 42px; height: 42px; font-size: 19px; }
+            .card-title { font-size: 17px; }
+            .card-desc { font-size: 12.5px; }
 
             .main-container { padding: 8px 32px 48px; }
             .hero h1 { font-size: 34px; }
         }
 
-        /* 窄平板 / 大手机 */
         @media (max-width: 768px) {
             .cards-grid {
                 grid-template-columns: 1fr 1fr;
                 gap: 16px;
             }
             .cards-grid .card-wrapper { grid-column: span 1 !important; }
-            .cards-grid .card-wrapper:nth-child(5) { grid-column: 1 / -1 !important; max-width: none; }
+            .cards-grid .card-wrapper:nth-child(5) { grid-column: 1 / -1 !important; }
 
-            .card-wrapper.large .module-card,
-            .card-wrapper.small .module-card {
-                min-height: auto;
-                padding: 24px 20px;
-            }
-            .card-wrapper.large .card-icon,
-            .card-wrapper.small .card-icon {
-                width: 42px; height: 42px;
-                border-radius: 12px;
-                font-size: 20px;
-                margin-bottom: 14px;
-            }
-            .card-wrapper.large .card-title { font-size: 18px; }
-            .card-wrapper.small .card-title { font-size: 16px; }
-            .card-wrapper.large .card-desc,
-            .card-wrapper.small .card-desc { font-size: 12.5px; }
+            .module-card { padding: 22px 18px; min-height: auto; }
+            .card-icon { width: 38px; height: 38px; font-size: 18px; margin-bottom: 12px; }
+            .card-title { font-size: 16px; }
+            .card-desc { font-size: 12px; }
 
             .main-container { padding: 8px 20px 40px; }
             .hero { margin-bottom: 36px; }
@@ -410,9 +362,8 @@
         <!-- 模块卡片 -->
         <div class="cards-grid">
 
-            <!-- 第一行：2张大卡片 -->
             <!-- 1. 备件管理 -->
-            <a href="{{ url_for('spare_parts.index') }}" class="card-wrapper large">
+            <a href="{{ url_for('spare_parts.index') }}" class="card-wrapper">
                 <div class="module-card">
                     <div class="card-accent accent-blue"></div>
                     <div class="card-icon icon-bg-blue">
@@ -431,7 +382,7 @@
             </a>
 
             <!-- 2. 仓库管理 -->
-            <a href="{{ url_for('warehouses.index') }}" class="card-wrapper large">
+            <a href="{{ url_for('warehouses.index') }}" class="card-wrapper">
                 <div class="module-card">
                     <div class="card-accent accent-cyan"></div>
                     <div class="card-icon icon-bg-cyan">
@@ -450,9 +401,8 @@
                 </div>
             </a>
 
-            <!-- 第二行：3张小卡片 -->
             <!-- 3. 交易管理 -->
-            <a href="{{ url_for('transactions.list_page') }}" class="card-wrapper small">
+            <a href="{{ url_for('transactions.list_page') }}" class="card-wrapper">
                 <div class="module-card">
                     <div class="card-accent accent-emerald"></div>
                     <div class="card-icon icon-bg-emerald">
@@ -472,7 +422,7 @@
             </a>
 
             <!-- 4. 设备管理 -->
-            <a href="{{ url_for('equipment.index') }}" class="card-wrapper small">
+            <a href="{{ url_for('equipment.index') }}" class="card-wrapper">
                 <div class="module-card">
                     <div class="card-accent accent-amber"></div>
                     <div class="card-icon icon-bg-amber">
@@ -492,7 +442,7 @@
 
             <!-- 5. 系统管理 -->
             {% if current_user.is_admin %}
-            <a href="{{ url_for('system.index') }}" class="card-wrapper small">
+            <a href="{{ url_for('system.index') }}" class="card-wrapper">
                 <div class="module-card">
                     <div class="card-accent accent-purple"></div>
                     <div class="card-icon icon-bg-purple">
@@ -511,7 +461,7 @@
                 </div>
             </a>
             {% else %}
-            <a href="{{ url_for('auth.profile') }}" class="card-wrapper small">
+            <a href="{{ url_for('auth.profile') }}" class="card-wrapper">
                 <div class="module-card">
                     <div class="card-accent accent-purple"></div>
                     <div class="card-icon icon-bg-purple">
