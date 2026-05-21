@@ -4,6 +4,7 @@ Flask 应用配置
 """
 
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
 # 加载 .env 文件
@@ -22,6 +23,12 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'spare_management_secret_key_2024')
     DEBUG = False
     TESTING = False
+
+    # ── S-05: Session 安全加固 ──
+    SESSION_COOKIE_SECURE = False  # 子类按需覆盖；生产环境 True
+    SESSION_COOKIE_HTTPONLY = True  # 禁止 JS 读取 Cookie，防 XSS
+    SESSION_COOKIE_SAMESITE = 'Lax'  # 防 CSRF（Lax 允许 GET 跨站导航）
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)  # 8 小时过期
     
     # 数据库
     # 优先使用单独的 MySQL 配置项（避免密码中特殊字符问题）
@@ -77,6 +84,7 @@ class ProductionConfig(Config):
     """生产环境配置"""
     DEBUG = False
     LOG_LEVEL = 'ERROR'
+    SESSION_COOKIE_SECURE = True  # 强制 HTTPS Only
 
 
 class TestingConfig(Config):

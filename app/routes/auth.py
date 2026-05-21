@@ -10,8 +10,21 @@ from app.extensions import db, check_password_hash
 from app.models.user import User
 from app.models.role import Role
 from app.extensions import generate_password_hash
+from app.utils.login_rate_limiter import default_limiter
+from app.utils.transaction import transactional
+import time
+import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__, template_folder='../templates/auth')
+
+# ── S-03: 登录安全常量 ──
+LOGIN_FAIL_DELAY_MIN = 0.5   # 失败响应最小延迟（秒）— 防时序攻击
+LOGIN_FAIL_DELAY_MAX = 1.0   # 失败响应最大延迟（秒）
+MAX_FAILED_ATTEMPTS = 5      # 连续失败阈值
+LOCKOUT_DURATION_MINUTES = 30  # 锁定持续时间
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -19,53 +32,122 @@ def login():
     """用户登录"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
-    
+
     if request.method == 'POST':
+        client_ip = request.remote_addr or '0.0.0.0'
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        remember = request.form.get('remember') == 'on'  # checkbox 选中时为 'on'
-        
+        remember = request.form.get('remember') == 'on'
+
+        # ── 基本验证 ──
         if not username or not password:
             flash('请输入用户名和密码', 'warning')
             return render_template('auth/login.html')
-        
-        # 查找用户 (支持用户名或邮箱登录)
+
+        # ── S-03 步骤 1: IP 级频率限制 ──
+        if not default_limiter.is_allowed(client_ip):
+            logger.warning(
+                f'[SECURITY] 登录频率限制触发 — IP: {client_ip} 用户名: {username}'
+            )
+            flash('登录尝试过于频繁，请 1 分钟后再试', 'danger')
+            return render_template('auth/login.html')
+
+        # ── S-03 步骤 2: 查找用户 ──
         user = User.query.filter(
             (User.username == username) | (User.email == username)
         ).first()
-        
+
         if not user:
+            # 用户不存在：模拟延迟 + 统一错误消息
+            _fail_delay()
             flash('用户名或密码错误', 'danger')
             return render_template('auth/login.html')
-        
-        # 验证密码
+
+        # ── S-03 步骤 3: 检查账号锁定 ──
+        if user.is_locked():
+            remaining = user.locked_until - datetime.utcnow()
+            minutes = max(1, int(remaining.total_seconds() / 60))
+            logger.warning(
+                f'[SECURITY] 锁定账号登录尝试 — user_id: {user.id} '
+                f'username: {user.username} IP: {client_ip} '
+                f'剩余锁定: {minutes} 分钟'
+            )
+            flash(f'账号已被锁定（连续 {MAX_FAILED_ATTEMPTS} 次失败），请 {minutes} 分钟后再试', 'danger')
+            return render_template('auth/login.html')
+
+        # ── S-03 步骤 4: 验证密码 ──
         if not user.check_password(password):
-            flash('用户名或密码错误', 'danger')
+            # 密码错误
+            is_locked = user.increment_failed_attempts()
+            try:
+                with transactional():
+                    db.session.add(user)
+            except Exception:
+                logger.error(f'更新失败计数失败 — user_id: {user.id}')
+
+            _fail_delay()
+            logger.warning(
+                f'[SECURITY] 登录失败 — user_id: {user.id} '
+                f'username: {user.username} IP: {client_ip} '
+                f'失败次数: {user.failed_login_attempts} '
+                f'{"已锁定" if is_locked else "未锁定"}'
+            )
+
+            if is_locked:
+                flash(
+                    f'密码连续错误 {MAX_FAILED_ATTEMPTS} 次，账号已锁定 {LOCKOUT_DURATION_MINUTES} 分钟',
+                    'danger'
+                )
+            else:
+                flash('用户名或密码错误', 'danger')
             return render_template('auth/login.html')
-        
-        # 检查用户是否激活
+
+        # ── S-03 步骤 5: 检查激活状态 ──
         if not user.is_active:
+            _fail_delay()
             flash('账户已被禁用，请联系管理员', 'danger')
             return render_template('auth/login.html')
-        
-        # 更新登录信息
-        user.last_login = datetime.utcnow()
-        user.last_login_ip = request.remote_addr
-        db.session.commit()
-        
+
+        # ── S-03 步骤 6: 登录成功 ──
+        try:
+            with transactional():
+                user.reset_failed_attempts()
+                user.last_login = datetime.utcnow()
+                user.last_login_ip = client_ip
+                db.session.add(user)
+        except Exception as e:
+            logger.error(f'更新登录信息失败 — user_id: {user.id}: {e}')
+
+        # ── S-03: 重置 IP 限频计数 ──
+        default_limiter.reset(client_ip)
+
+        # ── S-05: Session 再生 (防 Session Fixation) ──
+        # 清空旧会话数据，login_user 会创建新会话
+        session.clear()
+
         # 登录用户
         login_user(user, remember=remember)
-        
+
         # 存储权限到 session
         session['user_permissions'] = user.role.permissions if user.role else {}
-        
+
+        logger.info(
+            f'[SECURITY] 登录成功 — user_id: {user.id} '
+            f'username: {user.username} IP: {client_ip}'
+        )
+
         # 重定向到下一页或仪表盘
         next_page = request.args.get('next')
         if next_page:
             return redirect(next_page)
         return redirect(url_for('dashboard.index'))
-    
+
     return render_template('auth/login.html')
+
+
+def _fail_delay():
+    """登录失败随机延迟 — 阻止时序攻击 + 减缓暴力破解"""
+    time.sleep(random.uniform(LOGIN_FAIL_DELAY_MIN, LOGIN_FAIL_DELAY_MAX))
 
 
 @auth_bp.route('/logout')

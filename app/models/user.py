@@ -26,6 +26,8 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, nullable=False, default=False, index=True, comment='是否管理员')
     last_login = db.Column(db.DateTime, nullable=True, index=True, comment='最后登录时间')
     last_login_ip = db.Column(db.String(50), nullable=True, comment='最后登录 IP')
+    failed_login_attempts = db.Column(db.Integer, nullable=False, default=0, comment='连续登录失败次数')
+    locked_until = db.Column(db.DateTime, nullable=True, comment='账号锁定截止时间')
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True, comment='创建时间')
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, index=True, comment='更新时间')
     
@@ -64,6 +66,37 @@ class User(db.Model, UserMixin):
         except Exception:
             return False
     
+    def is_locked(self) -> bool:
+        """检查账号是否被锁定"""
+        if not self.locked_until:
+            return False
+        if datetime.utcnow() >= self.locked_until:
+            # 锁定已过期，自动解锁
+            self.failed_login_attempts = 0
+            self.locked_until = None
+            return False
+        return True
+
+    def increment_failed_attempts(self) -> bool:
+        """
+        增加失败计数，如果达到阈值则锁定账号。
+        返回 True 表示账号已被锁定。
+        """
+        MAX_ATTEMPTS = 5
+        LOCK_DURATION_MINUTES = 30
+
+        self.failed_login_attempts += 1
+        if self.failed_login_attempts >= MAX_ATTEMPTS:
+            from datetime import timedelta
+            self.locked_until = datetime.utcnow() + timedelta(minutes=LOCK_DURATION_MINUTES)
+            return True
+        return False
+
+    def reset_failed_attempts(self) -> None:
+        """重置失败计数（登录成功后调用）"""
+        self.failed_login_attempts = 0
+        self.locked_until = None
+
     def has_permission(self, module, action):
         """检查权限"""
         if self.is_admin:
