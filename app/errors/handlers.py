@@ -73,8 +73,32 @@ def method_not_allowed(error):
     return render_template('errors/405.html') if _template_exists('errors/405.html') else ("Method Not Allowed", 405)
 
 
+# ── 业务异常 (Service 层抛出) ───────────────────────────
+from app.utils.exceptions import BusinessError
+
+@errors_bp.app_errorhandler(BusinessError)
+def handle_business_error(error: BusinessError):
+    """业务异常 → 统一 JSON 响应 (API / 页面均适用)"""
+    logger.warning(f"[{error.code.value}] {error.message} | {request.path}")
+    if is_api_request():
+        return json_response(
+            code=error.code,
+            message=error.message,
+            data=error.data
+        ), error.http_status
+    # 页面请求：用 flash 消息 + 重定向或渲染错误页
+    from flask import flash, redirect, url_for
+    flash(f'操作失败: {error.message}', 'danger')
+    if request.referrer:
+        return redirect(request.referrer)
+    return redirect(url_for('auth.login'))
+
+
 @errors_bp.app_errorhandler(409)
 def conflict(error):
+    if is_api_request():
+        return json_response(code=ResponseCode.CONFLICT, message="资源冲突，请检查数据是否重复")
+    return ("Conflict", 409)
     if is_api_request():
         return json_response(code=ResponseCode.CONFLICT, message="资源冲突，请检查数据是否重复")
     return ("Conflict", 409)

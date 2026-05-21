@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 备件管理 REST API 蓝图（供 React 前端调用）
+F0-2 已迁移：全部 jsonify → ok() / error() / paginated_data()
+F0-3 已迁移：权限/业务校验 → raise BusinessError 子类
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 from app.extensions import db, csrf
@@ -11,6 +13,11 @@ from app.models.spare_part import SparePart
 from app.models.category import Category
 from app.models.supplier import Supplier
 from app.models.warehouse import Warehouse
+from app.utils.response import ok, error, paginated_data, ResponseCode
+from app.utils.exceptions import (
+    ParamError, UnauthorizedError, ForbiddenError,
+    NotFoundError, ConflictError, BusinessError,
+)
 
 api_spare_parts_bp = Blueprint('api_spare_parts', __name__, url_prefix='/api/spare-parts')
 csrf.exempt(api_spare_parts_bp)
@@ -109,18 +116,10 @@ def list_parts():
         page=page, per_page=per_page, error_out=False
     )
 
-    return jsonify({
-        'success': True,
-        'data': [_serialize_part(p) for p in pagination.items],
-        'pagination': {
-            'page': pagination.page,
-            'per_page': per_page,
-            'total': pagination.total,
-            'pages': pagination.pages,
-            'has_prev': pagination.has_prev,
-            'has_next': pagination.has_next,
-        }
-    })
+    return paginated_data(
+        items=[_serialize_part(p) for p in pagination.items],
+        pagination=pagination,
+    )
 
 
 # ──────────────────────────────────────────────
@@ -134,8 +133,7 @@ def get_options():
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
     warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.name).all()
 
-    return jsonify({
-        'success': True,
+    return ok(data={
         'categories': [{'id': c.id, 'name': c.name} for c in categories],
         'suppliers': [{'id': s.id, 'name': s.name} for s in suppliers],
         'warehouses': [{'id': w.id, 'name': w.name} for w in warehouses],
@@ -153,8 +151,10 @@ def get_part(id):
         joinedload(SparePart.supplier),
         joinedload(SparePart.warehouse),
         joinedload(SparePart.warehouse_location),
-    ).get_or_404(id)
-    return jsonify({'success': True, 'data': _serialize_part(part)})
+    ).get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
+    return ok(data=_serialize_part(part))
 
 
 # ──────────────────────────────────────────────
@@ -164,16 +164,21 @@ def get_part(id):
 @login_required
 def create_part():
     if not current_user.has_permission('spare_part', 'create'):
-        return jsonify({'success': False, 'error': '无创建权限'}), 403
+        raise ForbiddenError('无创建权限')
 
     data = request.get_json() or {}
 
+    # 参数校验
+    part_code = data.get('part_code', '').strip()
+    if not part_code:
+        raise ParamError('备件代码不能为空')
+
     # 检查备件代码唯一
-    if SparePart.query.filter_by(part_code=data.get('part_code')).first():
-        return jsonify({'success': False, 'error': '备件代码已存在'}), 400
+    if SparePart.query.filter_by(part_code=part_code).first():
+        raise ConflictError('备件代码已存在')
 
     part = SparePart(
-        part_code=data.get('part_code'),
+        part_code=part_code,
         name=data.get('name'),
         specification=data.get('specification'),
         category_id=data.get('category_id') or None,
@@ -208,7 +213,7 @@ def create_part():
     part.update_stock_status()
     db.session.add(part)
     db.session.commit()
-    return jsonify({'success': True, 'data': _serialize_part(part)}), 201
+    return ok(data=_serialize_part(part), status_code=201)
 
 
 # ──────────────────────────────────────────────
@@ -218,16 +223,19 @@ def create_part():
 @login_required
 def update_part(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
+
     data = request.get_json() or {}
 
     # 检查备件代码唯一（排除自身）
-    code = data.get('part_code')
+    code = data.get('part_code', '').strip()
     if code and code != part.part_code:
         if SparePart.query.filter(SparePart.part_code == code, SparePart.id != id).first():
-            return jsonify({'success': False, 'error': '备件代码已存在'}), 400
+            raise ConflictError('备件代码已存在')
 
     fields = [
         'part_code', 'name', 'specification', 'category_id', 'supplier_id',
@@ -249,7 +257,7 @@ def update_part(id):
 
     part.update_stock_status()
     db.session.commit()
-    return jsonify({'success': True, 'data': _serialize_part(part)})
+    return ok(data=_serialize_part(part))
 
 
 # ──────────────────────────────────────────────
@@ -259,12 +267,14 @@ def update_part(id):
 @login_required
 def delete_part(id):
     if not current_user.has_permission('spare_part', 'delete'):
-        return jsonify({'success': False, 'error': '无删除权限'}), 403
+        raise ForbiddenError('无删除权限')
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
     db.session.delete(part)
     db.session.commit()
-    return jsonify({'success': True, 'message': '删除成功'})
+    return ok(message='删除成功')
 
 
 # ──────────────────────────────────────────────
@@ -274,12 +284,14 @@ def delete_part(id):
 @login_required
 def toggle_status(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
     part.is_active = not part.is_active
     db.session.commit()
-    return jsonify({'success': True, 'is_active': part.is_active})
+    return ok(data={'is_active': part.is_active})
 
 
 # ──────────────────────────────────────────────
@@ -294,7 +306,7 @@ def check_code():
     query = SparePart.query.filter_by(part_code=part_code)
     if exclude_id:
         query = query.filter(SparePart.id != exclude_id)
-    return jsonify({'exists': query.first() is not None})
+    return ok(data={'exists': query.first() is not None})
 
 
 # ──────────────────────────────────────────────
@@ -305,15 +317,15 @@ def check_code():
 def search_by_barcode():
     barcode = request.args.get('barcode', '').strip()
     if not barcode:
-        return jsonify({'success': False, 'message': '请提供条形码'}), 400
+        raise ParamError('请提供条形码')
 
     part = SparePart.query.filter_by(barcode=barcode).first()
     if not part:
         part = SparePart.query.filter_by(part_code=barcode).first()
 
     if part:
-        return jsonify({'success': True, 'spare_part': {'id': part.id, 'part_code': part.part_code, 'name': part.name}})
-    return jsonify({'success': False, 'message': '未找到对应备件'}), 404
+        return ok(data={'spare_part': {'id': part.id, 'part_code': part.part_code, 'name': part.name}})
+    raise NotFoundError('未找到对应备件')
 
 
 # ──────────────────────────────────────────────
@@ -409,18 +421,19 @@ def export_parts():
             headers={'Content-Disposition': f'attachment; filename=spare_parts_{timestamp}.xlsx'}
         )
     except ImportError:
-        return jsonify({'success': False, 'error': '请先安装 openpyxl'}), 500
+        raise BusinessError('请先安装 openpyxl: pip install openpyxl')
 
 
 # ──────────────────────────────────────────────
-# 图片管理接口（代理转发到原有 spare_parts 蓝图）
+# 图片管理接口
 # ──────────────────────────────────────────────
 @api_spare_parts_bp.route('/<int:id>/images', methods=['GET'])
 @login_required
 def get_images(id):
-    part = SparePart.query.get_or_404(id)
-    return jsonify({
-        'success': True,
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
+    return ok(data={
         'images': {
             'front': part.image_url,
             'thumbnail': part.thumbnail_url,
@@ -436,13 +449,16 @@ def get_images(id):
 @login_required
 def generate_single_image(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
+
     data = request.get_json() or {}
     image_type = data.get('image_type')
     if not image_type:
-        return jsonify({'success': False, 'message': '请指定图片类型'}), 400
+        raise ParamError('请指定图片类型')
 
     try:
         from app.services.image_generation_service import ImageGenerationService
@@ -452,7 +468,7 @@ def generate_single_image(id):
             part_code=part.part_code, part_name=part.name,
             supplier_name=supplier_name, image_type=image_type
         )
-        if result['success']:
+        if result.get('success'):
             field_map = {
                 'front': 'image_url', 'thumbnail': 'thumbnail_url',
                 'side': 'side_image_url', 'detail': 'detail_image_url',
@@ -461,25 +477,31 @@ def generate_single_image(id):
             if image_type in field_map:
                 setattr(part, field_map[image_type], result['image_url'])
                 db.session.commit()
-        return jsonify(result)
+        # service 返回的 result 本身就是 dict，直接包装为 ok 格式
+        return ok(data=result)
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise BusinessError(f'图片生成失败: {e}')
 
 
 @api_spare_parts_bp.route('/<int:id>/upload-image', methods=['POST'])
 @login_required
 def upload_image(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
     from flask import current_app
     from app.utils.upload_security import validate_uploaded_file, save_upload_safely
     import os
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
+
     if 'image' not in request.files:
-        return jsonify({'success': False, 'message': '没有选择图片'}), 400
+        raise ParamError('没有选择图片')
 
     file = request.files['image']
     image_type = request.form.get('image_type', 'front')
@@ -487,7 +509,7 @@ def upload_image(id):
     # S-04: 统一安全校验
     validation = validate_uploaded_file(file, allowed_types='images', max_size=5 * 1024 * 1024)
     if not validation['valid']:
-        return jsonify({'success': False, 'message': validation['error']}), 400
+        raise ParamError(validation['error'])
 
     try:
         base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -506,22 +528,27 @@ def upload_image(id):
             setattr(part, field_map[image_type], url)
             db.session.commit()
 
-        return jsonify({'success': True, 'image_url': url})
+        return ok(data={'image_url': url})
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise BusinessError(f'图片上传失败: {e}')
 
 
 @api_spare_parts_bp.route('/<int:id>/remove-image', methods=['POST'])
 @login_required
 def remove_image(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
     from flask import current_app
     import os
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
+
     data = request.get_json() or {}
     image_type = data.get('image_type')
 
@@ -531,7 +558,7 @@ def remove_image(id):
         'circuit': 'circuit_image_url', 'perspective': 'perspective_image_url',
     }
     if image_type not in field_map:
-        return jsonify({'success': False, 'message': '无效的图片类型'}), 400
+        raise ParamError('无效的图片类型')
 
     try:
         base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -540,10 +567,12 @@ def remove_image(id):
             os.remove(fp)
         setattr(part, field_map[image_type], None)
         db.session.commit()
-        return jsonify({'success': True})
+        return ok()
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise BusinessError(f'图片删除失败: {e}')
 
 
 # ──────────────────────────────────────────────
@@ -554,26 +583,32 @@ def remove_image(id):
 def get_barcode(id):
     from flask import Response
     from app.services.barcode_service import generate_barcode_for_spare_part
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
     try:
         _, barcode_bytes = generate_barcode_for_spare_part(part)
         if barcode_bytes:
             return Response(barcode_bytes, mimetype='image/png')
-        return jsonify({'success': False, 'message': '生成失败'}), 500
+        raise BusinessError('条形码生成失败')
+    except BusinessError:
+        raise
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise BusinessError(f'条形码生成异常: {e}')
 
 
 @api_spare_parts_bp.route('/<int:id>/generate-barcode', methods=['POST'])
 @login_required
 def generate_barcode(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
     from flask import current_app
     from app.services.barcode_service import generate_barcode_for_spare_part, save_barcode_to_file
     import os
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
     try:
         barcode_data, barcode_bytes = generate_barcode_for_spare_part(part)
         if barcode_bytes:
@@ -585,15 +620,16 @@ def generate_barcode(id):
             filename = f'{part.part_code or part.id}.png'
             file_path = os.path.join(barcode_folder, filename)
             if save_barcode_to_file(barcode_data, file_path):
-                return jsonify({
-                    'success': True,
+                return ok(data={
                     'barcode': barcode_data,
                     'barcode_url': f'/uploads/barcodes/{filename}'
                 })
-        return jsonify({'success': False, 'message': '生成失败'}), 500
+        raise BusinessError('条形码生成失败')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise BusinessError(f'条形码生成异常: {e}')
 
 
 # ──────────────────────────────────────────────
@@ -603,9 +639,11 @@ def generate_barcode(id):
 @login_required
 def ai_fill(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
     try:
         from app.services.ai_info_fill_service import AIInfoFillService
         part_data = {
@@ -617,18 +655,25 @@ def ai_fill(id):
             'supplier_name': part.supplier.name if part.supplier else None,
         }
         svc = AIInfoFillService()
-        return jsonify(svc.fill_spare_part_info(part_data))
+        result = svc.fill_spare_part_info(part_data)
+        # AI 服务返回的已经是 dict，直接包装
+        return ok(data=result)
+    except BusinessError:
+        raise
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise BusinessError(f'AI填充失败: {e}')
 
 
 @api_spare_parts_bp.route('/<int:id>/apply-ai-fill', methods=['POST'])
 @login_required
 def apply_ai_fill(id):
     if not current_user.has_permission('spare_part', 'update'):
-        return jsonify({'success': False, 'error': '无编辑权限'}), 403
+        raise ForbiddenError('无编辑权限')
 
-    part = SparePart.query.get_or_404(id)
+    part = SparePart.query.get(id)
+    if not part:
+        raise NotFoundError(f'备件不存在 (ID: {id})')
+
     data = request.get_json() or {}
     filled = data.get('filled_data', {})
     try:
@@ -640,10 +685,12 @@ def apply_ai_fill(id):
         if 'technical_params' in filled and filled['technical_params']:
             part.technical_params = filled['technical_params']
         db.session.commit()
-        return jsonify({'success': True, 'message': 'AI填充信息已应用'})
+        return ok(message='AI填充信息已应用')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise BusinessError(f'AI填充信息应用失败: {e}')
 
 
 # ──────────────────────────────────────────────

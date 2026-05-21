@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 """
 API接口管理路由
+F0-2 已迁移：全部 jsonify → ok() / error() / paginated_data()
+F0-3 已迁移：业务校验 → raise BusinessError 子类
 """
 
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models.api import ApiCategory, ApiEndpoint, ApiLog, init_api_data
 from app.utils.decorators import permission_required
+from app.utils.response import ok, error, ResponseCode
+from app.utils.exceptions import ParamError, BusinessError
 
 api_bp = Blueprint('api_management', __name__, template_folder='../templates/api')
 
@@ -18,13 +22,13 @@ def api_index():
     """API文档首页"""
     try:
         init_api_data()
-    except Exception as e:
+    except Exception:
         pass
-    
+
     categories = ApiCategory.query.filter_by(status=True).order_by(
         ApiCategory.sort_order, ApiCategory.created_at
     ).all()
-    
+
     return render_template('api/index.html', categories=categories)
 
 
@@ -33,12 +37,9 @@ def api_index():
 def api_doc(endpoint_id):
     """API文档详情页"""
     endpoint = ApiEndpoint.query.get_or_404(endpoint_id)
-    
-    # 获取分类列表
     categories = ApiCategory.query.filter_by(status=True).order_by(
         ApiCategory.sort_order, ApiCategory.created_at
     ).all()
-    
     return render_template('api/doc.html', endpoint=endpoint, categories=categories)
 
 
@@ -66,7 +67,7 @@ def get_categories():
         categories = ApiCategory.query.order_by(
             ApiCategory.sort_order, ApiCategory.created_at.desc()
         ).all()
-        
+
         data = []
         for cat in categories:
             ep_count = cat.endpoints.count() if cat.endpoints else 0
@@ -81,10 +82,9 @@ def get_categories():
                 'endpoint_count': ep_count,
                 'created_at': cat.created_at.strftime('%Y-%m-%d %H:%M:%S') if cat.created_at else None
             })
-        
-        return jsonify({'status': 'success', 'data': data})
+        return ok(data=data)
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        raise BusinessError(f'获取分类列表失败: {e}')
 
 
 @api_bp.route('/api/endpoints')
@@ -94,12 +94,10 @@ def get_endpoints():
     try:
         category_id = request.args.get('category_id', type=int)
         query = ApiEndpoint.query
-        
         if category_id:
             query = query.filter_by(category_id=category_id)
-        
         endpoints = query.order_by(ApiEndpoint.sort_order, ApiEndpoint.created_at.desc()).all()
-        
+
         data = []
         for ep in endpoints:
             data.append({
@@ -116,10 +114,9 @@ def get_endpoints():
                 'sort_order': ep.sort_order,
                 'created_at': ep.created_at.strftime('%Y-%m-%d %H:%M:%S') if ep.created_at else None
             })
-        
-        return jsonify({'status': 'success', 'data': data})
+        return ok(data=data)
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        raise BusinessError(f'获取接口列表失败: {e}')
 
 
 @api_bp.route('/api/endpoints/<int:endpoint_id>')
@@ -128,27 +125,25 @@ def get_endpoint(endpoint_id):
     """获取单个接口详情"""
     try:
         endpoint = ApiEndpoint.query.get_or_404(endpoint_id)
-        
-        return jsonify({
-            'status': 'success',
-            'data': {
-                'id': endpoint.id,
-                'category_id': endpoint.category_id,
-                'name': endpoint.name,
-                'path': endpoint.path,
-                'method': endpoint.method,
-                'description': endpoint.description,
-                'request_example': endpoint.request_example,
-                'response_example': endpoint.response_example,
-                'parameters': endpoint.parameters,
-                'is_published': endpoint.is_published,
-                'require_auth': endpoint.require_auth,
-                'rate_limit': endpoint.rate_limit,
-                'sort_order': endpoint.sort_order
-            }
+        return ok(data={
+            'id': endpoint.id,
+            'category_id': endpoint.category_id,
+            'name': endpoint.name,
+            'path': endpoint.path,
+            'method': endpoint.method,
+            'description': endpoint.description,
+            'request_example': endpoint.request_example,
+            'response_example': endpoint.response_example,
+            'parameters': endpoint.parameters,
+            'is_published': endpoint.is_published,
+            'require_auth': endpoint.require_auth,
+            'rate_limit': endpoint.rate_limit,
+            'sort_order': endpoint.sort_order
         })
+    except BusinessError:
+        raise
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        raise BusinessError(f'获取接口详情失败: {e}')
 
 
 @api_bp.route('/api/endpoints/create', methods=['POST'])
@@ -158,10 +153,9 @@ def create_endpoint():
     """创建接口"""
     try:
         data = request.get_json()
-        
         if not data or 'name' not in data or 'path' not in data or 'method' not in data:
-            return jsonify({'status': 'error', 'message': '缺少必要参数'}), 400
-        
+            raise ParamError('缺少必要参数 (name, path, method)')
+
         endpoint = ApiEndpoint(
             category_id=data.get('category_id'),
             name=data['name'],
@@ -176,18 +170,14 @@ def create_endpoint():
             rate_limit=data.get('rate_limit'),
             sort_order=data.get('sort_order', 0)
         )
-        
         db.session.add(endpoint)
         db.session.commit()
-        
-        return jsonify({
-            'status': 'success',
-            'message': '接口创建成功',
-            'data': {'id': endpoint.id}
-        })
+        return ok(data={'id': endpoint.id}, message='接口创建成功')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        raise BusinessError(f'创建接口失败: {e}')
 
 
 @api_bp.route('/api/endpoints/<int:endpoint_id>/update', methods=['PUT'])
@@ -198,38 +188,29 @@ def update_endpoint(endpoint_id):
     try:
         endpoint = ApiEndpoint.query.get_or_404(endpoint_id)
         data = request.get_json()
-        
-        if 'category_id' in data:
-            endpoint.category_id = data['category_id']
-        if 'name' in data:
-            endpoint.name = data['name']
-        if 'path' in data:
-            endpoint.path = data['path']
-        if 'method' in data:
-            endpoint.method = data['method'].upper()
-        if 'description' in data:
-            endpoint.description = data['description']
-        if 'request_example' in data:
-            endpoint.request_example = data['request_example']
-        if 'response_example' in data:
-            endpoint.response_example = data['response_example']
-        if 'parameters' in data:
-            endpoint.parameters = data['parameters']
-        if 'is_published' in data:
-            endpoint.is_published = data['is_published']
-        if 'require_auth' in data:
-            endpoint.require_auth = data['require_auth']
-        if 'rate_limit' in data:
-            endpoint.rate_limit = data['rate_limit']
-        if 'sort_order' in data:
-            endpoint.sort_order = data['sort_order']
-        
+
+        field_map = {
+            'category_id': 'category_id', 'name': 'name', 'path': 'path',
+            'method': 'method', 'description': 'description',
+            'request_example': 'request_example', 'response_example': 'response_example',
+            'parameters': 'parameters', 'is_published': 'is_published',
+            'require_auth': 'require_auth', 'rate_limit': 'rate_limit',
+            'sort_order': 'sort_order',
+        }
+        for key in field_map:
+            if key in data:
+                val = data[key]
+                if key == 'method':
+                    val = val.upper()
+                setattr(endpoint, field_map[key], val)
+
         db.session.commit()
-        
-        return jsonify({'status': 'success', 'message': '接口更新成功'})
+        return ok(message='接口更新成功')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        raise BusinessError(f'更新接口失败: {e}')
 
 
 @api_bp.route('/api/endpoints/<int:endpoint_id>/delete', methods=['DELETE'])
@@ -241,11 +222,12 @@ def delete_endpoint(endpoint_id):
         endpoint = ApiEndpoint.query.get_or_404(endpoint_id)
         db.session.delete(endpoint)
         db.session.commit()
-        
-        return jsonify({'status': 'success', 'message': '接口删除成功'})
+        return ok(message='接口删除成功')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        raise BusinessError(f'删除接口失败: {e}')
 
 
 @api_bp.route('/api/logs')
@@ -258,21 +240,19 @@ def get_logs():
         page_size = request.args.get('page_size', 20, type=int)
         endpoint_id = request.args.get('endpoint_id', type=int)
         status = request.args.get('status')
-        
+
         query = ApiLog.query
-        
         if endpoint_id:
             query = query.filter_by(endpoint_id=endpoint_id)
-        
         if status == 'success':
             query = query.filter_by(is_success=True)
         elif status == 'error':
             query = query.filter_by(is_success=False)
-        
+
         pagination = query.order_by(ApiLog.created_at.desc()).paginate(
             page=page, per_page=page_size, error_out=False
         )
-        
+
         data = []
         for log in pagination.items:
             data.append({
@@ -287,13 +267,12 @@ def get_logs():
                 'error_message': log.error_message,
                 'created_at': log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else None
             })
-        
-        return jsonify({
-            'status': 'success',
-            'data': data,
+
+        return ok(data={
+            'items': data,
             'total': pagination.total,
             'pages': pagination.pages,
             'current_page': page
         })
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        raise BusinessError(f'获取日志失败: {e}')

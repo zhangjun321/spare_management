@@ -2,16 +2,22 @@
 """
 入库单 / 出库单 REST API 路由
 为 React 前端提供 /api/inbound 和 /api/outbound 接口
+F0-2 已迁移：全部 jsonify → ok() / error() / paginated_data()
+F0-3 已迁移：业务校验 → raise BusinessError / InvalidStatusError
 """
 
-from datetime import datetime
-from flask import Blueprint, jsonify, request, current_app
+from datetime import datetime, timedelta
+from flask import Blueprint, request, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db, csrf
 from app.models.inbound_outbound import InboundOrder, OutboundOrder
 from app.utils.helpers import paginate_query
+from app.utils.response import ok, error, paginated_data, ResponseCode
+from app.utils.exceptions import (
+    ParamError, NotFoundError, InvalidStatusError, BusinessError,
+)
 
 # ==================== 入库单蓝图 ====================
 
@@ -55,7 +61,6 @@ def list_inbound_orders():
                 pass
         if end_date:
             try:
-                from datetime import timedelta
                 query = query.filter(InboundOrder.created_at < datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1))
             except ValueError:
                 pass
@@ -71,26 +76,13 @@ def list_inbound_orders():
                 data['warehouse_name'] = order.warehouse.name
             items.append(data)
 
-        return jsonify({
-            'success': True,
-            'data': {
-                'items': items,
-                'total': pagination.total
-            },
-            'pagination': {
-                'page': pagination.page,
-                'per_page': pagination.per_page,
-                'total': pagination.total,
-                'pages': pagination.pages
-            }
-        })
+        return paginated_data(items=items, pagination=pagination)
+    except BusinessError:
+        raise
     except Exception:
         current_app.logger.exception('list_inbound_orders failed, fallback to empty result')
-        return jsonify({
-            'success': True,
-            'data': {'items': [], 'total': 0},
-            'pagination': {'page': page, 'per_page': per_page, 'total': 0, 'pages': 0}
-        })
+        # 降级返回空结果，不抛异常（前端列表页不应因查询报错而白屏）
+        return ok(data={'items': [], 'total': 0})
 
 
 @api_inbound_bp.route('/orders/pending', methods=['GET'])
@@ -101,10 +93,10 @@ def list_pending_inbound():
         orders = InboundOrder.query.filter(
             InboundOrder.status == 'pending'
         ).order_by(InboundOrder.created_at.desc()).limit(50).all()
-        return jsonify({'success': True, 'items': [o.to_dict() for o in orders]})
+        return ok(data=[o.to_dict() for o in orders])
     except Exception:
         current_app.logger.exception('list_pending_inbound failed, fallback to empty list')
-        return jsonify({'success': True, 'items': []})
+        return ok(data=[])
 
 
 @api_inbound_bp.route('/orders', methods=['POST'])
@@ -113,16 +105,16 @@ def create_inbound_order():
     """创建入库单"""
     data = request.get_json()
     if not data:
-        return jsonify({'success': False, 'error': '请求数据为空'}), 400
+        raise ParamError('请求数据为空')
 
     required = ['inbound_type', 'spare_part_id', 'warehouse_id', 'quantity']
     for field in required:
         if not data.get(field):
-            return jsonify({'success': False, 'error': f'缺少必填字段：{field}'}), 400
+            raise ParamError(f'缺少必填字段：{field}')
 
     quantity = int(data['quantity'])
     if quantity <= 0:
-        return jsonify({'success': False, 'error': '入库数量必须大于 0'}), 400
+        raise ParamError('入库数量必须大于 0')
 
     try:
         order = InboundOrder(
@@ -140,45 +132,55 @@ def create_inbound_order():
         )
         db.session.add(order)
         db.session.commit()
-        return jsonify({'success': True, 'data': order.to_dict(), 'message': '入库单创建成功'}), 201
+        return ok(data=order.to_dict(), message='入库单创建成功', status_code=201)
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': f'创建失败：{str(e)}'}), 500
+        raise BusinessError(f'创建入库单失败: {e}')
 
 
 @api_inbound_bp.route('/orders/<int:order_id>/complete', methods=['POST'])
 @login_required
 def complete_inbound_order(order_id):
     """完成入库单"""
-    order = InboundOrder.query.get_or_404(order_id)
+    order = InboundOrder.query.get(order_id)
+    if not order:
+        raise NotFoundError(f'入库单不存在 (ID: {order_id})')
     if order.status not in ('pending', 'partial'):
-        return jsonify({'success': False, 'error': f'当前状态 {order.status} 不可完成'}), 400
+        raise InvalidStatusError(f'当前状态 {order.status} 不可完成')
     try:
         order.status = 'completed'
         order.completed_at = datetime.utcnow()
         order.completed_by = current_user.id
         db.session.commit()
-        return jsonify({'success': True, 'message': '入库完成'})
+        return ok(message='入库完成')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        raise BusinessError(f'完成入库单失败: {e}')
 
 
 @api_inbound_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def cancel_inbound_order(order_id):
     """取消入库单"""
-    order = InboundOrder.query.get_or_404(order_id)
+    order = InboundOrder.query.get(order_id)
+    if not order:
+        raise NotFoundError(f'入库单不存在 (ID: {order_id})')
     if order.status in ('completed', 'cancelled'):
-        return jsonify({'success': False, 'error': f'当前状态 {order.status} 不可取消'}), 400
+        raise InvalidStatusError(f'当前状态 {order.status} 不可取消')
     try:
         order.status = 'cancelled'
         order.cancelled_at = datetime.utcnow()
         db.session.commit()
-        return jsonify({'success': True, 'message': '已取消'})
+        return ok(message='已取消')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        raise BusinessError(f'取消入库单失败: {e}')
 
 
 # ==================== 出库单蓝图 ====================
@@ -223,7 +225,6 @@ def list_outbound_orders():
                 pass
         if end_date:
             try:
-                from datetime import timedelta
                 query = query.filter(OutboundOrder.created_at < datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1))
             except ValueError:
                 pass
@@ -239,26 +240,12 @@ def list_outbound_orders():
                 data['warehouse_name'] = order.warehouse.name
             items.append(data)
 
-        return jsonify({
-            'success': True,
-            'data': {
-                'items': items,
-                'total': pagination.total
-            },
-            'pagination': {
-                'page': pagination.page,
-                'per_page': pagination.per_page,
-                'total': pagination.total,
-                'pages': pagination.pages
-            }
-        })
+        return paginated_data(items=items, pagination=pagination)
+    except BusinessError:
+        raise
     except Exception:
         current_app.logger.exception('list_outbound_orders failed, fallback to empty result')
-        return jsonify({
-            'success': True,
-            'data': {'items': [], 'total': 0},
-            'pagination': {'page': page, 'per_page': per_page, 'total': 0, 'pages': 0}
-        })
+        return ok(data={'items': [], 'total': 0})
 
 
 @api_outbound_bp.route('/orders/pending', methods=['GET'])
@@ -269,10 +256,10 @@ def list_pending_outbound():
         orders = OutboundOrder.query.filter(
             OutboundOrder.status == 'pending'
         ).order_by(OutboundOrder.created_at.desc()).limit(50).all()
-        return jsonify({'success': True, 'items': [o.to_dict() for o in orders]})
+        return ok(data=[o.to_dict() for o in orders])
     except Exception:
         current_app.logger.exception('list_pending_outbound failed, fallback to empty list')
-        return jsonify({'success': True, 'items': []})
+        return ok(data=[])
 
 
 @api_outbound_bp.route('/orders', methods=['POST'])
@@ -281,16 +268,16 @@ def create_outbound_order():
     """创建出库单，校验数量 > 0"""
     data = request.get_json()
     if not data:
-        return jsonify({'success': False, 'error': '请求数据为空'}), 400
+        raise ParamError('请求数据为空')
 
     required = ['outbound_type', 'spare_part_id', 'warehouse_id', 'quantity']
     for field in required:
         if not data.get(field):
-            return jsonify({'success': False, 'error': f'缺少必填字段：{field}'}), 400
+            raise ParamError(f'缺少必填字段：{field}')
 
     quantity = int(data['quantity'])
     if quantity <= 0:
-        return jsonify({'success': False, 'error': '出库数量必须大于 0'}), 400
+        raise ParamError('出库数量必须大于 0')
 
     try:
         order = OutboundOrder(
@@ -306,42 +293,52 @@ def create_outbound_order():
         )
         db.session.add(order)
         db.session.commit()
-        return jsonify({'success': True, 'data': order.to_dict(), 'message': '出库单创建成功'}), 201
+        return ok(data=order.to_dict(), message='出库单创建成功', status_code=201)
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': f'创建失败：{str(e)}'}), 500
+        raise BusinessError(f'创建出库单失败: {e}')
 
 
 @api_outbound_bp.route('/orders/<int:order_id>/complete', methods=['POST'])
 @login_required
 def complete_outbound_order(order_id):
     """完成出库单"""
-    order = OutboundOrder.query.get_or_404(order_id)
+    order = OutboundOrder.query.get(order_id)
+    if not order:
+        raise NotFoundError(f'出库单不存在 (ID: {order_id})')
     if order.status not in ('pending', 'partial'):
-        return jsonify({'success': False, 'error': f'当前状态 {order.status} 不可完成'}), 400
+        raise InvalidStatusError(f'当前状态 {order.status} 不可完成')
     try:
         order.status = 'completed'
         order.completed_at = datetime.utcnow()
         order.completed_by = current_user.id
         db.session.commit()
-        return jsonify({'success': True, 'message': '出库完成'})
+        return ok(message='出库完成')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        raise BusinessError(f'完成出库单失败: {e}')
 
 
 @api_outbound_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def cancel_outbound_order(order_id):
     """取消出库单"""
-    order = OutboundOrder.query.get_or_404(order_id)
+    order = OutboundOrder.query.get(order_id)
+    if not order:
+        raise NotFoundError(f'出库单不存在 (ID: {order_id})')
     if order.status in ('completed', 'cancelled'):
-        return jsonify({'success': False, 'error': f'当前状态 {order.status} 不可取消'}), 400
+        raise InvalidStatusError(f'当前状态 {order.status} 不可取消')
     try:
         order.status = 'cancelled'
         order.cancelled_at = datetime.utcnow()
         db.session.commit()
-        return jsonify({'success': True, 'message': '已取消'})
+        return ok(message='已取消')
+    except BusinessError:
+        raise
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        raise BusinessError(f'取消出库单失败: {e}')
