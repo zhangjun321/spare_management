@@ -365,9 +365,9 @@
             <p>管理系统用户、角色权限、数据字典、系统日志、数据备份等配置。</p>
             <div class="module-links">
                 <a href="{{ url_for('system.index') }}">系统设置</a>
-                <a href="{{ url_for('auth.users') }}">用户管理</a>
-                <a href="{{ url_for('dictionary.index') }}">数据字典</a>
-                <a href="{{ url_for('backup.index') }}">数据备份</a>
+                <a href="{{ url_for('auth.user_list') }}">用户管理</a>
+                <a href="{{ url_for('dictionary.dictionary_index') }}">数据字典</a>
+                <a href="{{ url_for('backup.backup_index') }}">数据备份</a>
             </div>
         </a>
         {% else %}
@@ -391,10 +391,10 @@
     <div class="mb-4">
         <div class="quick-actions-title"><i class="fas fa-bolt me-2 text-warning"></i>快捷操作</div>
         <div class="d-flex flex-wrap gap-2">
-            <a href="{{ url_for('spare_parts.create') }}" class="quick-action-btn">
+            <a href="{{ url_for('spare_parts.new') }}" class="quick-action-btn">
                 <i class="fas fa-plus-circle text-primary"></i> 新建备件
             </a>
-            <a href="{{ url_for('warehouses.inbound_create') }}" class="quick-action-btn">
+            <a href="{{ url_for('inventory.inbound_create') }}" class="quick-action-btn">
                 <i class="fas fa-download text-success"></i> 入库操作
             </a>
             <a href="{{ url_for('transfer_order_pages.new_page') }}" class="quick-action-btn">
