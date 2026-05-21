@@ -63,13 +63,13 @@ def _clean_expired_cache():
 @dashboard_bp.route('/home')
 @login_required
 def index():
-    """主页 - 模块卡片入口"""
+    """主页 - 全屏模块卡片入口（无侧边栏）"""
     from datetime import date
     today = date.today()
     weekday_map = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
     weekday = weekday_map[today.weekday()]
     return render_template(
-        'dashboard/home.html',
+        'dashboard/landing.html',
         today=today,
         weekday=weekday
     )
