@@ -3,9 +3,10 @@
 数据库备份管理路由 - 重写版本
 """
 
-from flask import Blueprint, render_template, jsonify, request, current_app
+from flask import Blueprint, render_template, request, current_app, send_file
 from flask_login import login_required, current_user
 from app.services.database_backup_service import DatabaseBackupService
+from app.utils.response import ok, error, ResponseCode
 import os
 import json
 import logging
@@ -33,17 +34,10 @@ def get_backups():
         backups = DatabaseBackupService.get_backup_list()
         logger.info(f"获取到 {len(backups)} 个备份")
         
-        return jsonify({
-            'status': 'success',
-            'message': '获取成功',
-            'data': backups
-        }), 200
+        return ok(message='获取成功', data=backups)
     except Exception as e:
         logger.error(f"获取备份列表失败：{str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': f'获取备份列表失败：{str(e)}'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=f'获取备份列表失败：{str(e)}')
 
 
 @backup_bp.route('/api/create', methods=['POST'])
@@ -89,27 +83,17 @@ def create_backup():
         
         if success:
             logger.info(f"备份成功：{result.backup_name}")
-            return jsonify({
-                'status': 'success',
-                'message': '备份创建成功',
-                'data': result.to_dict()
-            }), 200
+            return ok(message='备份创建成功', data=result.to_dict())
         else:
             logger.error(f"备份失败：{result}")
-            return jsonify({
-                'status': 'error',
-                'message': f'备份失败：{str(result)}'
-            }), 400
+            return error(code=ResponseCode.BUSINESS_ERROR, message=f'备份失败：{str(result)}')
             
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
         logger.error(f"创建备份时发生异常：{str(e)}")
         logger.error(f"异常堆栈：{error_traceback}")
-        return jsonify({
-            'status': 'error',
-            'message': f'服务器错误：{str(e)}'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=f'服务器错误：{str(e)}')
 
 
 @backup_bp.route('/api/<int:backup_id>/delete', methods=['POST'])
@@ -121,21 +105,12 @@ def delete_backup(backup_id):
         success, message = DatabaseBackupService.delete_backup(backup_id)
         
         if success:
-            return jsonify({
-                'status': 'success',
-                'message': message
-            }), 200
+            return ok(message=message)
         else:
-            return jsonify({
-                'status': 'error',
-                'message': message
-            }), 400
+            return error(code=ResponseCode.BUSINESS_ERROR, message=message)
     except Exception as e:
         logger.error(f"删除备份失败：{str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': f'删除失败：{str(e)}'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=f'删除失败：{str(e)}')
 
 
 @backup_bp.route('/api/<int:backup_id>/restore', methods=['POST'])
@@ -147,21 +122,12 @@ def restore_backup(backup_id):
         success, message = DatabaseBackupService.restore_backup(backup_id)
         
         if success:
-            return jsonify({
-                'status': 'success',
-                'message': message
-            }), 200
+            return ok(message=message)
         else:
-            return jsonify({
-                'status': 'error',
-                'message': message
-            }), 400
+            return error(code=ResponseCode.BUSINESS_ERROR, message=message)
     except Exception as e:
         logger.error(f"恢复备份失败：{str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': f'恢复失败：{str(e)}'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=f'恢复失败：{str(e)}')
 
 
 @backup_bp.route('/api/<int:backup_id>/download', methods=['GET'])
@@ -176,16 +142,10 @@ def download_backup(backup_id):
         backup_item = next((b for b in backups if b['id'] == backup_id), None)
         
         if not backup_item:
-            return jsonify({
-                'status': 'error',
-                'message': '备份不存在'
-            }), 404
+            return error(code=ResponseCode.NOT_FOUND, message='备份不存在')
         
         if not os.path.exists(backup_item['backup_file']):
-            return jsonify({
-                'status': 'error',
-                'message': '备份文件不存在'
-            }), 404
+            return error(code=ResponseCode.NOT_FOUND, message='备份文件不存在')
         
         return send_file(
             backup_item['backup_file'],
@@ -194,10 +154,7 @@ def download_backup(backup_id):
         )
     except Exception as e:
         logger.error(f"下载备份失败：{str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': f'下载失败：{str(e)}'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=f'下载失败：{str(e)}')
 
 
 @backup_bp.route('/api/cleanup', methods=['POST'])
@@ -216,14 +173,10 @@ def cleanup_backups():
         
         deleted_count = DatabaseBackupService.cleanup_old_backups(days)
         
-        return jsonify({
-            'status': 'success',
-            'message': f'清理了 {deleted_count} 个旧备份',
-            'data': {'deleted_count': deleted_count}
-        }), 200
+        return ok(
+            message=f'清理了 {deleted_count} 个旧备份',
+            data={'deleted_count': deleted_count}
+        )
     except Exception as e:
         logger.error(f"清理备份失败：{str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': f'清理失败：{str(e)}'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=f'清理失败：{str(e)}')

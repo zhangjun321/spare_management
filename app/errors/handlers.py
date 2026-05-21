@@ -99,9 +99,6 @@ def conflict(error):
     if is_api_request():
         return json_response(code=ResponseCode.CONFLICT, message="资源冲突，请检查数据是否重复")
     return ("Conflict", 409)
-    if is_api_request():
-        return json_response(code=ResponseCode.CONFLICT, message="资源冲突，请检查数据是否重复")
-    return ("Conflict", 409)
 
 
 @errors_bp.app_errorhandler(413)
@@ -172,7 +169,7 @@ def _template_exists(template_name: str) -> bool:
     """检查模板是否存在"""
     try:
         from flask import current_app
-            # jinja2 的 get_source 会抛 TemplateNotFound
+        # jinja2 的 get_source 会抛 TemplateNotFound
         current_app.jinja_env.get_source(None, template_name)
         return True
     except Exception:

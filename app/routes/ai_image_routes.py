@@ -5,7 +5,7 @@ AI 图像生成路由 - 百度文心一格集成
 import os
 import json
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, send_from_directory
+from flask import Blueprint, render_template, request, send_from_directory
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models.warehouse import Warehouse
@@ -13,6 +13,7 @@ from app.models.warehouse_location import WarehouseLocation
 from app.services.baidu_image_service import baidu_image_service
 from app.services.warehouse_prompt_converter import warehouse_prompt_converter
 from app.services.visualization_service import warehouse_visualization_service
+from app.utils.response import ok, error, ResponseCode
 
 ai_image_bp = Blueprint('ai_image', __name__, url_prefix='/ai-image')
 
@@ -107,10 +108,7 @@ def generate_warehouse_image(warehouse_id):
     warehouse = Warehouse.query.get(warehouse_id)
     if not warehouse:
         current_app.logger.error(f"Warehouse ID {warehouse_id} not found")
-        return jsonify({
-            'success': False,
-            'error': f'仓库不存在 (ID: {warehouse_id})'
-        }), 404
+        return error(code=ResponseCode.NOT_FOUND, message=f'仓库不存在 (ID: {warehouse_id})')
     
     # 获取生成参数
     try:
@@ -195,8 +193,7 @@ def generate_warehouse_image(warehouse_id):
             'parameters': result.get('parameters', {})
         }
         
-        return jsonify({
-            'success': True,
+        return ok(data={
             'warehouse_id': warehouse_id,
             'warehouse_name': warehouse.name,
             'prompt': prompt,
@@ -205,11 +202,7 @@ def generate_warehouse_image(warehouse_id):
             'record': image_record
         })
     else:
-        return jsonify({
-            'success': False,
-            'error': result.get('error', '生成失败'),
-            'message': '百度文心一格 API 调用失败，请检查配置'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message='百度文心一格 API 调用失败，请检查配置')
 
 
 @ai_image_bp.route('/generate-batch', methods=['POST'])
@@ -220,7 +213,7 @@ def generate_batch_images():
     warehouse_id = data.get('warehouse_id')
     
     if not warehouse_id:
-        return jsonify({'success': False, 'error': '缺少仓库 ID'}), 400
+        return error(code=ResponseCode.PARAM_ERROR, message='缺少仓库 ID')
     
     warehouse = Warehouse.query.get_or_404(warehouse_id)
     
@@ -272,12 +265,11 @@ def generate_batch_images():
     # 返回所有结果
     success_count = sum(1 for r in results if r['success'])
     
-    return jsonify({
-        'success': success_count > 0,
+    return ok(data={
+        'success_count': success_count,
+        'total_count': len(focuses),
         'warehouse_id': warehouse_id,
         'warehouse_name': warehouse.name,
-        'total_count': len(focuses),
-        'success_count': success_count,
         'results': results
     })
 
@@ -297,7 +289,7 @@ def update_prompt():
     style = data.get('style', 'photorealistic')
     
     if not warehouse_id or not custom_prompt:
-        return jsonify({'success': False, 'error': '参数不完整'}), 400
+        return error(code=ResponseCode.PARAM_ERROR, message='参数不完整')
     
     # 使用自定义提示词生成图像
     result = baidu_image_service.generate_warehouse_image(
@@ -309,16 +301,9 @@ def update_prompt():
     )
     
     if result.get('success'):
-        return jsonify({
-            'success': True,
-            'images': result.get('images', []),
-            'message': '图像生成成功'
-        })
+        return ok(data={'images': result.get('images', [])}, message='图像生成成功')
     else:
-        return jsonify({
-            'success': False,
-            'error': result.get('error', '生成失败')
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=result.get('error', '生成失败'))
 
 
 @ai_image_bp.route('/history/<int:warehouse_id>/')
@@ -327,8 +312,7 @@ def get_generation_history(warehouse_id):
     """获取仓库图像生成历史"""
     # 这里应该从数据库查询历史记录
     # 简化版本，返回空列表
-    return jsonify({
-        'success': True,
+    return ok(data={
         'warehouse_id': warehouse_id,
         'history': []
     })
@@ -357,7 +341,7 @@ def test_api():
         steps=20
     )
     
-    return jsonify(result)
+    return ok(data=result)
 
 
 @ai_image_bp.route('/api/test-no-login', methods=['GET'])
@@ -380,7 +364,7 @@ def test_api_no_login():
         steps=20
     )
     
-    return jsonify(result)
+    return ok(data=result)
 
 
 @ai_image_bp.route('/generate-no-login/<int:warehouse_id>', methods=['POST'])
@@ -397,10 +381,7 @@ def generate_warehouse_image_no_login(warehouse_id):
     warehouse = Warehouse.query.get(warehouse_id)
     if not warehouse:
         current_app.logger.error(f"Warehouse ID {warehouse_id} not found")
-        return jsonify({
-            'success': False,
-            'error': f'仓库不存在 (ID: {warehouse_id})'
-        }), 404
+        return error(code=ResponseCode.NOT_FOUND, message=f'仓库不存在 (ID: {warehouse_id})')
     
     # 获取生成参数
     try:
@@ -462,19 +443,14 @@ def generate_warehouse_image_no_login(warehouse_id):
     current_app.logger.info(f"Baidu API result: {result.get('success')}")
     
     if result.get('success'):
-        return jsonify({
-            'success': True,
+        return ok(data={
             'warehouse_id': warehouse_id,
             'warehouse_name': warehouse.name,
             'prompt': prompt,
             'images': result.get('images', [])
         })
     else:
-        return jsonify({
-            'success': False,
-            'error': result.get('error', '生成失败'),
-            'message': '百度文心一格 API 调用失败'
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message='百度文心一格 API 调用失败')
 
 
 @ai_image_bp.route('/hello')
@@ -483,10 +459,7 @@ def hello():
     """最简单的测试（需要登录）"""
     from flask import current_app
     current_app.logger.info("Hello route called!")
-    return jsonify({
-        'success': True,
-        'message': 'Hello from AI Image!'
-    })
+    return ok(message='Hello from AI Image!')
 
 
 @ai_image_bp.route('/test-super-easy')
@@ -539,10 +512,7 @@ def generate_super_simple(warehouse_id):
         warehouse = Warehouse.query.get(warehouse_id)
         if not warehouse:
             current_app.logger.error(f"仓库 ID {warehouse_id} 不存在")
-            return jsonify({
-                'success': False,
-                'error': f'仓库不存在 (ID: {warehouse_id})'
-            }), 404
+            return error(code=ResponseCode.NOT_FOUND, message=f'仓库不存在 (ID: {warehouse_id})')
         current_app.logger.info(f"仓库找到: {warehouse.name}")
         
         # 2. 获取生成参数
@@ -590,8 +560,7 @@ def generate_super_simple(warehouse_id):
         # 6. 返回结果（同时返回百度URL和本地路径）
         current_app.logger.info("步骤 6: 返回结果...")
         if result.get('success'):
-            return jsonify({
-                'success': True,
+            return ok(data={
                 'warehouse_id': warehouse_id,
                 'warehouse_name': warehouse.name,
                 'prompt': prompt,
@@ -599,16 +568,10 @@ def generate_super_simple(warehouse_id):
                 'local_images': local_images
             })
         else:
-            return jsonify({
-                'success': False,
-                'error': result.get('error', '生成失败')
-            }), 500
+            return error(code=ResponseCode.INTERNAL_ERROR, message=result.get('error', '生成失败'))
             
     except Exception as e:
         current_app.logger.error(f"异常: {e}")
         import traceback
         current_app.logger.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return error(code=ResponseCode.INTERNAL_ERROR, message=str(e))

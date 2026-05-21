@@ -12,6 +12,7 @@ from app.models.role import Role
 from app.extensions import generate_password_hash
 from app.utils.login_rate_limiter import default_limiter
 from app.utils.transaction import transactional
+from app.utils.response import json_response, ResponseCode
 import time
 import random
 import logging
@@ -163,7 +164,6 @@ def logout():
 @login_required
 def get_permissions():
     """获取当前用户权限（供前端调用）"""
-    from flask import jsonify
     
     # 获取用户权限
     permissions = {}
@@ -197,12 +197,15 @@ def get_permissions():
         role_permissions = current_user.role.permissions or {}
         permissions = role_permissions
     
-    return jsonify({
-        'success': True,
-        'permissions': permissions,
-        'role': current_user.role.name if current_user.role else None,
-        'is_admin': current_user.is_admin or current_user.is_superuser
-    })
+    return json_response(
+        code=ResponseCode.SUCCESS,
+        message='获取权限成功',
+        data={
+            'permissions': permissions,
+            'role': current_user.role.name if current_user.role else None,
+            'is_admin': current_user.is_admin or current_user.is_superuser
+        }
+    )
 
 
 @auth_bp.route('/profile')
