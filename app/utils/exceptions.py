@@ -75,3 +75,10 @@ class InvalidStatusError(BusinessError):
         if allowed:
             detail["allowed"] = allowed
         super().__init__(message=message, code=ResponseCode.INVALID_STATUS, data=detail)
+
+
+class ConcurrentModificationError(BusinessError):
+    """并发修改冲突 (乐观锁检测到数据已被其他用户修改)"""
+
+    def __init__(self, message: str = "数据已被其他用户修改，请刷新后重试"):
+        super().__init__(message=message, code=ResponseCode.CONFLICT)

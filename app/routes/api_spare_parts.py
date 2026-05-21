@@ -16,7 +16,7 @@ from app.models.warehouse import Warehouse
 from app.utils.response import ok, error, paginated_data, ResponseCode
 from app.utils.exceptions import (
     ParamError, UnauthorizedError, ForbiddenError,
-    NotFoundError, ConflictError, BusinessError,
+    NotFoundError, ConflictError, ConcurrentModificationError, BusinessError,
 )
 
 api_spare_parts_bp = Blueprint('api_spare_parts', __name__, url_prefix='/api/spare-parts')
@@ -65,6 +65,7 @@ def _serialize_part(part):
         'technical_params': part.technical_params,
         'created_at': part.created_at.strftime('%Y-%m-%d %H:%M:%S') if part.created_at else None,
         'updated_at': part.updated_at.strftime('%Y-%m-%d %H:%M:%S') if part.updated_at else None,
+        'version': part.version,
     }
 
 
@@ -225,11 +226,21 @@ def update_part(id):
     if not current_user.has_permission('spare_part', 'update'):
         raise ForbiddenError('无编辑权限')
 
-    part = SparePart.query.get(id)
+    data = request.get_json() or {}
+
+    # 乐观锁：客户端传入 version，服务端做 CAS 校验
+    client_version = data.pop('version', None)
+
+    # 使用 SELECT FOR UPDATE 获取排他锁 + 版本校验
+    part = SparePart.query.filter(SparePart.id == id).with_for_update().first()
     if not part:
         raise NotFoundError(f'备件不存在 (ID: {id})')
 
-    data = request.get_json() or {}
+    # 乐观锁版本校验
+    if client_version is not None and part.version != client_version:
+        raise ConcurrentModificationError(
+            f'数据已被其他用户修改（当前版本: {part.version}，期望版本: {client_version}），请刷新后重试'
+        )
 
     # 检查备件代码唯一（排除自身）
     code = data.get('part_code', '').strip()
@@ -255,6 +266,8 @@ def update_part(id):
     if 'last_purchase_date' in data:
         part.last_purchase_date = _parse_date(data['last_purchase_date'])
 
+    # 版本号递增
+    part.version = (part.version or 1) + 1
     part.update_stock_status()
     db.session.commit()
     return ok(data=_serialize_part(part))

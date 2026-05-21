@@ -13,10 +13,12 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db, csrf
 from app.models.inbound_outbound import InboundOrder, OutboundOrder
+from app.models.spare_part import SparePart
 from app.utils.helpers import paginate_query
 from app.utils.response import ok, error, paginated_data, ResponseCode
 from app.utils.exceptions import (
     ParamError, NotFoundError, InvalidStatusError, BusinessError,
+    ConcurrentModificationError,
 )
 
 # ==================== 入库单蓝图 ====================
@@ -143,13 +145,22 @@ def create_inbound_order():
 @api_inbound_bp.route('/orders/<int:order_id>/complete', methods=['POST'])
 @login_required
 def complete_inbound_order(order_id):
-    """完成入库单"""
+    """完成入库单 — 使用悲观锁安全更新库存"""
     order = InboundOrder.query.get(order_id)
     if not order:
         raise NotFoundError(f'入库单不存在 (ID: {order_id})')
     if order.status not in ('pending', 'partial'):
         raise InvalidStatusError(f'当前状态 {order.status} 不可完成')
     try:
+        # 使用 SELECT FOR UPDATE 安全修改库存（防并发）
+        SparePart.safe_stock_update(
+            part_id=order.spare_part_id,
+            delta=order.quantity,  # 入库为正
+            reason=f'入库单 {order.order_no}',
+            operator_id=current_user.id,
+            warehouse_id=order.warehouse_id,
+            order_no=order.order_no,
+        )
         order.status = 'completed'
         order.completed_at = datetime.utcnow()
         order.completed_by = current_user.id
@@ -304,13 +315,22 @@ def create_outbound_order():
 @api_outbound_bp.route('/orders/<int:order_id>/complete', methods=['POST'])
 @login_required
 def complete_outbound_order(order_id):
-    """完成出库单"""
+    """完成出库单 — 使用悲观锁安全扣减库存（含库存不足校验）"""
     order = OutboundOrder.query.get(order_id)
     if not order:
         raise NotFoundError(f'出库单不存在 (ID: {order_id})')
     if order.status not in ('pending', 'partial'):
         raise InvalidStatusError(f'当前状态 {order.status} 不可完成')
     try:
+        # 使用 SELECT FOR UPDATE 安全扣减库存（防并发 + 库存不足检测）
+        SparePart.safe_stock_update(
+            part_id=order.spare_part_id,
+            delta=-order.quantity,  # 出库为负
+            reason=f'出库单 {order.order_no}',
+            operator_id=current_user.id,
+            warehouse_id=order.warehouse_id,
+            order_no=order.order_no,
+        )
         order.status = 'completed'
         order.completed_at = datetime.utcnow()
         order.completed_by = current_user.id
