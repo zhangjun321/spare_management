@@ -529,50 +529,49 @@ def get_images(id):
 @login_required
 @permission_required('spare_part', 'update')
 def upload_image(id):
-    """上传图片"""
-    from werkzeug.utils import secure_filename
-    
+    """上传图片（S-04 安全加固版）"""
+    from app.utils.upload_security import validate_uploaded_file, save_upload_safely
+
     spare_part = SparePart.query.get_or_404(id)
-    
+
     if 'image' not in request.files:
         return jsonify({'success': False, 'message': '没有选择图片'}), 400
-    
+
     file = request.files['image']
     image_type = request.form.get('image_type', 'front')
-    
+
     if file.filename == '':
         return jsonify({'success': False, 'message': '没有选择图片'}), 400
-    
-    # 允许的文件扩展名
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-    if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
-        return jsonify({'success': False, 'message': '不支持的图片格式'}), 400
-    
+
+    # S-04: 统一使用安全校验模块
+    validation = validate_uploaded_file(file, allowed_types='images', max_size=5 * 1024 * 1024)
+    if not validation['valid']:
+        return jsonify({'success': False, 'message': validation['error']}), 400
+
     try:
-        # 保存图片
         part_code = spare_part.part_code
         base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads/images')
         part_dir = os.path.join(base_dir, part_code)
-        
+
         if not os.path.exists(part_dir):
             os.makedirs(part_dir, exist_ok=True)
-        
-        # 保存文件
+
+        # 使用安全保存函数（含魔数检测 + 路径遍历防护 + UUID 前缀）
         filename = f'{image_type}.jpg'
-        filepath = os.path.join(part_dir, filename)
-        file.save(filepath)
+        saved_name = save_upload_safely(file, part_dir, filename)
+        filepath = os.path.join(part_dir, saved_name)
         
         # 更新数据库
         if image_type == 'front':
-            spare_part.image_url = f'/uploads/images/{part_code}/{filename}'
+            spare_part.image_url = f'/uploads/images/{part_code}/{saved_name}'
         elif image_type == 'thumbnail':
-            spare_part.thumbnail_url = f'/uploads/images/{part_code}/{filename}'
-        
+            spare_part.thumbnail_url = f'/uploads/images/{part_code}/{saved_name}'
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
-            'image_url': f'/uploads/images/{part_code}/{filename}'
+            'image_url': f'/uploads/images/{part_code}/{saved_name}'
         })
     except Exception as e:
         db.session.rollback()
@@ -912,6 +911,8 @@ def auto_upload_image_by_code(part_code):
 
 
 # 自动上传 API 的 CSRF 豁免
+# S-02: 该路由使用 JSON API (axios)，前端通过 X-CSRFToken Header 提交会有兼容性问题
+# 保留豁免但确保已有 @login_required + @permission_required 双重保护
 csrf.exempt(auto_upload_image_by_code)
 
 

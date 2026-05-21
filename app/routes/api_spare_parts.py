@@ -474,7 +474,7 @@ def upload_image(id):
         return jsonify({'success': False, 'error': '无编辑权限'}), 403
 
     from flask import current_app
-    from werkzeug.utils import secure_filename
+    from app.utils.upload_security import validate_uploaded_file, save_upload_safely
     import os
 
     part = SparePart.query.get_or_404(id)
@@ -484,17 +484,18 @@ def upload_image(id):
     file = request.files['image']
     image_type = request.form.get('image_type', 'front')
 
-    allowed = {'png', 'jpg', 'jpeg', 'gif'}
-    if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed:
-        return jsonify({'success': False, 'message': '不支持的图片格式'}), 400
+    # S-04: 统一安全校验
+    validation = validate_uploaded_file(file, allowed_types='images', max_size=5 * 1024 * 1024)
+    if not validation['valid']:
+        return jsonify({'success': False, 'message': validation['error']}), 400
 
     try:
         base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
         part_dir = os.path.join(base_dir, 'images', part.part_code)
         os.makedirs(part_dir, exist_ok=True)
         filename = f'{image_type}.jpg'
-        file.save(os.path.join(part_dir, filename))
-        url = f'/uploads/images/{part.part_code}/{filename}'
+        saved_name = save_upload_safely(file, part_dir, filename)
+        url = f'/uploads/images/{part.part_code}/{saved_name}'
 
         field_map = {
             'front': 'image_url', 'thumbnail': 'thumbnail_url',

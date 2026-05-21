@@ -19,45 +19,63 @@ ai_image_bp = Blueprint('ai_image', __name__, url_prefix='/ai-image')
 
 def save_image_from_url(image_url, warehouse_id, warehouse_name):
     """
-    从URL下载图片并保存到本地
-    
+    从URL下载图片并保存到本地（S-04 安全加固版）
+
     Args:
         image_url: 图片URL
         warehouse_id: 仓库ID
         warehouse_name: 仓库名称
-    
+
     Returns:
         str: 保存的相对路径
     """
     import requests
     from datetime import datetime
-    
+    from app.utils.upload_security import is_allowed_extension, sanitize_filename
+
     try:
         # 创建保存目录
-        save_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+        save_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
                                'uploads', 'images', 'warehouse')
         os.makedirs(save_dir, exist_ok=True)
-        
-        # 生成文件名
+
+        # 生成文件名（使用安全化的仓库名）
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         safe_name = ''.join(c if c.isalnum() else '_' for c in warehouse_name)
         filename = f"warehouse_{warehouse_id}_{safe_name}_{timestamp}.png"
-        save_path = os.path.join(save_dir, filename)
-        
-        # 下载图片
-        response = requests.get(image_url, timeout=30)
-        if response.status_code == 200:
-            with open(save_path, 'wb') as f:
-                f.write(response.content)
-            
-            # 返回相对路径
-            return f"/uploads/images/warehouse/{filename}"
-        else:
-            print(f"下载图片失败: {response.status_code}")
+
+        # S-04: 校验扩展名白名单
+        if not is_allowed_extension(filename):
+            current_app.logger.warning(f"[S-04] 不允许的图片扩展名: {filename}")
             return None
-            
+
+        # S-04: 文件名消毒
+        safe_filename = sanitize_filename(filename)
+
+        # 下载图片（限制大小 20MB，防止恶意大文件）
+        response = requests.get(image_url, timeout=30, stream=True,
+                                headers={'User-Agent': 'SpareManagement/1.0'})
+        if response.status_code == 200:
+            # 检查 Content-Length
+            content_length = int(response.headers.get('Content-Length', 0))
+            if content_length > 20 * 1024 * 1024:
+                current_app.logger.warning(f"[S-04] 图片过大: {content_length} bytes")
+                return None
+
+            save_path = os.path.join(save_dir, safe_filename)
+            with open(save_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:  # 过滤掉 keep-alive new chunks
+                        f.write(chunk)
+
+            # 返回相对路径
+            return f"/uploads/images/warehouse/{safe_filename}"
+        else:
+            current_app.logger.warning(f"下载图片失败: {response.status_code}")
+            return None
+
     except Exception as e:
-        print(f"保存图片异常: {e}")
+        current_app.logger.error(f"保存图片异常: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -343,8 +361,9 @@ def test_api():
 
 
 @ai_image_bp.route('/api/test-no-login', methods=['GET'])
+@login_required
 def test_api_no_login():
-    """测试百度 API 连接（不需要登录）"""
+    """测试百度 API 连接（需要登录）"""
     from flask import current_app
     
     current_app.logger.info("Testing API (no login required)...")
@@ -365,15 +384,10 @@ def test_api_no_login():
 
 
 @ai_image_bp.route('/generate-no-login/<int:warehouse_id>', methods=['POST'])
+@login_required
 def generate_warehouse_image_no_login(warehouse_id):
     """
-    生成仓库实景图（不需要登录 - 仅用于测试）
-    
-    Args:
-        warehouse_id: 仓库 ID
-    
-    Returns:
-        JSON 响应
+    生成仓库实景图（需要登录）
     """
     from flask import current_app
     
@@ -464,8 +478,9 @@ def generate_warehouse_image_no_login(warehouse_id):
 
 
 @ai_image_bp.route('/hello')
+@login_required
 def hello():
-    """最简单的测试"""
+    """最简单的测试（需要登录）"""
     from flask import current_app
     current_app.logger.info("Hello route called!")
     return jsonify({
@@ -475,24 +490,27 @@ def hello():
 
 
 @ai_image_bp.route('/test-super-easy')
+@login_required
 def test_super_easy():
-    """超级简单测试页面"""
+    """超级简单测试页面（需要登录）"""
     from flask import send_from_directory
     import os
     return send_from_directory(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'test_super_easy.html')
 
 
 @ai_image_bp.route('/test-new')
+@login_required
 def test_new():
-    """全新测试页面（无缓存）"""
+    """全新测试页面（需要登录）"""
     from flask import send_from_directory
     import os
     return send_from_directory(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'test_new.html')
 
 
 @ai_image_bp.route('/ultimate-test')
+@login_required
 def ultimate_test():
-    """最终测试页面"""
+    """最终测试页面（需要登录）"""
     from flask import send_from_directory
     import os
     return send_from_directory(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'ultimate_test.html')

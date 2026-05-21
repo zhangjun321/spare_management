@@ -145,12 +145,18 @@ def change_password():
             return render_template('auth/change_password.html')
         
         # 验证新密码
-        if len(new_password) < 6:
-            flash('新密码长度不能少于 6 位', 'warning')
+        if len(new_password) < 8:
+            flash('新密码长度不能少于 8 位，且需包含字母和数字', 'warning')
             return render_template('auth/change_password.html')
-        
+
         if new_password != confirm_password:
             flash('两次输入的新密码不一致', 'warning')
+            return render_template('auth/change_password.html')
+
+        # 密码复杂度校验：至少包含一个字母和一个数字
+        import re
+        if not (re.search(r'[a-zA-Z]', new_password) and re.search(r'\d', new_password)):
+            flash('密码必须包含至少一个字母和一个数字', 'warning')
             return render_template('auth/change_password.html')
         
         # 更新密码

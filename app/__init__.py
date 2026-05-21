@@ -39,7 +39,11 @@ def create_app(config_name=None):
     
     # 加载配置
     app.config.from_object(config[config_name])
-    
+
+    # ── S-01: 启动时安全配置检查 ──
+    from app.config import check_security_config
+    check_security_config(config_name)
+
     # 初始化扩展
     init_extensions(app)
     
@@ -291,8 +295,8 @@ def register_blueprints(app):
     # 数据备份模块
     from app.routes.backup import backup_bp
     app.register_blueprint(backup_bp, url_prefix='/backup')
-    
-    # 豁免备份 API 的 CSRF 保护
+    # backup_bp 使用 JSON API，由前端 axios 调用，需要豁免 CSRF Token
+    # (所有 backup 路由均有 @login_required 保护)
     from app.extensions import csrf
     csrf.exempt(backup_bp)
     
@@ -328,10 +332,9 @@ def register_blueprints(app):
     app.register_blueprint(visualization_bp)
     
     # AI 图像生成模块
+    # 注意：不再豁免 CSRF，前端需通过 CSRF Token 或 Header 提交
     from app.routes.ai_image_routes import ai_image_bp
     app.register_blueprint(ai_image_bp)
-    from app.extensions import csrf
-    csrf.exempt(ai_image_bp)
     
     # # 仓库管理 V3 模块（旧）- 已屏蔽
     # from app.routes.warehouse_v3 import warehouse_v3_bp
@@ -359,9 +362,9 @@ def register_blueprints(app):
     app.register_blueprint(api_spare_parts_bp)
 
     # 交易管理 REST API（React 前端）
+    # 注意：不再豁免 CSRF，前端 axios 需携带 CSRF Token
     from app.routes.api_transactions import api_transactions_bp
     app.register_blueprint(api_transactions_bp)
-    csrf.exempt(api_transactions_bp)
 
     # React 备件管理前端页面入口
     from app.routes.react_spare_parts import react_spare_parts_bp
