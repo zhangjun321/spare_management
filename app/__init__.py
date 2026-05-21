@@ -484,6 +484,16 @@ def register_blueprints(app):
     # 备件管理高级前端页面
     from app.routes.spare_part_new_pages import spare_part_new_pages_bp
     app.register_blueprint(spare_part_new_pages_bp)
+
+    # Phase 1: 调拨单 / 预留 / 盘点 API
+    from app.routes.transfer_order_routes import transfer_order_bp
+    app.register_blueprint(transfer_order_bp)
+
+    from app.routes.reservation_routes import reservation_bp
+    app.register_blueprint(reservation_bp)
+
+    from app.routes.stock_take_routes import stock_take_bp
+    app.register_blueprint(stock_take_bp)
     # ===========================================
     
     # 通用列表 API
