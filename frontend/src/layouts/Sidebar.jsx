@@ -20,7 +20,9 @@ import {
   FaCog,
   FaClipboardCheck,
   FaExclamationTriangle,
-  FaCheckCircle
+  FaCheckCircle,
+  FaTruck,
+  FaLock
 } from 'react-icons/fa'
 import { useUIStore } from '../stores'
 import './Sidebar.css'
@@ -42,6 +44,15 @@ const Sidebar = () => {
     const txPath = currentPath.replace(/^\/react/, '')
     if (txPath.startsWith('/transactions/')) {
       return txPath
+    }
+    if (currentPath.startsWith('/transfer-orders')) {
+      return 'transfer_orders'
+    }
+    if (currentPath.startsWith('/reservations')) {
+      return 'reservations'
+    }
+    if (currentPath.startsWith('/stock-take')) {
+      return 'stock_take'
     }
     return 'dashboard'
   })
@@ -136,6 +147,24 @@ const Sidebar = () => {
         { key: '/transactions/transfer', label: '调拨单', icon: <FaExchangeAlt />, path: '/transactions/transfer' },
         { key: '/transactions/inventory', label: '盘点/差异', icon: <FaClipboardCheck />, path: '/transactions/inventory' },
       ]
+    },
+    {
+      key: 'transfer_orders',
+      label: '调拨单',
+      icon: <FaTruck />,
+      path: '/transfer-orders'
+    },
+    {
+      key: 'reservations',
+      label: '库存预留',
+      icon: <FaLock />,
+      path: '/reservations'
+    },
+    {
+      key: 'stock_take',
+      label: '盘点任务',
+      icon: <FaClipboardCheck />,
+      path: '/stock-take'
     },
     {
       key: 'equipment',

@@ -17,6 +17,18 @@ import InboundPage from './pages/transactions/InboundPage'
 import OutboundPage from './pages/transactions/OutboundPage'
 import TransferPage from './pages/transactions/TransferPage'
 import InventoryPage from './pages/transactions/InventoryPage'
+// Phase 2: 新业务模块页面
+import TransferOrderList from './pages/TransferOrderList'
+import TransferOrderForm from './pages/TransferOrderForm'
+import TransferOrderDetail from './pages/TransferOrderDetail'
+import ReservationList from './pages/ReservationList'
+import ReservationForm from './pages/ReservationForm'
+import ReservationDetail from './pages/ReservationDetail'
+import StockTakeList from './pages/StockTakeList'
+import StockTakeNew from './pages/StockTakeNew'
+import StockTakeDetail from './pages/StockTakeDetail'
+import StockTakeExecute from './pages/StockTakeExecute'
+import AdjustmentsList from './pages/AdjustmentsList'
 
 function App() {
   return (
@@ -69,6 +81,24 @@ function App() {
           <Route path="/spare_parts/new" element={<SparePartForm />} />
           <Route path="/spare_parts/:id" element={<SparePartDetail />} />
           <Route path="/spare_parts/:id/edit" element={<SparePartForm />} />
+
+          {/* Phase 2: 调拨单管理 */}
+          <Route path="/transfer-orders" element={<TransferOrderList />} />
+          <Route path="/transfer-orders/new" element={<TransferOrderForm />} />
+          <Route path="/transfer-orders/:id" element={<TransferOrderDetail />} />
+          <Route path="/transfer-orders/:id/edit" element={<TransferOrderForm />} />
+
+          {/* Phase 2: 库存预留管理 */}
+          <Route path="/reservations" element={<ReservationList />} />
+          <Route path="/reservations/new" element={<ReservationForm />} />
+          <Route path="/reservations/:id" element={<ReservationDetail />} />
+
+          {/* Phase 2: 盘点任务管理 */}
+          <Route path="/stock-take" element={<StockTakeList />} />
+          <Route path="/stock-take/new" element={<StockTakeNew />} />
+          <Route path="/stock-take/:id" element={<StockTakeDetail />} />
+          <Route path="/stock-take/:id/execute" element={<StockTakeExecute />} />
+          <Route path="/stock-take/adjustments" element={<AdjustmentsList />} />
         </Routes>
       </MainLayout>
     </Router>
