@@ -12,6 +12,7 @@ from app.models.api import ApiCategory, ApiEndpoint, ApiLog, init_api_data
 from app.utils.decorators import permission_required
 from app.utils.response import ok, error, ResponseCode
 from app.utils.exceptions import ParamError, BusinessError
+from app.utils.transaction import transactional
 
 api_bp = Blueprint('api_management', __name__, template_folder='../templates/api')
 
@@ -171,12 +172,12 @@ def create_endpoint():
             sort_order=data.get('sort_order', 0)
         )
         db.session.add(endpoint)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(data={'id': endpoint.id}, message='接口创建成功')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'创建接口失败: {e}')
 
 
@@ -204,12 +205,12 @@ def update_endpoint(endpoint_id):
                     val = val.upper()
                 setattr(endpoint, field_map[key], val)
 
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='接口更新成功')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'更新接口失败: {e}')
 
 
@@ -221,12 +222,12 @@ def delete_endpoint(endpoint_id):
     try:
         endpoint = ApiEndpoint.query.get_or_404(endpoint_id)
         db.session.delete(endpoint)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='接口删除成功')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'删除接口失败: {e}')
 
 

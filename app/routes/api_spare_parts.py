@@ -14,6 +14,7 @@ from app.models.category import Category
 from app.models.supplier import Supplier
 from app.models.warehouse import Warehouse
 from app.utils.response import ok, error, paginated_data, ResponseCode
+from app.utils.transaction import transactional
 from app.utils.exceptions import (
     ParamError, UnauthorizedError, ForbiddenError,
     NotFoundError, ConflictError, ConcurrentModificationError, BusinessError,
@@ -211,9 +212,9 @@ def create_part():
         is_active=data.get('is_active', True),
         created_by=current_user.id,
     )
-    part.update_stock_status()
-    db.session.add(part)
-    db.session.commit()
+    with transactional():
+        part.update_stock_status()
+        db.session.add(part)
     return ok(data=_serialize_part(part), status_code=201)
 
 
@@ -266,10 +267,10 @@ def update_part(id):
     if 'last_purchase_date' in data:
         part.last_purchase_date = _parse_date(data['last_purchase_date'])
 
-    # 版本号递增
-    part.version = (part.version or 1) + 1
-    part.update_stock_status()
-    db.session.commit()
+    with transactional():
+        # 版本号递增
+        part.version = (part.version or 1) + 1
+        part.update_stock_status()
     return ok(data=_serialize_part(part))
 
 
@@ -285,8 +286,8 @@ def delete_part(id):
     part = SparePart.query.get(id)
     if not part:
         raise NotFoundError(f'备件不存在 (ID: {id})')
-    db.session.delete(part)
-    db.session.commit()
+    with transactional():
+        db.session.delete(part)
     return ok(message='删除成功')
 
 
@@ -302,8 +303,8 @@ def toggle_status(id):
     part = SparePart.query.get(id)
     if not part:
         raise NotFoundError(f'备件不存在 (ID: {id})')
-    part.is_active = not part.is_active
-    db.session.commit()
+    with transactional():
+        part.is_active = not part.is_active
     return ok(data={'is_active': part.is_active})
 
 
@@ -489,13 +490,13 @@ def generate_single_image(id):
             }
             if image_type in field_map:
                 setattr(part, field_map[image_type], result['image_url'])
-                db.session.commit()
+                with transactional():
+                    pass  # commit only
         # service 返回的 result 本身就是 dict，直接包装为 ok 格式
         return ok(data=result)
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'图片生成失败: {e}')
 
 
@@ -539,13 +540,13 @@ def upload_image(id):
         }
         if image_type in field_map:
             setattr(part, field_map[image_type], url)
-            db.session.commit()
+            with transactional():
+                pass  # commit only
 
         return ok(data={'image_url': url})
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'图片上传失败: {e}')
 
 
@@ -579,12 +580,12 @@ def remove_image(id):
         if os.path.exists(fp):
             os.remove(fp)
         setattr(part, field_map[image_type], None)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok()
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'图片删除失败: {e}')
 
 
@@ -627,7 +628,8 @@ def generate_barcode(id):
         if barcode_bytes:
             if not part.barcode:
                 part.barcode = barcode_data
-                db.session.commit()
+            with transactional():
+                pass  # commit only
             upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
             barcode_folder = os.path.join(upload_folder, 'barcodes')
             filename = f'{part.part_code or part.id}.png'
@@ -641,7 +643,6 @@ def generate_barcode(id):
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'条形码生成异常: {e}')
 
 
@@ -697,12 +698,12 @@ def apply_ai_fill(id):
             part.remark = filled['description']
         if 'technical_params' in filled and filled['technical_params']:
             part.technical_params = filled['technical_params']
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='AI填充信息已应用')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'AI填充信息应用失败: {e}')
 
 

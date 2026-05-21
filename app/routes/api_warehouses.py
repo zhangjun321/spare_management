@@ -18,6 +18,7 @@ from app.services.warehouse_service import WarehouseService
 from app.utils.decorators import permission_required
 from app.utils.helpers import paginate_query
 from app.utils.response import ok, error, paginated_data, ResponseCode
+from app.utils.transaction import transactional
 from app.utils.exceptions import (
     ParamError, ForbiddenError,
     NotFoundError, ConflictError, BusinessError,
@@ -174,12 +175,12 @@ def create_warehouse():
             created_by=current_user.id
         )
         db.session.add(warehouse)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(data=warehouse.to_dict(), message='仓库创建成功', status_code=201)
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'创建失败: {e}')
 
 
@@ -212,12 +213,12 @@ def update_warehouse(id):
 
         warehouse.updated_at = datetime.utcnow()
         warehouse.updated_by = current_user.id
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(data=warehouse.to_dict(), message='仓库更新成功')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'更新失败: {e}')
 
 
@@ -241,12 +242,12 @@ def patch_warehouse(id):
 
         warehouse.updated_at = datetime.utcnow()
         warehouse.updated_by = current_user.id
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(data=warehouse.to_dict(), message='仓库更新成功')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'更新失败: {e}')
 
 
@@ -277,12 +278,12 @@ def delete_warehouse(id):
             raise ConflictError(f'仓库下存在 {outbound_count} 个出库单，无法删除')
 
         db.session.delete(warehouse)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='仓库删除成功')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'删除失败: {e}')
 
 
@@ -320,10 +321,10 @@ def batch_delete_warehouses():
     try:
         for warehouse in to_delete:
             db.session.delete(warehouse)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         success_count = len(to_delete)
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'批量删除事务失败: {e}')
 
     return ok(data={
@@ -451,7 +452,8 @@ def batch_import_warehouses():
             except Exception as e:
                 failed.append({'row': index + 2, 'error': str(e)})
 
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(data={
             'success_count': success_count,
             'failed_count': len(failed),
@@ -460,7 +462,6 @@ def batch_import_warehouses():
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'导入失败: {e}')
 
 
@@ -504,7 +505,8 @@ def batch_update_warehouses():
         except Exception as e:
             failed.append({'id': warehouse_id, 'error': str(e)})
 
-    db.session.commit()
+    with transactional():
+        pass  # commit only
     return ok(data={
         'success_count': success_count,
         'failed_count': len(failed),

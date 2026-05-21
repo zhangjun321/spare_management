@@ -16,6 +16,7 @@ from app.models.inbound_outbound import InboundOrder, OutboundOrder
 from app.models.spare_part import SparePart
 from app.utils.helpers import paginate_query
 from app.utils.response import ok, error, paginated_data, ResponseCode
+from app.utils.transaction import transactional
 from app.utils.exceptions import (
     ParamError, NotFoundError, InvalidStatusError, BusinessError,
     ConcurrentModificationError,
@@ -133,12 +134,12 @@ def create_inbound_order():
             created_by=current_user.id
         )
         db.session.add(order)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(data=order.to_dict(), message='入库单创建成功', status_code=201)
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'创建入库单失败: {e}')
 
 
@@ -164,12 +165,12 @@ def complete_inbound_order(order_id):
         order.status = 'completed'
         order.completed_at = datetime.utcnow()
         order.completed_by = current_user.id
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='入库完成')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'完成入库单失败: {e}')
 
 
@@ -185,12 +186,12 @@ def cancel_inbound_order(order_id):
     try:
         order.status = 'cancelled'
         order.cancelled_at = datetime.utcnow()
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='已取消')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'取消入库单失败: {e}')
 
 
@@ -303,12 +304,12 @@ def create_outbound_order():
             created_by=current_user.id
         )
         db.session.add(order)
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(data=order.to_dict(), message='出库单创建成功', status_code=201)
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'创建出库单失败: {e}')
 
 
@@ -334,12 +335,12 @@ def complete_outbound_order(order_id):
         order.status = 'completed'
         order.completed_at = datetime.utcnow()
         order.completed_by = current_user.id
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='出库完成')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'完成出库单失败: {e}')
 
 
@@ -355,10 +356,10 @@ def cancel_outbound_order(order_id):
     try:
         order.status = 'cancelled'
         order.cancelled_at = datetime.utcnow()
-        db.session.commit()
+        with transactional():
+            pass  # commit only
         return ok(message='已取消')
     except BusinessError:
         raise
     except Exception as e:
-        db.session.rollback()
         raise BusinessError(f'取消出库单失败: {e}')
