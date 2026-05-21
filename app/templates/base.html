@@ -1181,245 +1181,120 @@
             </button>
         </div>
         <ul class="sidebar-menu">
+            <!-- 主页 -->
             <li>
-                <a href="{{ url_for('dashboard.index') }}" class="{% if request.endpoint == 'dashboard.index' %}active{% endif %}" data-tooltip="主仪表盘">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span class="menu-text">主仪表盘</span>
+                <a href="{{ url_for('dashboard.index') }}" class="{% if request.endpoint == 'dashboard.index' %}active{% endif %}" data-tooltip="主页">
+                    <i class="fas fa-home"></i>
+                    <span class="menu-text">主页</span>
                 </a>
             </li>
-            <li>
-                <a href="{{ url_for('spare_parts.workstation') }}" class="{% if request.endpoint == 'spare_parts.workstation' %}active{% endif %}" data-tooltip="工作台">
-                    <i class="fas fa-desktop"></i>
-                    <span class="menu-text">工作台</span>
-                </a>
-            </li>
+
+            <!-- ① 备件管理 -->
             <li class="has-submenu">
-                <a href="javascript:void(0)" class="{% if request.path.startswith('/spare_parts') or (request.endpoint and request.endpoint.startswith('spare_parts')) %}active{% endif %}" data-tooltip="备件管理">
+                <a href="javascript:void(0)" class="{% if request.endpoint and (request.endpoint.startswith('spare_parts.') or request.endpoint == 'spare_part_new_pages.index') %}open{% endif %}" data-tooltip="备件管理">
                     <i class="fas fa-box"></i>
                     <span class="menu-text">备件管理</span>
                     <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
                 <ul class="submenu">
-                    {# 基础管理 #}
-                    <li class="submenu-group-title">基础管理</li>
-                    <li>
-                        <a href="{{ url_for('spare_parts.index') }}" class="{% if request.endpoint == 'spare_parts.index' %}active{% endif %}">
-                            <i class="fas fa-list"></i>备件列表
-                        </a>
-                    </li>
-                    {# 运维管理 #}
-                    <li class="submenu-group-title">运维管理</li>
-                    <li>
-                        <a href="{{ url_for('spare_parts.quality') }}" class="{% if request.endpoint == 'spare_parts.quality' %}active{% endif %}">
-                            <i class="fas fa-check-double"></i>备件质量管理
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('spare_parts.diagnosis') }}" class="{% if request.endpoint == 'spare_parts.diagnosis' %}active{% endif %}">
-                            <i class="fas fa-stethoscope"></i>故障诊断与维护
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('spare_parts.lifecycle') }}" class="{% if request.endpoint == 'spare_parts.lifecycle' %}active{% endif %}">
-                            <i class="fas fa-recycle"></i>生命周期管理
-                        </a>
-                    </li>
-                    {# 数据分析 #}
-                    <li class="submenu-group-title">数据分析</li>
-                    <li>
-                        <a href="{{ url_for('spare_parts.dashboard') }}" class="{% if request.endpoint == 'spare_parts.dashboard' %}active{% endif %}">
-                            <i class="fas fa-tachometer-alt"></i>综合分析驾驶舱
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('spare_parts.prediction') }}" class="{% if request.endpoint == 'spare_parts.prediction' %}active{% endif %}">
-                            <i class="fas fa-chart-line"></i>智能预测与补货
-                        </a>
-                    </li>
+                    <li><a href="{{ url_for('spare_parts.index') }}"><i class="fas fa-list"></i>备件列表</a></li>
+                    <li><a href="{{ url_for('spare_parts.new') }}"><i class="fas fa-plus"></i>新建备件</a></li>
+                    <li class="submenu-divider"></li>
+                    <li><a href="{{ url_for('spare_parts.quality') }}"><i class="fas fa-check-double"></i>质量管理</a></li>
+                    <li><a href="{{ url_for('spare_parts.diagnosis') }}"><i class="fas fa-stethoscope"></i>故障诊断</a></li>
+                    <li><a href="{{ url_for('spare_parts.lifecycle') }}"><i class="fas fa-recycle"></i>生命周期</a></li>
+                    <li class="submenu-divider"></li>
+                    <li><a href="{{ url_for('spare_parts.dashboard') }}"><i class="fas fa-tachometer-alt"></i>分析驾驶舱</a></li>
+                    <li><a href="{{ url_for('spare_parts.prediction') }}"><i class="fas fa-chart-line"></i>智能预测</a></li>
                 </ul>
             </li>
+
+            <!-- ② 仓库管理 -->
             <li class="has-submenu">
-                <a href="javascript:void(0)" class="{% if request.endpoint and request.endpoint.startswith('warehouses') %}active{% endif %}" data-tooltip="仓库管理">
+                <a href="javascript:void(0)" class="{% if request.endpoint and (request.endpoint.startswith('warehouses.') or request.endpoint.startswith('reservation_pages')) %}open{% endif %}" data-tooltip="仓库管理">
                     <i class="fas fa-warehouse"></i>
                     <span class="menu-text">仓库管理</span>
                     <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
                 <ul class="submenu">
-                    <li>
-                        <a href="{{ url_for('warehouses.index') }}" class="{% if request.endpoint == 'warehouses.index' %}active{% endif %}">
-                            <i class="fas fa-list"></i>仓库列表
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('warehouses.dashboard') }}" class="{% if request.endpoint == 'warehouses.dashboard' %}active{% endif %}">
-                            <i class="fas fa-tachometer-alt"></i>仓库仪表盘
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('warehouses.inbound_list') }}" class="{% if request.endpoint == 'warehouses.inbound_list' %}active{% endif %}">
-                            <i class="fas fa-download"></i>入库管理
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('warehouses.outbound_list') }}" class="{% if request.endpoint == 'warehouses.outbound_list' %}active{% endif %}">
-                            <i class="fas fa-upload"></i>出库管理
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('warehouses.inventory_list') }}" class="{% if request.endpoint == 'warehouses.inventory_list' %}active{% endif %}">
-                            <i class="fas fa-boxes"></i>库存概览
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('warehouses.analysis') }}" class="{% if request.endpoint == 'warehouses.analysis' %}active{% endif %}">
-                            <i class="fas fa-brain"></i>AI 分析
-                        </a>
-                    </li>
-                    {# 
-                    <!-- AI 预测补货 - 待开发前端页面
-                    <li>
-                        <a href="{{ url_for('ai_forecast.dashboard') }}" class="{% if request.endpoint == 'ai_forecast.dashboard' %}active{% endif %}">
-                            <i class="fas fa-chart-line"></i>AI 预测补货
-                        </a>
-                    </li>
-                    AI 任务分配 - 待开发前端页面
-                    <li>
-                        <a href="{{ url_for('ai_task_assignment.dashboard') }}" class="{% if request.endpoint == 'ai_task_assignment.dashboard' %}active{% endif %}">
-                            <i class="fas fa-tasks"></i>AI 任务分配
-                        </a>
-                    </li>
-                    预警管理 - 待开发前端页面
-                    <li>
-                        <a href="{{ url_for('warning_v3.index') }}" class="{% if request.endpoint == 'warning_v3.index' %}active{% endif %}">
-                            <i class="fas fa-exclamation-triangle"></i>预警管理
-                        </a>
-                    </li>
-                    -->
-                    #}
-                    <li>
-                        <a href="{{ url_for('quality_check_pages.quality_standard') }}" class="{% if request.endpoint == 'quality_check_pages.quality_standard' %}active{% endif %}">
-                            <i class="fas fa-clipboard-check"></i>质检标准管理
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('quality_check_pages.quality_check') }}" class="{% if request.endpoint == 'quality_check_pages.quality_check' %}active{% endif %}">
-                            <i class="fas fa-microscope"></i>质检管理
-                        </a>
-                    </li>
+                    <li><a href="{{ url_for('warehouses.index') }}"><i class="fas fa-list"></i>仓库列表</a></li>
+                    <li><a href="{{ url_for('warehouses.dashboard') }}"><i class="fas fa-tachometer-alt"></i>仓库仪表盘</a></li>
+                    <li class="submenu-divider"></li>
+                    <li><a href="{{ url_for('warehouses.inbound_list') }}"><i class="fas fa-download"></i>入库管理</a></li>
+                    <li><a href="{{ url_for('warehouses.outbound_list') }}"><i class="fas fa-upload"></i>出库管理</a></li>
+                    <li><a href="{{ url_for('warehouses.inventory_list') }}"><i class="fas fa-boxes"></i>库存概览</a></li>
+                    <li class="submenu-divider"></li>
+                    <li><a href="{{ url_for('reservation_pages.list_page') }}"><i class="fas fa-tag"></i>库存预留</a></li>
+                    <li><a href="{{ url_for('quality_check_pages.quality_standard') }}"><i class="fas fa-clipboard-check"></i>质检标准</a></li>
+                    <li><a href="{{ url_for('quality_check_pages.quality_check') }}"><i class="fas fa-microscope"></i>质检管理</a></li>
                 </ul>
             </li>
+
+            <!-- ③ 交易管理 -->
             <li class="has-submenu">
-                <a href="javascript:void(0)" class="{% if request.path.startswith('/transactions') %}active{% endif %}" data-tooltip="交易管理">
+                <a href="javascript:void(0)" class="{% if request.endpoint and (request.endpoint.startswith('transactions.') or request.endpoint.startswith('transfer_order_pages') or request.endpoint.startswith('stock_take_pages')) %}open{% endif %}" data-tooltip="交易管理">
                     <i class="fas fa-exchange-alt"></i>
                     <span class="menu-text">交易管理</span>
                     <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
                 <ul class="submenu">
-                    <li>
-                        <a href="{{ url_for('transactions.list_page') }}" class="{% if request.path.startswith('/transactions/list') or request.endpoint == 'transactions.index' %}active{% endif %}">
-                            <i class="fas fa-list"></i>交易列表
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('transactions.inbound_page') }}" class="{% if request.path.startswith('/transactions/inbound') %}active{% endif %}">
-                            <i class="fas fa-download"></i>入库单
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('transactions.outbound_page') }}" class="{% if request.path.startswith('/transactions/outbound') %}active{% endif %}">
-                            <i class="fas fa-upload"></i>出库单
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('transactions.transfer') }}" class="{% if request.path.startswith('/transactions/transfer') %}active{% endif %}">
-                            <i class="fas fa-exchange-alt"></i>调拨单
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('transactions.inventory_page') }}" class="{% if request.path.startswith('/transactions/inventory') %}active{% endif %}">
-                            <i class="fas fa-clipboard-check"></i>盘点/差异
-                        </a>
-                    </li>
+                    <li><a href="{{ url_for('transactions.list_page') }}"><i class="fas fa-list"></i>交易列表</a></li>
+                    <li class="submenu-divider"></li>
+                    <li><a href="{{ url_for('transactions.inbound_page') }}"><i class="fas fa-download"></i>入库单</a></li>
+                    <li><a href="{{ url_for('transactions.outbound_page') }}"><i class="fas fa-upload"></i>出库单</a></li>
+                    <li><a href="{{ url_for('transfer_order_pages.list_page') }}"><i class="fas fa-exchange-alt"></i>调拨单</a></li>
+                    <li><a href="{{ url_for('stock_take_pages.list_page') }}"><i class="fas fa-clipboard-check"></i>盘点任务</a></li>
                 </ul>
             </li>
-            <li>
-                <a href="{{ url_for('transfer_order_pages.list_page') }}" class="{% if request.endpoint and request.endpoint.startswith('transfer_order_pages') %}active{% endif %}" data-tooltip="调拨单">
-                    <i class="fas fa-exchange-alt"></i>
-                    <span class="menu-text">调拨单</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('reservation_pages.list_page') }}" class="{% if request.endpoint and request.endpoint.startswith('reservation_pages') %}active{% endif %}" data-tooltip="库存预留">
-                    <i class="fas fa-tag"></i>
-                    <span class="menu-text">库存预留</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('stock_take_pages.list_page') }}" class="{% if request.endpoint and request.endpoint.startswith('stock_take_pages') %}active{% endif %}" data-tooltip="盘点任务">
-                    <i class="fas fa-clipboard-check"></i>
-                    <span class="menu-text">盘点任务</span>
-                </a>
-            </li>
+
+            <!-- ④ 设备管理 -->
             <li class="has-submenu">
-                <a href="{{ url_for('equipment.index') }}" data-tooltip="设备管理">
+                <a href="javascript:void(0)" class="{% if request.endpoint and (request.endpoint.startswith('equipment.') or request.endpoint == 'maintenance.index' or request.endpoint.startswith('industrial_pages')) %}open{% endif %}" data-tooltip="设备管理">
                     <i class="fas fa-cogs"></i>
                     <span class="menu-text">设备管理</span>
-                    <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
                 <ul class="submenu">
-                    <li>
-                        <a href="{{ url_for('equipment.dashboard') }}">
-                            <i class="fas fa-chart-line"></i>
-                            <span>设备仪表盘</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('equipment.index') }}">
-                            <i class="fas fa-list"></i>
-                            <span>设备列表</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('equipment.create') }}">
-                            <i class="fas fa-plus"></i>
-                            <span>新建设备</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('industrial_pages.dashboard') }}">
-                            <i class="fas fa-industry"></i>
-                            <span>工业设备维护</span>
-                        </a>
-                    </li>
+                    <li><a href="{{ url_for('equipment.dashboard') }}"><i class="fas fa-chart-line"></i>设备仪表盘</a></li>
+                    <li><a href="{{ url_for('equipment.index') }}"><i class="fas fa-list"></i>设备列表</a></li>
+                    <li><a href="{{ url_for('equipment.create') }}"><i class="fas fa-plus"></i>新建设备</a></li>
+                    <li class="submenu-divider"></li>
+                    <li><a href="{{ url_for('industrial_pages.dashboard') }}"><i class="fas fa-industry"></i>工业设备维护</a></li>
+                    <li><a href="{{ url_for('maintenance.index') }}"><i class="fas fa-wrench"></i>维修管理</a></li>
                 </ul>
             </li>
+
+            <!-- 报表统计 -->
             <li>
-                <a href="{{ url_for('maintenance.index') }}" data-tooltip="维修管理">
-                    <i class="fas fa-wrench"></i>
-                    <span class="menu-text">维修管理</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('purchases.index') }}" data-tooltip="采购管理">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span class="menu-text">采购管理</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('reports.index') }}" data-tooltip="报表统计">
+                <a href="{{ url_for('reports.index') }}" class="{% if request.endpoint == 'reports.index' %}active{% endif %}" data-tooltip="报表统计">
                     <i class="fas fa-chart-bar"></i>
                     <span class="menu-text">报表统计</span>
                 </a>
             </li>
+
+            <!-- ⑤ 系统管理（管理员） -->
             {% if current_user.is_admin %}
-            <li>
-                <a href="{{ url_for('system.index') }}" data-tooltip="系统管理">
+            <li class="has-submenu">
+                <a href="javascript:void(0)" class="{% if request.endpoint and (request.endpoint.startswith('system.') or request.endpoint.startswith('auth.') or request.endpoint.startswith('roles.') or request.endpoint.startswith('dictionary.') or request.endpoint.startswith('backup.') or request.endpoint.startswith('logs.') or request.endpoint == 'notification.index') %}open{% endif %}" data-tooltip="系统管理">
                     <i class="fas fa-cog"></i>
                     <span class="menu-text">系统管理</span>
+                    <i class="fas fa-chevron-down ms-auto"></i>
                 </a>
+                <ul class="submenu">
+                    <li><a href="{{ url_for('system.index') }}"><i class="fas fa-cog"></i>系统设置</a></li>
+                    <li><a href="{{ url_for('auth.user_list') }}"><i class="fas fa-users"></i>用户管理</a></li>
+                    <li><a href="{{ url_for('roles.roles_index') }}"><i class="fas fa-user-shield"></i>角色权限</a></li>
+                    <li><a href="{{ url_for('dictionary.dictionary_index') }}"><i class="fas fa-book"></i>数据字典</a></li>
+                    <li class="submenu-divider"></li>
+                    <li><a href="{{ url_for('logs.logs_index') }}"><i class="fas fa-file-alt"></i>系统日志</a></li>
+                    <li><a href="{{ url_for('backup.backup_index') }}"><i class="fas fa-database"></i>数据备份</a></li>
+                    <li><a href="{{ url_for('notification.index') }}"><i class="fas fa-bell"></i>通知管理</a></li>
+                </ul>
             </li>
             {% endif %}
         </ul>
+
+    
     </nav>
     
     <!-- 主内容区域 -->

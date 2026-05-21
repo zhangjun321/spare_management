@@ -63,29 +63,15 @@ def _clean_expired_cache():
 @dashboard_bp.route('/home')
 @login_required
 def index():
-    """仪表盘首页"""
-    # 统计信息
-    stats = get_dashboard_stats()
-    
-    # 最近交易
-    recent_transactions = Transaction.query.order_by(Transaction.created_at.desc()).limit(10).all()
-    
-    # 待处理维修工单
-    pending_maintenance = MaintenanceOrder.query.filter(
-        MaintenanceOrder.status.in_(['created', 'assigned', 'pending'])
-    ).order_by(MaintenanceOrder.created_at.desc()).limit(5).all()
-    
-    # 库存预警（包括低库存和缺货）
-    low_stock_parts = SparePart.query.filter(
-        SparePart.stock_status.in_(['low', 'out'])
-    ).limit(5).all()
-    
+    """主页 - 模块卡片入口"""
+    from datetime import date
+    today = date.today()
+    weekday_map = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
+    weekday = weekday_map[today.weekday()]
     return render_template(
-        'dashboard/index.html',
-        stats=stats,
-        recent_transactions=recent_transactions,
-        pending_maintenance=pending_maintenance,
-        low_stock_parts=low_stock_parts
+        'dashboard/home.html',
+        today=today,
+        weekday=weekday
     )
 
 
