@@ -97,3 +97,10 @@ start_server.bat
 *.txt
 server_*.txt
 debug_*.txt
+
+# 前端构建产物
+static/react/
+
+# 用户上传文件
+uploads/*/
+!.gitkeep
